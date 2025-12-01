@@ -1,0 +1,1646 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Sistema de Facturas Móvil</title>
+    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #2563eb;
+            --primary-dark: #1d4ed8;
+            --success: #16a34a;
+            --warning: #ea580c;
+            --danger: #dc2626;
+            --gray-50: #f9fafb;
+            --gray-100: #f3f4f6;
+            --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;
+            --gray-600: #4b5563;
+            --gray-700: #374151;
+            --gray-800: #1f2937;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: var(--gray-50);
+            color: var(--gray-800);
+            padding-bottom: 2rem;
+        }
+
+        .header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            padding: 1rem;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header h1 {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .header .subtitle {
+            font-size: 0.875rem;
+            opacity: 0.9;
+            margin-top: 0.25rem;
+        }
+
+        .header .settings-btn {
+            position: absolute;
+            top: 1rem;
+            right: 1rem;
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            width: 40px;
+            height: 40px;
+            border-radius: 8px;
+            font-size: 1.5rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 1rem;
+        }
+
+        .card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.25rem;
+            margin-bottom: 1rem;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+
+        .card-title {
+            font-size: 1.125rem;
+            font-weight: 600;
+            margin-bottom: 1rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-weight: 500;
+            color: var(--gray-700);
+            margin-bottom: 0.5rem;
+            font-size: 0.9rem;
+        }
+
+        .form-group input,
+        .form-group select,
+        .form-group textarea {
+            width: 100%;
+            padding: 0.75rem;
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            font-size: 1rem;
+            transition: all 0.2s;
+        }
+
+        .form-group input:focus,
+        .form-group select:focus,
+        .form-group textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+        }
+
+        .form-group input:disabled {
+            background: var(--gray-100);
+            cursor: not-allowed;
+        }
+
+        .form-group textarea {
+            min-height: 80px;
+            resize: vertical;
+        }
+
+        .form-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+        }
+
+        .toggle-group {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .toggle-btn {
+            flex: 1;
+            padding: 0.75rem;
+            border: 2px solid var(--gray-200);
+            background: white;
+            border-radius: 8px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .toggle-btn.active {
+            background: var(--primary);
+            color: white;
+            border-color: var(--primary);
+        }
+
+        .doc-type-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 0.5rem;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 1rem;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+
+        .btn-primary:active {
+            background: var(--primary-dark);
+            transform: scale(0.98);
+        }
+
+        .btn-success {
+            background: var(--success);
+            color: white;
+        }
+
+        .btn-secondary {
+            background: var(--gray-200);
+            color: var(--gray-700);
+        }
+
+        .btn-small {
+            padding: 0.5rem 1rem;
+            font-size: 0.875rem;
+        }
+
+        .input-with-button {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .input-with-button input {
+            flex: 1;
+        }
+
+        .input-with-button button {
+            width: 48px;
+            height: 48px;
+            padding: 0;
+            border: none;
+            background: var(--primary);
+            color: white;
+            border-radius: 8px;
+            font-size: 1.2rem;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .item-list {
+            margin-top: 1rem;
+        }
+
+        .item-card {
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--primary);
+        }
+
+        .item-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: start;
+            margin-bottom: 0.5rem;
+        }
+
+        .item-title {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .item-detail {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-top: 0.25rem;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            margin-top: 0.5rem;
+        }
+
+        .badge-propio {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-prestado {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .item-actions {
+            display: flex;
+            gap: 0.5rem;
+        }
+
+        .btn-icon {
+            background: var(--gray-200);
+            color: var(--gray-700);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .btn-icon.delete {
+            background: var(--danger);
+            color: white;
+        }
+
+        .summary {
+            background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-top: 1rem;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.5rem 0;
+        }
+
+        .summary-row.total {
+            border-top: 2px solid var(--primary);
+            margin-top: 0.5rem;
+            padding-top: 0.75rem;
+            font-weight: 700;
+            font-size: 1.125rem;
+        }
+
+        .payment-list {
+            margin-top: 1rem;
+        }
+
+        .payment-card {
+            background: var(--gray-50);
+            padding: 1rem;
+            border-radius: 8px;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid var(--success);
+        }
+
+        .payment-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .payment-method {
+            font-weight: 600;
+            font-size: 1rem;
+        }
+
+        .payment-amount {
+            font-weight: 700;
+            color: var(--success);
+        }
+
+        .photo-preview {
+            margin-top: 0.5rem;
+            max-width: 100%;
+            border-radius: 8px;
+            cursor: pointer;
+        }
+
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .modal.active {
+            display: flex;
+        }
+
+        .modal-content {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 500px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .modal-title {
+            font-size: 1.25rem;
+            font-weight: 600;
+        }
+
+        .modal-close {
+            background: var(--gray-200);
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 1.2rem;
+        }
+
+        #scanner-container {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+        }
+
+        #qr-reader {
+            border-radius: 8px;
+            overflow: hidden;
+        }
+
+        .camera-container {
+            width: 100%;
+            margin: 1rem 0;
+        }
+
+        #camera-video {
+            width: 100%;
+            border-radius: 8px;
+            background: black;
+        }
+
+        #camera-canvas {
+            display: none;
+        }
+
+        .toast {
+            position: fixed;
+            bottom: 2rem;
+            left: 1rem;
+            right: 1rem;
+            padding: 1rem;
+            background: var(--gray-800);
+            color: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            transform: translateY(150%);
+            transition: transform 0.3s;
+            z-index: 1000;
+        }
+
+        .toast.show {
+            transform: translateY(0);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 2rem 1rem;
+            color: var(--gray-600);
+        }
+
+        .doc-number-display {
+            background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
+            padding: 1rem;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+
+        .doc-number-label {
+            font-size: 0.875rem;
+            color: var(--gray-600);
+            margin-bottom: 0.25rem;
+        }
+
+        .doc-number-value {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: var(--primary);
+        }
+
+        @media (max-width: 640px) {
+            .form-row {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>📱 Sistema de Facturas</h1>
+        <div class="subtitle">Gestión móvil de documentos</div>
+        <button class="settings-btn" onclick="mostrarConfiguracion()">⚙️</button>
+    </div>
+
+    <div class="container">
+        <!-- EQUIPO DE VENTA -->
+        <div class="card">
+            <div class="card-title">👥 Equipo de Venta</div>
+            
+            <div class="form-group">
+                <label>Asesor Principal *</label>
+                <input type="text" id="asesor-principal" placeholder="Nombre del asesor principal">
+            </div>
+
+            <div class="form-group">
+                <label>¿Es venta colaborativa?</label>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="collab-no" onclick="setColaborativa(false)">
+                        No
+                    </button>
+                    <button class="toggle-btn" id="collab-si" onclick="setColaborativa(true)">
+                        Sí, agregar colaboradores
+                    </button>
+                </div>
+            </div>
+
+            <div id="colaboradores-section" style="display: none;">
+                <div class="form-group">
+                    <label>Nombre del Colaborador</label>
+                    <div class="input-with-button">
+                        <input type="text" id="colaborador-nombre" placeholder="Nombre del colaborador">
+                        <button onclick="agregarColaborador()" title="Agregar colaborador">
+                            ➕
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>% de Comisión del Colaborador</label>
+                    <input type="number" id="colaborador-porcentaje" placeholder="0" min="0" max="100">
+                </div>
+
+                <div id="colaboradores-list"></div>
+            </div>
+        </div>
+
+        <!-- TIPO DE DOCUMENTO -->
+        <div class="card">
+            <div class="card-title">📄 Tipo de Documento</div>
+            <div class="doc-type-group">
+                <button class="toggle-btn active" id="tipo-factura" onclick="setDocType('factura')">
+                    Factura
+                </button>
+                <button class="toggle-btn" id="tipo-remision" onclick="setDocType('remision')">
+                    Remisión
+                </button>
+                <button class="toggle-btn" id="tipo-retoma" onclick="setDocType('retoma')">
+                    Retoma
+                </button>
+            </div>
+
+            <div class="doc-number-display" style="margin-top: 1rem;">
+                <div class="doc-number-label">Número de Documento</div>
+                <div class="doc-number-value" id="doc-number-display">#0001</div>
+            </div>
+
+            <div class="form-group">
+                <label>Fecha y Hora</label>
+                <input type="text" id="fecha-display" disabled>
+            </div>
+        </div>
+
+        <!-- DATOS DEL CLIENTE -->
+        <div class="card">
+            <div class="card-title">👤 Datos del Cliente</div>
+            
+            <div class="form-group">
+                <label>Nombre del Cliente *</label>
+                <input type="text" id="cliente" placeholder="Nombre completo">
+            </div>
+
+            <div class="form-group">
+                <label>NIT/CC *</label>
+                <input type="text" id="nit" placeholder="1113163022">
+            </div>
+
+            <div class="form-group">
+                <label>Teléfono</label>
+                <input type="tel" id="telefono" placeholder="311 2132052">
+            </div>
+
+            <div class="form-group">
+                <label>Dirección</label>
+                <input type="text" id="direccion" placeholder="Cra 80 No 11A-51 Piso 4">
+            </div>
+
+            <div class="form-group">
+                <label>Email</label>
+                <input type="email" id="email" placeholder="ejemplo@correo.com">
+            </div>
+        </div>
+
+        <!-- AGREGAR ÍTEMS -->
+        <div class="card">
+            <div class="card-title">📦 Agregar Ítem</div>
+
+            <div class="form-group">
+                <label>Descripción del equipo/servicio *</label>
+                <input type="text" id="item-descripcion" placeholder="15 Demax 867">
+            </div>
+
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Cantidad</label>
+                    <input type="number" id="item-cantidad" placeholder="1" value="1" min="1">
+                </div>
+                <div class="form-group">
+                    <label>Valor Unitario</label>
+                    <input type="number" id="item-valor" placeholder="0" min="0">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>IMEI / Serie</label>
+                <div class="input-with-button">
+                    <input type="text" id="item-imei" placeholder="351016864369465">
+                    <button onclick="escanearCodigo()" title="Escanear código">
+                        📷
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Estado del Equipo</label>
+                <div class="toggle-group">
+                    <button class="toggle-btn active" id="estado-propio" onclick="setEstado('propio')">
+                        🏢 Propio
+                    </button>
+                    <button class="toggle-btn" id="estado-prestado" onclick="setEstado('prestado')">
+                        🤝 Prestado
+                    </button>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Notas del ítem</label>
+                <textarea id="item-notas" placeholder="Ej: Observado, Ejecutivo, etc."></textarea>
+            </div>
+
+            <button class="btn btn-primary" onclick="agregarItem()">
+                ➕ Agregar Ítem
+            </button>
+
+            <div class="item-list" id="items-list"></div>
+
+            <div class="summary" id="summary-items" style="display: none;">
+                <div class="summary-row total">
+                    <span>TOTAL ÍTEMS:</span>
+                    <span id="total-items">$0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- MEDIOS DE PAGO -->
+        <div class="card">
+            <div class="card-title">💳 Medios de Pago</div>
+
+            <div class="form-group">
+                <label>Método de Pago *</label>
+                <select id="payment-method">
+                    <option value="">Seleccione...</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="tarjeta">Tarjeta</option>
+                    <option value="credito">Crédito</option>
+                    <option value="retoma">Retoma (Parte de Pago con Equipo)</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Monto *</label>
+                <input type="number" id="payment-amount" placeholder="0" min="0">
+            </div>
+
+            <div class="form-group" id="payment-reference-group" style="display: none;">
+                <label>Referencia/Comprobante</label>
+                <input type="text" id="payment-reference" placeholder="Número de referencia">
+            </div>
+
+            <div id="payment-photo-section" style="display: none;">
+                <button class="btn btn-secondary" onclick="tomarFotoPago()" style="margin-bottom: 0.5rem;">
+                    📸 Tomar Foto del Comprobante
+                </button>
+                <div id="payment-photo-preview"></div>
+            </div>
+
+            <!-- SECCIÓN ESPECIAL PARA RETOMA -->
+            <div id="retoma-section" style="display: none;">
+                <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <strong>📱 Equipo Recibido como Parte de Pago</strong>
+                </div>
+
+                <div class="form-group">
+                    <label>Descripción del Equipo Recibido *</label>
+                    <input type="text" id="retoma-descripcion" placeholder="Ej: iPhone 12 Pro">
+                </div>
+
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Cantidad</label>
+                        <input type="number" id="retoma-cantidad" placeholder="1" value="1" min="1">
+                    </div>
+                    <div class="form-group">
+                        <label>Valor del Equipo</label>
+                        <input type="number" id="retoma-valor" placeholder="0" min="0">
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>IMEI del Equipo Recibido</label>
+                    <div class="input-with-button">
+                        <input type="text" id="retoma-imei" placeholder="351016864369465">
+                        <button onclick="escanearCodigoRetoma()" title="Escanear código">
+                            📷
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label>Estado del Equipo Recibido</label>
+                    <select id="retoma-estado">
+                        <option value="excelente">Excelente</option>
+                        <option value="bueno">Bueno</option>
+                        <option value="regular">Regular</option>
+                        <option value="malo">Malo</option>
+                    </select>
+                </div>
+
+                <div class="form-group">
+                    <label>Observaciones del Equipo</label>
+                    <textarea id="retoma-observaciones" placeholder="Estado físico, accesorios incluidos, etc."></textarea>
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="agregarPago()">
+                ➕ Agregar Pago
+            </button>
+
+            <div class="payment-list" id="payments-list"></div>
+
+            <div class="summary" id="summary-payments" style="display: none;">
+                <div class="summary-row">
+                    <span>Total Pagado:</span>
+                    <span id="total-paid">$0</span>
+                </div>
+                <div class="summary-row">
+                    <span>Saldo Pendiente:</span>
+                    <span id="balance-due">$0</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- OBSERVACIONES -->
+        <div class="card">
+            <div class="card-title">📝 Observaciones</div>
+            <div class="form-group">
+                <textarea id="observaciones" placeholder="Notas adicionales del documento..."></textarea>
+            </div>
+        </div>
+
+        <!-- GUARDAR -->
+        <button class="btn btn-success" onclick="guardarDocumento()">
+            💾 Guardar Documento
+        </button>
+
+        <button class="btn btn-secondary" onclick="nuevoDocumento()" style="margin-top: 0.5rem;">
+            🔄 Nuevo Documento
+        </button>
+    </div>
+
+    <!-- MODAL ESCÁNER -->
+    <div id="scanner-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📷 Escanear Código</div>
+                <button class="modal-close" onclick="cerrarEscaner()">×</button>
+            </div>
+            <div id="scanner-container">
+                <div id="qr-reader"></div>
+            </div>
+            <button class="btn btn-secondary" onclick="cerrarEscaner()" style="margin-top: 1rem;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL CÁMARA -->
+    <div id="camera-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">📸 Capturar Foto</div>
+                <button class="modal-close" onclick="cerrarCamara()">×</button>
+            </div>
+            <div class="camera-container">
+                <video id="camera-video" autoplay playsinline></video>
+                <canvas id="camera-canvas"></canvas>
+            </div>
+            <button class="btn btn-primary" onclick="capturarFoto()">
+                📷 Capturar
+            </button>
+            <button class="btn btn-secondary" onclick="cerrarCamara()" style="margin-top: 0.5rem;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
+    <!-- MODAL CONFIGURACIÓN -->
+    <div id="settings-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div class="modal-title">⚙️ Configuración</div>
+                <button class="modal-close" onclick="cerrarConfiguracion()">×</button>
+            </div>
+
+            <div class="form-group">
+                <label>Nombre del Asesor</label>
+                <input type="text" id="config-asesor" placeholder="Nombre del asesor">
+            </div>
+
+            <div class="form-group">
+                <label>Empresa</label>
+                <input type="text" id="config-empresa" placeholder="Nombre de la empresa">
+            </div>
+
+            <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem;">Consecutivos de Documentos</h3>
+            
+            <div class="form-row">
+                <div class="form-group">
+                    <label>Próxima Factura</label>
+                    <input type="number" id="config-factura" min="1" value="1">
+                </div>
+                <div class="form-group">
+                    <label>Próxima Remisión</label>
+                    <input type="number" id="config-remision" min="1" value="1">
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label>Próxima Retoma</label>
+                <input type="number" id="config-retoma" min="1" value="1">
+            </div>
+
+            <button class="btn btn-success" onclick="guardarConfiguracion()">
+                💾 Guardar Configuración
+            </button>
+
+            <h3 style="margin: 1.5rem 0 1rem; font-size: 1rem;">Exportar Datos</h3>
+            
+            <button class="btn btn-secondary" onclick="exportarDatos()">
+                📊 Exportar Excel (CSV)
+            </button>
+
+            <button class="btn btn-secondary" onclick="exportarJSON()" style="margin-top: 0.5rem;">
+                💾 Exportar JSON
+            </button>
+
+            <div style="margin-top: 2rem; padding-top: 1rem; border-top: 1px solid var(--gray-200);">
+                <button class="btn btn-secondary" onclick="limpiarTodo()" style="background: var(--danger); color: white;">
+                    🗑️ Borrar Todos los Datos
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast"></div>
+
+    <script>
+        // Estado global
+        let config = {
+            asesor: '',
+            empresa: 'Skaoll',
+            consecutivos: {
+                factura: 1,
+                remision: 1,
+                retoma: 1
+            }
+        };
+
+        let currentDocType = 'factura';
+        let currentEstado = 'propio';
+        let currentItems = [];
+        let currentPayments = [];
+        let currentColaboradores = [];
+        let isColaborativa = false;
+        let documentos = [];
+        let html5QrCode = null;
+        let cameraStream = null;
+        let currentPaymentPhoto = null;
+
+        // Cargar configuración
+        function cargarConfiguracion() {
+            const saved = localStorage.getItem('config');
+            if (saved) {
+                config = JSON.parse(saved);
+            }
+            
+            const savedDocs = localStorage.getItem('documentos');
+            if (savedDocs) {
+                documentos = JSON.parse(savedDocs);
+            }
+
+            // Cargar asesor principal si existe
+            if (config.asesor) {
+                document.getElementById('asesor-principal').value = config.asesor;
+            }
+
+            actualizarNumeroDocumento();
+            actualizarFecha();
+            
+            // Actualizar fecha cada segundo
+            setInterval(actualizarFecha, 1000);
+        }
+
+        // Establecer si es colaborativa
+        function setColaborativa(value) {
+            isColaborativa = value;
+            document.getElementById('collab-no').classList.toggle('active', !value);
+            document.getElementById('collab-si').classList.toggle('active', value);
+            document.getElementById('colaboradores-section').style.display = value ? 'block' : 'none';
+        }
+
+        // Agregar colaborador
+        function agregarColaborador() {
+            const nombre = document.getElementById('colaborador-nombre').value.trim();
+            const porcentaje = parseFloat(document.getElementById('colaborador-porcentaje').value) || 0;
+
+            if (!nombre) {
+                mostrarToast('⚠️ Ingrese el nombre del colaborador');
+                return;
+            }
+
+            if (porcentaje <= 0 || porcentaje > 100) {
+                mostrarToast('⚠️ Ingrese un porcentaje válido (1-100)');
+                return;
+            }
+
+            const colaborador = {
+                id: Date.now(),
+                nombre,
+                porcentaje
+            };
+
+            currentColaboradores.push(colaborador);
+            actualizarListaColaboradores();
+            
+            document.getElementById('colaborador-nombre').value = '';
+            document.getElementById('colaborador-porcentaje').value = '';
+            mostrarToast('✅ Colaborador agregado');
+        }
+
+        // Actualizar lista de colaboradores
+        function actualizarListaColaboradores() {
+            const lista = document.getElementById('colaboradores-list');
+            
+            if (currentColaboradores.length === 0) {
+                lista.innerHTML = '';
+                return;
+            }
+
+            const totalPorcentaje = currentColaboradores.reduce((sum, c) => sum + c.porcentaje, 0);
+            
+            lista.innerHTML = `
+                <div style="margin-top: 1rem;">
+                    ${currentColaboradores.map(colab => `
+                        <div class="item-card">
+                            <div class="item-header">
+                                <div style="flex: 1;">
+                                    <div class="item-title">${colab.nombre}</div>
+                                    <div class="item-detail">${colab.porcentaje}% de comisión</div>
+                                </div>
+                                <button class="btn-icon delete" onclick="eliminarColaborador(${colab.id})">×</button>
+                            </div>
+                        </div>
+                    `).join('')}
+                    <div style="margin-top: 0.5rem; padding: 0.75rem; background: ${totalPorcentaje > 100 ? '#fee2e2' : '#dbeafe'}; border-radius: 8px; text-align: center;">
+                        <strong>Total comisión colaboradores: ${totalPorcentaje}%</strong>
+                        ${totalPorcentaje > 100 ? '<div style="color: var(--danger); font-size: 0.875rem;">⚠️ El total no puede superar 100%</div>' : ''}
+                    </div>
+                </div>
+            `;
+        }
+
+        // Eliminar colaborador
+        function eliminarColaborador(id) {
+            currentColaboradores = currentColaboradores.filter(c => c.id !== id);
+            actualizarListaColaboradores();
+        }
+
+        // Guardar configuración
+        function guardarConfiguracionLocal() {
+            localStorage.setItem('config', JSON.stringify(config));
+        }
+
+        // Guardar documentos
+        function guardarDocumentosLocal() {
+            localStorage.setItem('documentos', JSON.stringify(documentos));
+        }
+
+        // Actualizar número de documento
+        function actualizarNumeroDocumento() {
+            const numero = config.consecutivos[currentDocType];
+            document.getElementById('doc-number-display').textContent = `#${String(numero).padStart(4, '0')}`;
+        }
+
+        // Actualizar fecha
+        function actualizarFecha() {
+            const ahora = new Date();
+            const opciones = {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit',
+                second: '2-digit'
+            };
+            document.getElementById('fecha-display').value = ahora.toLocaleDateString('es-CO', opciones);
+        }
+
+        // Cambiar tipo de documento
+        function setDocType(tipo) {
+            currentDocType = tipo;
+            document.getElementById('tipo-factura').classList.toggle('active', tipo === 'factura');
+            document.getElementById('tipo-remision').classList.toggle('active', tipo === 'remision');
+            document.getElementById('tipo-retoma').classList.toggle('active', tipo === 'retoma');
+            actualizarNumeroDocumento();
+        }
+
+        // Cambiar estado del equipo
+        function setEstado(estado) {
+            currentEstado = estado;
+            document.getElementById('estado-propio').classList.toggle('active', estado === 'propio');
+            document.getElementById('estado-prestado').classList.toggle('active', estado === 'prestado');
+        }
+
+        // Agregar ítem
+        function agregarItem() {
+            const descripcion = document.getElementById('item-descripcion').value.trim();
+            const cantidad = parseInt(document.getElementById('item-cantidad').value) || 1;
+            const valor = parseFloat(document.getElementById('item-valor').value) || 0;
+            const imei = document.getElementById('item-imei').value.trim();
+            const notas = document.getElementById('item-notas').value.trim();
+
+            if (!descripcion) {
+                mostrarToast('⚠️ Ingrese una descripción');
+                return;
+            }
+
+            const item = {
+                id: Date.now(),
+                descripcion,
+                cantidad,
+                valor,
+                imei,
+                estado: currentEstado,
+                notas,
+                total: cantidad * valor
+            };
+
+            currentItems.push(item);
+            actualizarListaItems();
+            limpiarFormularioItem();
+            mostrarToast('✅ Ítem agregado');
+        }
+
+        // Actualizar lista de ítems
+        function actualizarListaItems() {
+            const lista = document.getElementById('items-list');
+            const summary = document.getElementById('summary-items');
+
+            if (currentItems.length === 0) {
+                lista.innerHTML = '<div class="empty-state">No hay ítems agregados</div>';
+                summary.style.display = 'none';
+                actualizarResumenPagos();
+                return;
+            }
+
+            let subtotal = 0;
+            lista.innerHTML = currentItems.map(item => {
+                subtotal += item.total;
+                return `
+                    <div class="item-card">
+                        <div class="item-header">
+                            <div style="flex: 1;">
+                                <div class="item-title">${item.descripcion}</div>
+                                ${item.imei ? `<div class="item-detail">📱 IMEI: ${item.imei}</div>` : ''}
+                                <div class="item-detail">
+                                    Cantidad: ${item.cantidad} × ${formatMoney(item.valor)} = ${formatMoney(item.total)}
+                                </div>
+                                ${item.notas ? `<div class="item-detail">📝 ${item.notas}</div>` : ''}
+                                <span class="badge badge-${item.estado}">${item.estado === 'propio' ? '🏢 Propio' : '🤝 Prestado'}</span>
+                            </div>
+                            <div class="item-actions">
+                                <button class="btn-icon" onclick="editarItem(${item.id})" title="Editar">✏️</button>
+                                <button class="btn-icon delete" onclick="eliminarItem(${item.id})" title="Eliminar">×</button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            document.getElementById('total-items').textContent = formatMoney(subtotal);
+            summary.style.display = 'block';
+            actualizarResumenPagos();
+        }
+
+        // Editar ítem
+        function editarItem(id) {
+            const item = currentItems.find(i => i.id === id);
+            if (!item) return;
+
+            document.getElementById('item-descripcion').value = item.descripcion;
+            document.getElementById('item-cantidad').value = item.cantidad;
+            document.getElementById('item-valor').value = item.valor;
+            document.getElementById('item-imei').value = item.imei;
+            document.getElementById('item-notas').value = item.notas;
+            setEstado(item.estado);
+
+            eliminarItem(id);
+            mostrarToast('✏️ Editando ítem');
+        }
+
+        // Eliminar ítem
+        function eliminarItem(id) {
+            currentItems = currentItems.filter(item => item.id !== id);
+            actualizarListaItems();
+        }
+
+        // Limpiar formulario de ítem
+        function limpiarFormularioItem() {
+            document.getElementById('item-descripcion').value = '';
+            document.getElementById('item-cantidad').value = '1';
+            document.getElementById('item-valor').value = '';
+            document.getElementById('item-imei').value = '';
+            document.getElementById('item-notas').value = '';
+            setEstado('propio');
+        }
+
+        // Mostrar/ocultar sección de crédito y retoma
+        document.getElementById('payment-method').addEventListener('change', function() {
+            const photoSection = document.getElementById('payment-photo-section');
+            const refGroup = document.getElementById('payment-reference-group');
+            const retomaSection = document.getElementById('retoma-section');
+            
+            // Ocultar todas las secciones primero
+            photoSection.style.display = 'none';
+            refGroup.style.display = 'none';
+            retomaSection.style.display = 'none';
+            
+            // Mostrar según el método de pago
+            if (this.value === 'credito') {
+                photoSection.style.display = 'block';
+                refGroup.style.display = 'block';
+            } else if (this.value === 'transferencia' || this.value === 'tarjeta') {
+                photoSection.style.display = 'block';
+                refGroup.style.display = 'block';
+            } else if (this.value === 'retoma') {
+                retomaSection.style.display = 'block';
+            }
+        });
+
+        // Agregar pago
+        function agregarPago() {
+            const method = document.getElementById('payment-method').value;
+            const amount = parseFloat(document.getElementById('payment-amount').value) || 0;
+            const reference = document.getElementById('payment-reference').value.trim();
+
+            if (!method) {
+                mostrarToast('⚠️ Seleccione un método de pago');
+                return;
+            }
+
+            if (amount <= 0) {
+                mostrarToast('⚠️ Ingrese un monto válido');
+                return;
+            }
+
+            const payment = {
+                id: Date.now(),
+                method,
+                amount,
+                reference,
+                photo: currentPaymentPhoto,
+                fecha: new Date().toISOString()
+            };
+
+            // Si es retoma, agregar información del equipo recibido
+            if (method === 'retoma') {
+                const retomaDescripcion = document.getElementById('retoma-descripcion').value.trim();
+                const retomaCantidad = parseInt(document.getElementById('retoma-cantidad').value) || 1;
+                const retomaValor = parseFloat(document.getElementById('retoma-valor').value) || 0;
+                const retomaImei = document.getElementById('retoma-imei').value.trim();
+                const retomaEstado = document.getElementById('retoma-estado').value;
+                const retomaObservaciones = document.getElementById('retoma-observaciones').value.trim();
+
+                if (!retomaDescripcion) {
+                    mostrarToast('⚠️ Ingrese la descripción del equipo recibido');
+                    return;
+                }
+
+                payment.retomaItem = {
+                    descripcion: retomaDescripcion,
+                    cantidad: retomaCantidad,
+                    valor: retomaValor,
+                    imei: retomaImei,
+                    estado: retomaEstado,
+                    observaciones: retomaObservaciones
+                };
+
+                // El monto del pago debe coincidir con el valor del equipo
+                payment.amount = retomaValor * retomaCantidad;
+            }
+
+            currentPayments.push(payment);
+            actualizarListaPagos();
+            limpiarFormularioPago();
+            mostrarToast('✅ Pago agregado');
+        }
+
+        // Actualizar lista de pagos
+        function actualizarListaPagos() {
+            const lista = document.getElementById('payments-list');
+            const summary = document.getElementById('summary-payments');
+
+            if (currentPayments.length === 0) {
+                lista.innerHTML = '<div class="empty-state">No hay pagos registrados</div>';
+                summary.style.display = 'none';
+                return;
+            }
+
+            const methodNames = {
+                efectivo: '💵 Efectivo',
+                transferencia: '🏦 Transferencia',
+                tarjeta: '💳 Tarjeta',
+                credito: '📋 Crédito',
+                retoma: '🔄 Retoma',
+                otro: '💰 Otro'
+            };
+
+            lista.innerHTML = currentPayments.map(payment => {
+                let retomaDetails = '';
+                if (payment.method === 'retoma' && payment.retomaItem) {
+                    const item = payment.retomaItem;
+                    retomaDetails = `
+                        <div style="margin-top: 0.5rem; padding: 0.75rem; background: white; border-radius: 6px; border-left: 3px solid var(--warning);">
+                            <div style="font-weight: 600; color: var(--gray-800);">📱 ${item.descripcion}</div>
+                            <div class="item-detail">Cantidad: ${item.cantidad} × ${formatMoney(item.valor)}</div>
+                            ${item.imei ? `<div class="item-detail">IMEI: ${item.imei}</div>` : ''}
+                            <div class="item-detail">Estado: ${item.estado}</div>
+                            ${item.observaciones ? `<div class="item-detail">📝 ${item.observaciones}</div>` : ''}
+                        </div>
+                    `;
+                }
+                
+                return `
+                    <div class="payment-card">
+                        <div class="payment-header">
+                            <div>
+                                <div class="payment-method">${methodNames[payment.method]}</div>
+                                ${payment.reference ? `<div class="item-detail">Ref: ${payment.reference}</div>` : ''}
+                                ${payment.photo ? '<div class="item-detail">📷 Con foto adjunta</div>' : ''}
+                            </div>
+                            <div style="display: flex; align-items: center; gap: 0.5rem;">
+                                <div class="payment-amount">${formatMoney(payment.amount)}</div>
+                                <button class="btn-icon delete" onclick="eliminarPago(${payment.id})">×</button>
+                            </div>
+                        </div>
+                        ${retomaDetails}
+                        ${payment.photo ? `<img src="${payment.photo}" class="photo-preview" onclick="verFoto('${payment.photo}')" alt="Foto de crédito">` : ''}
+                    </div>
+                `;
+            }).join('');
+
+            summary.style.display = 'block';
+            actualizarResumenPagos();
+        }
+
+        // Actualizar resumen de pagos
+        function actualizarResumenPagos() {
+            const totalItems = currentItems.reduce((sum, item) => sum + item.total, 0);
+            const totalPaid = currentPayments.reduce((sum, payment) => sum + payment.amount, 0);
+            const balance = totalItems - totalPaid;
+
+            document.getElementById('total-paid').textContent = formatMoney(totalPaid);
+            document.getElementById('balance-due').textContent = formatMoney(balance);
+            document.getElementById('balance-due').style.color = balance > 0 ? 'var(--danger)' : 'var(--success)';
+        }
+
+        // Eliminar pago
+        function eliminarPago(id) {
+            currentPayments = currentPayments.filter(payment => payment.id !== id);
+            actualizarListaPagos();
+        }
+
+        // Limpiar formulario de pago
+        function limpiarFormularioPago() {
+            document.getElementById('payment-method').value = '';
+            document.getElementById('payment-amount').value = '';
+            document.getElementById('payment-reference').value = '';
+            document.getElementById('credit-photo-section').style.display = 'none';
+            document.getElementById('payment-reference-group').style.display = 'none';
+            document.getElementById('retoma-section').style.display = 'none';
+            document.getElementById('credit-photo-preview').innerHTML = '';
+            
+            // Limpiar campos de retoma
+            document.getElementById('retoma-descripcion').value = '';
+            document.getElementById('retoma-cantidad').value = '1';
+            document.getElementById('retoma-valor').value = '';
+            document.getElementById('retoma-imei').value = '';
+            document.getElementById('retoma-estado').value = 'excelente';
+            document.getElementById('retoma-observaciones').value = '';
+            
+            currentCreditPhoto = null;
+        }
+
+        // Auto-calcular monto en retoma
+        document.getElementById('retoma-valor').addEventListener('input', function() {
+            if (document.getElementById('payment-method').value === 'retoma') {
+                const cantidad = parseInt(document.getElementById('retoma-cantidad').value) || 1;
+                const valor = parseFloat(this.value) || 0;
+                document.getElementById('payment-amount').value = cantidad * valor;
+            }
+        });
+
+        document.getElementById('retoma-cantidad').addEventListener('input', function() {
+            if (document.getElementById('payment-method').value === 'retoma') {
+                const cantidad = parseInt(this.value) || 1;
+                const valor = parseFloat(document.getElementById('retoma-valor').value) || 0;
+                document.getElementById('payment-amount').value = cantidad * valor;
+            }
+        });
+
+        // Función para escanear código de retoma
+        function escanearCodigoRetoma() {
+            document.getElementById('scanner-modal').classList.add('active');
+            document.getElementById('scanner-modal').dataset.tipo = 'retoma';
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("qr-reader");
+            }
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    document.getElementById('retoma-imei').value = decodedText;
+                    cerrarEscaner();
+                    mostrarToast('✅ Código escaneado');
+                },
+                (error) => {
+                    // Ignorar errores de escaneo
+                }
+            ).catch(err => {
+                mostrarToast('❌ Error al acceder a la cámara');
+                cerrarEscaner();
+            });
+        }
+
+        // Tomar foto de crédito
+        function tomarFotoCredito() {
+            abrirCamara('credito');
+        }
+
+        // Ver foto
+        function verFoto(dataUrl) {
+            const win = window.open();
+            win.document.write(`<img src="${dataUrl}" style="max-width: 100%; height: auto;">`);
+        }
+
+        // Escanear código
+        function escanearCodigo() {
+            document.getElementById('scanner-modal').classList.add('active');
+            
+            if (!html5QrCode) {
+                html5QrCode = new Html5Qrcode("qr-reader");
+            }
+
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    document.getElementById('item-imei').value = decodedText;
+                    cerrarEscaner();
+                    mostrarToast('✅ Código escaneado');
+                },
+                (error) => {
+                    // Ignorar errores de escaneo
+                }
+            ).catch(err => {
+                mostrarToast('❌ Error al acceder a la cámara');
+                cerrarEscaner();
+            });
+        }
+
+        // Cerrar escáner
+        function cerrarEscaner() {
+            if (html5QrCode) {
+                html5QrCode.stop().then(() => {
+                    document.getElementById('scanner-modal').classList.remove('active');
+                }).catch(err => {
+                    document.getElementById('scanner-modal').classList.remove('active');
+                });
+            } else {
+                document.getElementById('scanner-modal').classList.remove('active');
+            }
+        }
+
+        // Abrir cámara
+        function abrirCamara(tipo) {
+            document.getElementById('camera-modal').classList.add('active');
+            document.getElementById('camera-modal').dataset.tipo = tipo;
+
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } })
+                .then(stream => {
+                    cameraStream = stream;
+                    const video = document.getElementById('camera-video');
+                    video.srcObject = stream;
+                    video.play();
+                })
+                .catch(err => {
+                    mostrarToast('❌ Error al acceder a la cámara');
+                    cerrarCamara();
+                });
+        }
+
+        // Capturar foto
+        function capturarFoto() {
+            const video = document.getElementById('camera-video');
+            const canvas = document.getElementById('camera-canvas');
+            const context = canvas.getContext('2d');
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+            context.drawImage(video, 0, 0);
+
+            const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
+            const tipo = document.getElementById('camera-modal').dataset.tipo;
+
+            if (tipo === 'credito') {
+                currentCreditPhoto = dataUrl;
+                document.getElementById('credit-photo-preview').innerHTML = `
+                    <img src="${dataUrl}" class="photo-preview" onclick="verFoto('${dataUrl}')" alt="Foto de crédito">
+                `;
+                mostrarToast('✅ Foto capturada');
+            }
+
+            cerrarCamara();
+        }
+
+        // Cerrar cámara
+        function cerrarCamara() {
+            if (cameraStream) {
+                cameraStream.getTracks().forEach(track => track.stop());
+                cameraStream = null;
+            }
+            document.getElementById('camera-modal').classList.remove('active');
+        }
+
+        // Guardar documento
+        function guardarDocumento() {
+            const cliente = document.getElementById('cliente').value.trim();
+            const nit = document.getElementById('nit').value.trim();
+
+            if (!cliente || !nit) {
+                mostrarToast('⚠️ Complete los datos del cliente');
+                return;
+            }
+
+            if (currentItems.length === 0) {
+                mostrarToast('⚠️ Agregue al menos un ítem');
+                return;
+            }
+
+            const totalItems = currentItems.reduce((sum, item) => sum + item.total, 0);
+            const totalPaid = currentPayments.reduce((sum, payment) => sum + payment.amount, 0);
+
+            const documento = {
+                id: Date.now(),
+                tipo: currentDocType,
+                numero: config.consecutivos[currentDocType],
+                fecha: new Date().toISOString(),
+                cliente,
+                nit,
+                telefono: document.getElementById('telefono').value.trim(),
+                direccion: document.getElementById('direccion').value.trim(),
+                email: document.getElementById('email').value.trim(),
+                observaciones: document.getElementById('observaciones').value.trim(),
+                items: [...currentItems],
+                payments: [...currentPayments],
+                totalItems,
+                totalPaid,
+                balance: totalItems - totalPaid,
+                asesor: config.asesor,
+                empresa: config.empresa
+            };
+
+            documentos.push(documento);
+            config.consecutivos[currentDocType]++;
+            
+            guardarConfiguracionLocal();
+            guardarDocumentosLocal();
+            
+            mostrarToast('✅ Documento guardado exitosamente');
+            
+            setTimeout(() => {
+                nuevoDocumento();
+            }, 1500);
+        }
+
+        // Nuevo documento
+        function nuevoDocumento() {
+            // Limpiar formularios
+            document.getElementById('cliente').value = '';
+            document.getElementById('nit').value = '';
+            document.getElementById('telefono').value = '';
+            document.getElementById('direccion').value = '';
+            document.getElementById('email').value = '';
+            document.getElementById('observaciones').value = '';
+            
+            currentItems = [];
+            currentPayments = [];
+            currentCreditPhoto = null;
+            
+            actualizarListaItems();
+            actualizarListaPagos();
+            limpiarFormularioItem();
+            limpiarFormularioPago();
+            
+            setDocType('factura');
+            actualizarNumeroDocumento();
+            
+            window.scrollTo(0, 0);
+            mostrarToast('📄 Nuevo documento iniciado');
+        }
+
+        // Mostrar configuración
+        function mostrarConfiguracion() {
+            document.getElementById('config-asesor').value = config.asesor;
+            document.getElementById('config-empresa').value = config.empresa;
+            document.getElementById('config-factura').value = config.consecutivos.factura;
+            document.getElementById('config-remision').value = config.consecutivos.remision;
+            document.getElementById('config-retoma').value = config.consecutivos.retoma;
+            
+            document.getElementById('settings-modal').classList.add('active');
+        }
+
+        // Cerrar configuración
+        function cerrarConfiguracion() {
+            document.getElementById('settings-modal').classList.remove('active');
+        }
+
+        // Guardar configuración
+        function guardarConfiguracion() {
+            config.asesor = document.getElementById('config-asesor').value.trim();
+            config.empresa = document.getElementById('config-empresa').value.trim();
+            config.consecutivos.factura = parseInt(document.getElementById('config-factura').value) || 1;
+            config.consecutivos.remision = parseInt(document.getElementById('config-remision').value) || 1;
+            config.consecutivos.retoma = parseInt(document.getElementById('config-retoma').value) || 1;
+            
+            guardarConfiguracionLocal();
+            actualizarNumeroDocumento();
+            cerrarConfiguracion();
+            mostrarToast('✅ Configuración guardada');
+        }
+
+        // Exportar datos
+        function exportarDatos() {
+            if (documentos.length === 0) {
+                mostrarToast('⚠️ No hay documentos para exportar');
+                return;
+            }
+
+            let csv = 'Tipo,Número,Fecha,Cliente,NIT,Teléfono,Dirección,Email,Asesor,Descripción,Cantidad,Valor Unit,IMEI,Estado,Notas Item,Total Item,Método Pago,Monto Pago,Total Items,Total Pagado,Saldo,Observaciones\n';
+
+            documentos.forEach(doc => {
+                doc.items.forEach((item, idx) => {
+                    const payment = doc.payments[idx] || {};
+                    csv += `"${doc.tipo}",${doc.numero},"${new Date(doc.fecha).toLocaleString('es-CO')}","${doc.cliente}","${doc.nit}","${doc.telefono}","${doc.direccion}","${doc.email}","${doc.asesor}","${item.descripcion}",${item.cantidad},${item.valor},"${item.imei}","${item.estado}","${item.notas}",${item.total},"${payment.method || ''}",${payment.amount || 0},${doc.totalItems},${doc.totalPaid},${doc.balance},"${doc.observaciones}"\n`;
+                });
+            });
+
+            descargarArchivo(csv, `documentos_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv');
+            mostrarToast('📊 Excel exportado');
+        }
+
+        // Exportar JSON
+        function exportarJSON() {
+            if (documentos.length === 0) {
+                mostrarToast('⚠️ No hay documentos para exportar');
+                return;
+            }
+
+            const json = JSON.stringify({ config, documentos }, null, 2);
+            descargarArchivo(json, `documentos_${new Date().toISOString().slice(0,10)}.json`, 'application/json');
+            mostrarToast('💾 JSON exportado');
+        }
+
+        // Limpiar todo
+        function limpiarTodo() {
+            if (confirm('⚠️ ¿Está seguro de que desea borrar todos los datos? Esta acción no se puede deshacer.')) {
+                if (confirm('⚠️ CONFIRME: Se borrarán TODOS los documentos y configuración.')) {
+                    localStorage.clear();
+                    location.reload();
+                }
+            }
+        }
+
+        // Descargar archivo
+        function descargarArchivo(contenido, nombre, tipo) {
+            const blob = new Blob([contenido], { type: tipo });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = nombre;
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+
+        // Formatear dinero
+        function formatMoney(valor) {
+            return new Intl.NumberFormat('es-CO', {
+                style: 'currency',
+                currency: 'COP',
+                minimumFractionDigits: 0
+            }).format(valor);
+        }
+
+        // Mostrar toast
+        function mostrarToast(mensaje) {
+            const toast = document.getElementById('toast');
+            toast.textContent = mensaje;
+            toast.classList.add('show');
+            setTimeout(() => toast.classList.remove('show'), 3000);
+        }
+
+        // Inicializar
+        cargarConfiguracion();
+    </script>
+</body>
+</html>
