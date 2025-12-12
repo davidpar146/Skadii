@@ -529,7 +529,11 @@
         <div class="login-box">
             <h1>🔐 Sistema de Facturas Skaoll</h1>
             <p>Inicia sesión con Google Drive para comenzar</p>
-            <div id="google-signin-button"></div>
+            <div id="google-signin-button">
+                <div style="padding: 1rem; color: var(--gray-600); text-align: center;">
+                    ⏳ Cargando Google Sign-In...
+                </div>
+            </div>
             <p style="font-size: 0.875rem; color: var(--gray-500); margin-top: 1rem;">
                 Se subirán automáticamente todos los documentos y fotos a tu Google Drive
             </p>
@@ -895,12 +899,25 @@
 
         // Inicializar Google API
         function gapiLoaded() {
-            gapi.load('client', initializeGapiClient);
+            gapi.load('client', async () => {
+                try {
+                    await initializeGapiClient();
+                } catch (error) {
+                    console.error('Error loading GAPI:', error);
+                    document.getElementById('google-signin-button').innerHTML = `
+                        <div style="padding: 1rem; color: var(--danger); text-align: center;">
+                            ❌ Error al cargar Google API<br>
+                            <button class="btn btn-secondary" onclick="location.reload()" style="margin-top: 1rem;">
+                                Recargar página
+                            </button>
+                        </div>
+                    `;
+                }
+            });
         }
 
         async function initializeGapiClient() {
             await gapi.client.init({
-                apiKey: 'AIzaSyDxW4xqY8v_1RjX1KQJ-zP3K4qY8yD8Bmg',
                 discoveryDocs: DISCOVERY_DOCS,
             });
             gapiInited = true;
@@ -921,8 +938,14 @@
             if (gapiInited && gisInited) {
                 document.getElementById('google-signin-button').innerHTML = `
                     <button class="btn btn-primary" onclick="handleAuthClick()" style="padding: 1rem 2rem;">
-                        Continuar con Google
+                        🔐 Continuar con Google
                     </button>
+                `;
+            } else {
+                document.getElementById('google-signin-button').innerHTML = `
+                    <div style="padding: 1rem; color: var(--gray-600);">
+                        ⏳ Cargando...
+                    </div>
                 `;
             }
         }
@@ -1615,8 +1638,29 @@
 
         // Inicializar
         window.addEventListener('load', () => {
-            gapiLoaded();
-            gisLoaded();
+            // Show initial state
+            maybeEnableButtons();
+            
+            // Load Google APIs
+            if (typeof gapi !== 'undefined') {
+                gapiLoaded();
+            } else {
+                console.error('Google API library not loaded');
+                document.getElementById('google-signin-button').innerHTML = `
+                    <div style="padding: 1rem; color: var(--danger); text-align: center;">
+                        ❌ No se pudo cargar Google API<br>
+                        <small>Verifica tu conexión a internet</small><br>
+                        <button class="btn btn-secondary" onclick="location.reload()" style="margin-top: 1rem;">
+                            Reintentar
+                        </button>
+                    </div>
+                `;
+            }
+            
+            if (typeof google !== 'undefined' && google.accounts) {
+                gisLoaded();
+            }
+            
             actualizarFecha();
             setInterval(actualizarFecha, 1000);
         });
