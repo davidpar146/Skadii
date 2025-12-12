@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema de Facturas Skaoll</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * {
@@ -1641,25 +1642,30 @@
             // Show initial state
             maybeEnableButtons();
             
-            // Load Google APIs
-            if (typeof gapi !== 'undefined') {
-                gapiLoaded();
-            } else {
-                console.error('Google API library not loaded');
-                document.getElementById('google-signin-button').innerHTML = `
-                    <div style="padding: 1rem; color: var(--danger); text-align: center;">
-                        ❌ No se pudo cargar Google API<br>
-                        <small>Verifica tu conexión a internet</small><br>
-                        <button class="btn btn-secondary" onclick="location.reload()" style="margin-top: 1rem;">
-                            Reintentar
-                        </button>
-                    </div>
-                `;
-            }
+            // Wait for scripts to load with retries
+            let retries = 0;
+            const maxRetries = 10;
             
-            if (typeof google !== 'undefined' && google.accounts) {
-                gisLoaded();
-            }
+            const checkAndInit = setInterval(() => {
+                retries++;
+                
+                if (typeof gapi !== 'undefined' && typeof google !== 'undefined' && google.accounts) {
+                    clearInterval(checkAndInit);
+                    gapiLoaded();
+                    gisLoaded();
+                } else if (retries >= maxRetries) {
+                    clearInterval(checkAndInit);
+                    document.getElementById('google-signin-button').innerHTML = `
+                        <div style="padding: 1rem; color: var(--danger); text-align: center;">
+                            ❌ No se pudo cargar Google API<br>
+                            <small>Verifica tu conexión a internet y que no haya bloqueadores activos</small><br>
+                            <button class="btn btn-secondary" onclick="location.reload()" style="margin-top: 1rem;">
+                                Reintentar
+                            </button>
+                        </div>
+                    `;
+                }
+            }, 500); // Check every 500ms
             
             actualizarFecha();
             setInterval(actualizarFecha, 1000);
