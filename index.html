@@ -588,12 +588,15 @@
         <div class="card">
             <div class="card-title">📄 Tipo de Documento</div>
             <div class="doc-type-group">
-                <button class="toggle-btn active" id="tipo-factura" onclick="setDocType('factura')">
+                <button class="toggle-btn" id="tipo-factura" onclick="setDocType('factura')">
                     Factura
                 </button>
                 <button class="toggle-btn" id="tipo-remision" onclick="setDocType('remision')">
                     Remisión
                 </button>
+            </div>
+            <div id="doc-type-warning" style="display: none; color: var(--danger); font-size: 0.875rem; margin-top: 0.5rem; text-align: center;">
+                ⚠️ Debe seleccionar un tipo de documento
             </div>
 
             <div class="doc-number-display" style="margin-top: 1rem;">
@@ -622,7 +625,7 @@
                 <input type="text" id="nit" placeholder="1113163022">
             </div>
             <div class="form-group">
-                <label>Teléfono</label>
+                <label>Teléfono *</label>
                 <input type="tel" id="telefono" placeholder="311 2132052">
             </div>
             <div class="form-group">
@@ -653,21 +656,24 @@
                 </div>
             </div>
             <div class="form-group">
-                <label>IMEI / Serie</label>
+                <label>IMEI / Serie *</label>
                 <div class="input-with-button">
                     <input type="text" id="item-imei" placeholder="351016864369465">
                     <button onclick="escanearCodigo()">📷</button>
                 </div>
             </div>
             <div class="form-group">
-                <label>Estado del Equipo</label>
+                <label>Estado del Equipo *</label>
                 <div class="toggle-group">
-                    <button class="toggle-btn active" id="estado-propio" onclick="setEstado('propio')">
+                    <button class="toggle-btn" id="estado-propio" onclick="setEstado('propio')">
                         🏢 Propio
                     </button>
                     <button class="toggle-btn" id="estado-prestado" onclick="setEstado('prestado')">
                         🤝 Prestado
                     </button>
+                </div>
+                <div id="estado-warning" style="display: none; color: var(--danger); font-size: 0.875rem; margin-top: 0.5rem;">
+                    ⚠️ Debe seleccionar el estado del equipo
                 </div>
             </div>
             <div class="form-group">
@@ -708,7 +714,7 @@
             </div>
 
             <div class="form-group" id="payment-reference-group" style="display: none;">
-                <label>Referencia/Comprobante</label>
+                <label id="payment-reference-label">Referencia/Comprobante</label>
                 <input type="text" id="payment-reference" placeholder="Número de referencia">
             </div>
 
@@ -740,6 +746,21 @@
                 <div style="background: #fef3c7; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <strong>🔄 Equipo Recibido en Retoma</strong>
                 </div>
+                
+                <!-- Fotos obligatorias para Retoma -->
+                <div style="background: #fee2e2; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <strong>📋 Documentos Obligatorios para Retoma</strong>
+                </div>
+                <button class="btn btn-photo" id="btn-retoma-cedulaFrontal" onclick="tomarFoto('retomaCedulaFrontal')" style="margin-bottom: 0.5rem;">
+                    📸 Cédula Frontal
+                </button>
+                <button class="btn btn-photo" id="btn-retoma-cedulaPosterior" onclick="tomarFoto('retomaCedulaPosterior')" style="margin-bottom: 0.5rem;">
+                    📸 Cédula Posterior
+                </button>
+                <button class="btn btn-photo" id="btn-retoma-contrato" onclick="tomarFoto('retomaContrato')" style="margin-bottom: 1rem;">
+                    📸 Contrato Firmado
+                </button>
+                
                 <div class="form-group">
                     <label>Descripción del Equipo *</label>
                     <input type="text" id="retoma-descripcion" placeholder="iPhone 12 Pro">
@@ -755,7 +776,7 @@
                     </div>
                 </div>
                 <div class="form-group">
-                    <label>IMEI</label>
+                    <label>IMEI *</label>
                     <div class="input-with-button">
                         <input type="text" id="retoma-imei" placeholder="351016864369465">
                         <button onclick="escanearCodigoRetoma()">📷</button>
@@ -885,8 +906,8 @@
         let gapiInited = false;
         let gisInited = false;
 
-        let currentDocType = 'factura';
-        let currentEstado = 'propio';
+        let currentDocType = null; // Sin preselección
+        let currentEstado = null; // Sin preselección
         let currentItems = [];
         let currentPayments = [];
         let currentColaboradores = [];
@@ -1248,6 +1269,10 @@
         }
 
         function actualizarNumeroDocumento() {
+            if (!currentDocType) {
+                document.getElementById('doc-number-display').textContent = '#----';
+                return;
+            }
             const numero = consecutivos[currentDocType];
             document.getElementById('doc-number-display').textContent = `#${String(numero).padStart(4, '0')}`;
         }
@@ -1256,6 +1281,7 @@
             currentDocType = tipo;
             document.getElementById('tipo-factura').classList.toggle('active', tipo === 'factura');
             document.getElementById('tipo-remision').classList.toggle('active', tipo === 'remision');
+            document.getElementById('doc-type-warning').style.display = 'none';
             actualizarNumeroDocumento();
         }
 
@@ -1263,6 +1289,7 @@
             currentEstado = estado;
             document.getElementById('estado-propio').classList.toggle('active', estado === 'propio');
             document.getElementById('estado-prestado').classList.toggle('active', estado === 'prestado');
+            document.getElementById('estado-warning').style.display = 'none';
         }
 
         function setColaborativa(value) {
@@ -1316,8 +1343,20 @@
             const imei = document.getElementById('item-imei').value.trim();
             const notas = document.getElementById('item-notas').value.trim();
 
+            // Validaciones
             if (!descripcion) {
                 mostrarToast('⚠️ Ingrese una descripción');
+                return;
+            }
+
+            if (!imei) {
+                mostrarToast('⚠️ El IMEI es obligatorio');
+                return;
+            }
+
+            if (!currentEstado) {
+                mostrarToast('⚠️ Seleccione el estado del equipo');
+                document.getElementById('estado-warning').style.display = 'block';
                 return;
             }
 
@@ -1383,13 +1422,18 @@
             document.getElementById('item-valor').value = '';
             document.getElementById('item-imei').value = '';
             document.getElementById('item-notas').value = '';
-            setEstado('propio');
+            currentEstado = null;
+            document.getElementById('estado-propio').classList.remove('active');
+            document.getElementById('estado-prestado').classList.remove('active');
+            document.getElementById('estado-warning').style.display = 'none';
         }
 
         // Manejo de métodos de pago
         document.getElementById('payment-method').addEventListener('change', function() {
             const photoSection = document.getElementById('payment-photo-section');
             const refGroup = document.getElementById('payment-reference-group');
+            const refLabel = document.getElementById('payment-reference-label');
+            const refInput = document.getElementById('payment-reference');
             const creditSection = document.getElementById('credit-photos-section');
             const retomaSection = document.getElementById('retoma-section');
             
@@ -1401,9 +1445,18 @@
             if (this.value === 'credito') {
                 creditSection.style.display = 'block';
                 refGroup.style.display = 'block';
-            } else if (this.value === 'transferencia' || this.value === 'tarjeta') {
+                refLabel.textContent = 'Referencia/Comprobante';
+                refInput.placeholder = 'Número de referencia';
+            } else if (this.value === 'transferencia') {
                 photoSection.style.display = 'block';
                 refGroup.style.display = 'block';
+                refLabel.textContent = 'Banco al que ingresó *';
+                refInput.placeholder = 'Nombre del banco';
+            } else if (this.value === 'tarjeta') {
+                photoSection.style.display = 'block';
+                refGroup.style.display = 'block';
+                refLabel.textContent = 'Referencia/Comprobante';
+                refInput.placeholder = 'Número de referencia';
             } else if (this.value === 'retoma') {
                 retomaSection.style.display = 'block';
             }
@@ -1419,9 +1472,24 @@
                 return;
             }
 
+            // Validación para transferencia
+            if (method === 'transferencia' && !reference) {
+                mostrarToast('⚠️ Debe ingresar el banco al que ingresó');
+                return;
+            }
+
+            // Validación para crédito
             if (method === 'credito') {
                 if (!capturedPhotos.cedulaFrontal || !capturedPhotos.cedulaPosterior || !capturedPhotos.contrato) {
                     mostrarToast('⚠️ Debe capturar las 3 fotos para crédito');
+                    return;
+                }
+            }
+
+            // Validación para retoma
+            if (method === 'retoma') {
+                if (!capturedPhotos.retomaCedulaFrontal || !capturedPhotos.retomaCedulaPosterior || !capturedPhotos.retomaContrato) {
+                    mostrarToast('⚠️ Debe capturar las 3 fotos para retoma');
                     return;
                 }
             }
@@ -1436,15 +1504,23 @@
 
             if (method === 'retoma') {
                 const retomaDesc = document.getElementById('retoma-descripcion').value.trim();
+                const retomaImei = document.getElementById('retoma-imei').value.trim();
+                
                 if (!retomaDesc) {
                     mostrarToast('⚠️ Ingrese descripción del equipo en retoma');
                     return;
                 }
+                
+                if (!retomaImei) {
+                    mostrarToast('⚠️ Ingrese IMEI del equipo en retoma');
+                    return;
+                }
+                
                 payment.retomaItem = {
                     descripcion: retomaDesc,
                     cantidad: parseInt(document.getElementById('retoma-cantidad').value) || 1,
                     valor: parsearValor(document.getElementById('retoma-valor').value),
-                    imei: document.getElementById('retoma-imei').value.trim(),
+                    imei: retomaImei,
                     estado: document.getElementById('retoma-estado').value
                 };
                 payment.amount = payment.retomaItem.cantidad * payment.retomaItem.valor;
@@ -1534,7 +1610,8 @@
         }
 
         function resetPhotoButtons() {
-            ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato'].forEach(type => {
+            ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato', 
+             'retoma-cedulaFrontal', 'retoma-cedulaPosterior', 'retoma-contrato'].forEach(type => {
                 const btn = document.getElementById(`btn-${type}`);
                 if (btn) {
                     btn.classList.remove('captured');
@@ -1650,9 +1727,19 @@
             const asesor = document.getElementById('asesor-principal').value.trim();
             const cliente = document.getElementById('cliente').value.trim();
             const nit = document.getElementById('nit').value.trim();
+            const telefono = document.getElementById('telefono').value.trim();
 
-            if (!asesor || !cliente || !nit) {
-                mostrarToast('⚠️ Complete los datos obligatorios');
+            // Validaciones básicas
+            if (!asesor || !cliente || !nit || !telefono) {
+                mostrarToast('⚠️ Complete todos los campos obligatorios');
+                return;
+            }
+
+            // Validar tipo de documento
+            if (!currentDocType) {
+                mostrarToast('⚠️ Debe seleccionar el tipo de documento');
+                document.getElementById('doc-type-warning').style.display = 'block';
+                window.scrollTo({ top: 0, behavior: 'smooth' });
                 return;
             }
 
@@ -1661,33 +1748,69 @@
                 return;
             }
 
-            mostrarToast('☁️ Subiendo a Google Drive...');
+            if (currentPayments.length === 0) {
+                mostrarToast('⚠️ Agregue al menos un método de pago');
+                return;
+            }
 
-            const numero = consecutivos[currentDocType];
-            const numeroFormateado = String(numero).padStart(4, '0');
-            const docName = `${currentDocType === 'factura' ? 'Factura' : 'Remision'}-${numeroFormateado}`;
-            
-            const documento = {
-                tipo: currentDocType,
-                numero,
-                fecha: new Date().toISOString(),
-                asesor,
-                colaboradores: isColaborativa ? currentColaboradores : [],
-                cliente,
-                nit,
-                telefono: document.getElementById('telefono').value.trim(),
-                direccion: document.getElementById('direccion').value.trim(),
-                email: document.getElementById('email').value.trim(),
-                items: currentItems,
-                payments: currentPayments.map(p => ({ ...p, photos: undefined })),
-                totalItems: currentItems.reduce((s, i) => s + i.total, 0),
-                totalPaid: currentPayments.reduce((s, p) => s + p.amount, 0),
-                observaciones: document.getElementById('observaciones').value.trim()
-            };
+            mostrarToast('☁️ Verificando consecutivo...');
 
             try {
-                // Subir JSON
+                // Verificar consecutivo disponible (evitar duplicados)
+                let numero = consecutivos[currentDocType];
                 const folderId = currentDocType === 'factura' ? FOLDER_IDS.facturas : FOLDER_IDS.remisiones;
+                const prefix = currentDocType === 'factura' ? 'Factura' : 'Remision';
+                
+                let intentos = 0;
+                while (intentos < 10) {
+                    const numeroFormateado = String(numero).padStart(4, '0');
+                    const docName = `${prefix}-${numeroFormateado}`;
+                    
+                    // Verificar si existe
+                    const checkResponse = await gapi.client.drive.files.list({
+                        q: `name='${docName}.json' and '${folderId}' in parents and trashed=false`,
+                        fields: 'files(id, name)'
+                    });
+                    
+                    if (checkResponse.result.files.length === 0) {
+                        // Consecutivo disponible
+                        break;
+                    }
+                    
+                    // Ya existe, probar siguiente
+                    numero++;
+                    intentos++;
+                }
+                
+                if (intentos >= 10) {
+                    mostrarToast('❌ Error: No se pudo encontrar consecutivo disponible');
+                    return;
+                }
+
+                mostrarToast('☁️ Subiendo a Google Drive...');
+
+                const numeroFormateado = String(numero).padStart(4, '0');
+                const docName = `${prefix}-${numeroFormateado}`;
+                
+                const documento = {
+                    tipo: currentDocType,
+                    numero,
+                    fecha: new Date().toISOString(),
+                    asesor,
+                    colaboradores: isColaborativa ? currentColaboradores : [],
+                    cliente,
+                    nit,
+                    telefono,
+                    direccion: document.getElementById('direccion').value.trim(),
+                    email: document.getElementById('email').value.trim(),
+                    items: currentItems,
+                    payments: currentPayments.map(p => ({ ...p, photos: undefined })),
+                    totalItems: currentItems.reduce((s, i) => s + i.total, 0),
+                    totalPaid: currentPayments.reduce((s, p) => s + p.amount, 0),
+                    observaciones: document.getElementById('observaciones').value.trim()
+                };
+
+                // Subir JSON
                 const jsonResult = await subirArchivoDrive(
                     JSON.stringify(documento, null, 2),
                     `${docName}.json`,
@@ -1701,15 +1824,30 @@
                             let folder;
                             let fileName;
                             
-                            if (type.includes('cedula')) {
+                            // Fotos de crédito
+                            if (type === 'cedulaFrontal') {
                                 folder = FOLDER_IDS.cedulas;
-                                fileName = `${docName}-Cedula-${type === 'cedulaFrontal' ? 'Frontal' : 'Posterior'}.jpg`;
+                                fileName = `${docName}-Cedula-Frontal.jpg`;
+                            } else if (type === 'cedulaPosterior') {
+                                folder = FOLDER_IDS.cedulas;
+                                fileName = `${docName}-Cedula-Posterior.jpg`;
                             } else if (type === 'contrato') {
                                 folder = FOLDER_IDS.contratos;
                                 fileName = `${docName}-Contrato.jpg`;
                             } else if (type === 'soporte') {
                                 folder = FOLDER_IDS.soportes;
                                 fileName = `${docName}-Soporte-Pago.jpg`;
+                            }
+                            // Fotos de retoma
+                            else if (type === 'retomaCedulaFrontal') {
+                                folder = FOLDER_IDS.cedulas;
+                                fileName = `${docName}-Retoma-Cedula-Frontal.jpg`;
+                            } else if (type === 'retomaCedulaPosterior') {
+                                folder = FOLDER_IDS.cedulas;
+                                fileName = `${docName}-Retoma-Cedula-Posterior.jpg`;
+                            } else if (type === 'retomaContrato') {
+                                folder = FOLDER_IDS.contratos;
+                                fileName = `${docName}-Retoma-Contrato.jpg`;
                             }
                             
                             if (folder && fileName) {
@@ -1722,8 +1860,8 @@
                 // Agregar a Excel
                 await agregarFilaExcel(documento, docName, jsonResult.id);
 
-                // Actualizar consecutivo
-                consecutivos[currentDocType]++;
+                // Actualizar consecutivo al siguiente después del usado
+                consecutivos[currentDocType] = numero + 1;
                 
                 // Mostrar éxito
                 document.getElementById('success-doc-type').textContent = 
@@ -1758,10 +1896,14 @@
             currentPayments = [];
             currentColaboradores = [];
             capturedPhotos = {};
+            currentEstado = null;
             setColaborativa(false);
             actualizarListaItems();
             actualizarListaPagos();
             actualizarListaColaboradores();
+            
+            // No resetear tipo de documento para mantener el último seleccionado
+            // currentDocType = null;
             actualizarNumeroDocumento();
             window.scrollTo(0, 0);
         }
