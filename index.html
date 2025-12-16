@@ -939,9 +939,17 @@
             
             <div class="form-group">
                 <label>Asesor *</label>
-                <select id="anulacion-asesor">
-                    <option value="">Seleccione su nombre...</option>
-                </select>
+                <div style="display: flex; gap: 0.5rem;">
+                    <select id="anulacion-asesor" style="flex: 1;">
+                        <option value="">Seleccione su nombre...</option>
+                    </select>
+                    <button onclick="recargarAsesores()" style="padding: 0.75rem; border: none; background: var(--primary); color: white; border-radius: 8px; cursor: pointer;">
+                        🔄
+                    </button>
+                </div>
+                <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 0.25rem;">
+                    Si no ves tu nombre, edita CLAVES-ASESORES.json en Drive y presiona 🔄
+                </div>
             </div>
 
             <div class="form-group">
@@ -1953,20 +1961,34 @@
 
         async function cargarClavesAsesores() {
             try {
-                // Buscar archivo de claves en la carpeta principal
-                const response = await gapi.client.drive.files.list({
+                mostrarToast('🔄 Cargando asesores...');
+                
+                // Buscar en carpeta principal primero
+                let response = await gapi.client.drive.files.list({
                     q: `name='CLAVES-ASESORES.json' and '${FOLDER_IDS.principal}' in parents and trashed=false`,
-                    fields: 'files(id, name)'
+                    fields: 'files(id, name)',
+                    spaces: 'drive'
                 });
 
+                // Si no está en principal, buscar en toda la carpeta raíz
                 if (response.result.files.length === 0) {
-                    // Crear archivo inicial con asesor demo
-                    console.log('Creando archivo de claves inicial...');
+                    console.log('No encontrado en Principal, buscando en carpeta raíz...');
+                    response = await gapi.client.drive.files.list({
+                        q: `name='CLAVES-ASESORES.json' and trashed=false`,
+                        fields: 'files(id, name, parents)',
+                        spaces: 'drive',
+                        pageSize: 10
+                    });
+                }
+
+                if (response.result.files.length === 0) {
+                    console.log('Archivo no encontrado, creando uno nuevo...');
+                    // Crear archivo inicial
                     const contenidoInicial = {
                         "Asesor Demo": "1234"
                     };
                     
-                    await subirArchivoDrive(
+                    const resultado = await subirArchivoDrive(
                         JSON.stringify(contenidoInicial, null, 2),
                         'CLAVES-ASESORES.json',
                         FOLDER_IDS.principal,
@@ -1974,42 +1996,77 @@
                     );
                     
                     clavesAsesores = contenidoInicial;
-                    mostrarToast('⚠️ Archivo de claves creado. Configúralo en Drive.');
-                } else {
-                    // Leer archivo existente
-                    const fileId = response.result.files[0].id;
-                    const fileResponse = await fetch(
-                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-                        {
-                            headers: {
-                                'Authorization': 'Bearer ' + accessToken
-                            }
-                        }
-                    );
-                    
-                    clavesAsesores = await fileResponse.json();
-                    console.log('Claves de asesores cargadas:', Object.keys(clavesAsesores).length, 'asesores');
+                    actualizarDropdownAsesores();
+                    mostrarToast('⚠️ Archivo de claves creado. Edítalo en Drive.');
+                    console.log('Archivo creado con ID:', resultado.id);
+                    return;
                 }
 
-                // Llenar dropdown de asesores
+                // Leer el archivo encontrado
+                const fileId = response.result.files[0].id;
+                console.log('Archivo encontrado con ID:', fileId);
+                console.log('Ubicación:', response.result.files[0].parents);
+                
+                const fileResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    {
+                        headers: {
+                            'Authorization': 'Bearer ' + accessToken
+                        }
+                    }
+                );
+                
+                if (!fileResponse.ok) {
+                    throw new Error(`HTTP error! status: ${fileResponse.status}`);
+                }
+                
+                const contenido = await fileResponse.text();
+                console.log('Contenido del archivo:', contenido);
+                
+                clavesAsesores = JSON.parse(contenido);
+                console.log('Claves cargadas:', Object.keys(clavesAsesores));
+                console.log('Total asesores:', Object.keys(clavesAsesores).length);
+                
                 actualizarDropdownAsesores();
+                mostrarToast('✅ Asesores cargados: ' + Object.keys(clavesAsesores).length);
+
             } catch (error) {
-                console.error('Error cargando claves:', error);
-                mostrarToast('⚠️ Error al cargar claves de asesores');
+                console.error('Error detallado al cargar claves:', error);
+                mostrarToast('❌ Error cargando asesores. Ver consola.');
                 clavesAsesores = {};
+                actualizarDropdownAsesores();
             }
         }
 
         function actualizarDropdownAsesores() {
             const select = document.getElementById('anulacion-asesor');
+            if (!select) {
+                console.error('Dropdown no encontrado');
+                return;
+            }
+            
             select.innerHTML = '<option value="">Seleccione su nombre...</option>';
             
-            Object.keys(clavesAsesores).sort().forEach(asesor => {
+            const asesores = Object.keys(clavesAsesores).sort();
+            console.log('Actualizando dropdown con asesores:', asesores);
+            
+            if (asesores.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = '⚠️ No hay asesores configurados';
+                option.disabled = true;
+                select.appendChild(option);
+                return;
+            }
+            
+            asesores.forEach(asesor => {
                 const option = document.createElement('option');
                 option.value = asesor;
                 option.textContent = asesor;
                 select.appendChild(option);
             });
+            
+            console.log('Dropdown actualizado con', asesores.length, 'asesores');
         }
 
         function toggleMenu() {
@@ -2037,6 +2094,11 @@
                 item.classList.remove('active');
             });
             document.querySelectorAll('.menu-item')[1].classList.add('active');
+        }
+
+        async function recargarAsesores() {
+            mostrarToast('🔄 Recargando asesores...');
+            await cargarClavesAsesores();
         }
 
         function cerrarAnulacion() {
