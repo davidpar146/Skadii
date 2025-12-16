@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistema de Facturas Skaoll</title>
+    <title>Sistema de Remisiones Skaoll</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -72,6 +72,63 @@
 
         .drive-status.connected {
             background: rgba(34, 197, 94, 0.3);
+        }
+
+        .menu-gestion {
+            position: absolute;
+            bottom: 1rem;
+            right: 1rem;
+        }
+
+        .btn-menu {
+            background: rgba(255,255,255,0.2);
+            color: white;
+            border: 2px solid rgba(255,255,255,0.3);
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.9rem;
+        }
+
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 0.5rem;
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+            min-width: 200px;
+            overflow: hidden;
+        }
+
+        .dropdown-menu.show {
+            display: block;
+        }
+
+        .menu-item {
+            display: block;
+            width: 100%;
+            padding: 0.75rem 1rem;
+            border: none;
+            background: white;
+            text-align: left;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            color: var(--gray-800);
+            transition: all 0.2s;
+        }
+
+        .menu-item:hover {
+            background: var(--gray-50);
+        }
+
+        .menu-item.active {
+            background: var(--primary);
+            color: white;
         }
 
         .container {
@@ -528,7 +585,7 @@
     <!-- Pantalla de Login -->
     <div id="login-screen" class="login-screen">
         <div class="login-box">
-            <h1>🔐 Sistema de Facturas Skaoll</h1>
+            <h1>🔐 Sistema de Remisiones Skaoll</h1>
             <p>Inicia sesión con Google Drive para comenzar</p>
             <div id="google-signin-button">
                 <div style="padding: 1rem; color: var(--gray-600); text-align: center;">
@@ -542,11 +599,18 @@
     </div>
 
     <div class="header">
-        <h1>📱 Sistema de Facturas Skaoll</h1>
+        <h1>📱 Sistema de Remisiones Skaoll</h1>
         <div class="subtitle">Gestión móvil con Google Drive + Sheets</div>
         <div id="drive-status" class="drive-status">
             <span id="status-icon">⚪</span>
             <span id="status-text">Desconectado</span>
+        </div>
+        <div class="menu-gestion">
+            <button class="btn-menu" onclick="toggleMenu()">⚙️ Gestión ▼</button>
+            <div id="dropdown-menu" class="dropdown-menu">
+                <button class="menu-item active" onclick="mostrarCrear()">📝 Crear Remisión</button>
+                <button class="menu-item" onclick="mostrarAnular()">❌ Anular Remisión</button>
+            </div>
         </div>
     </div>
 
@@ -584,22 +648,11 @@
             </div>
         </div>
 
-        <!-- Tipo de Documento -->
+        <!-- Consecutivo y Fecha -->
         <div class="card">
-            <div class="card-title">📄 Tipo de Documento</div>
-            <div class="doc-type-group">
-                <button class="toggle-btn" id="tipo-factura" onclick="setDocType('factura')">
-                    Factura
-                </button>
-                <button class="toggle-btn" id="tipo-remision" onclick="setDocType('remision')">
-                    Remisión
-                </button>
-            </div>
-            <div id="doc-type-warning" style="display: none; color: var(--danger); font-size: 0.875rem; margin-top: 0.5rem; text-align: center;">
-                ⚠️ Debe seleccionar un tipo de documento
-            </div>
+            <div class="card-title">📄 Documento: Remisión</div>
 
-            <div class="doc-number-display" style="margin-top: 1rem;">
+            <div class="doc-number-display">
                 <div class="doc-number-label">Consecutivo Automático</div>
                 <div class="doc-number-value" id="doc-number-display">#0001</div>
                 <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 0.5rem;">
@@ -876,6 +929,48 @@
         </div>
     </div>
 
+    <!-- Modal Anulación -->
+    <div id="anulacion-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>❌ Anulación de Remisión</h3>
+                <button class="modal-close" onclick="cerrarAnulacion()">×</button>
+            </div>
+            
+            <div class="form-group">
+                <label>Asesor *</label>
+                <select id="anulacion-asesor">
+                    <option value="">Seleccione su nombre...</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Número de Remisión *</label>
+                <input type="number" id="anulacion-numero" placeholder="1" min="1">
+            </div>
+
+            <div class="form-group">
+                <label>Motivo de Anulación *</label>
+                <textarea id="anulacion-motivo" placeholder="Describa el motivo de la anulación..." rows="4"></textarea>
+            </div>
+
+            <div class="form-group">
+                <label>Tu Clave de Seguridad *</label>
+                <input type="password" id="anulacion-clave" placeholder="••••" maxlength="4" pattern="[0-9]*" inputmode="numeric">
+                <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 0.25rem;">
+                    Clave numérica de 4 dígitos
+                </div>
+            </div>
+
+            <button class="btn btn-primary" onclick="procesarAnulacion()" style="margin-top: 1rem;">
+                ❌ Anular Remisión
+            </button>
+            <button class="btn btn-secondary" onclick="cerrarAnulacion()" style="margin-top: 0.5rem;">
+                Cancelar
+            </button>
+        </div>
+    </div>
+
     <div id="toast" class="toast"></div>
 
     <script>
@@ -890,7 +985,7 @@
         // IDs de carpetas en Drive
         const FOLDER_IDS = {
             principal: '1fnl_8z0737DmVPcMupFwyjalOxATwZmw',
-            facturas: '1VsBkQqMV6tAdPHDgGQm9kSdjwrsa_qZ4',
+            facturas: '1VsBkQqMV6tAdPHDgGQm9kSdjwrsa_qZ4', // Para anulaciones
             remisiones: '1RBcXVnRz_Z2WzeVau8CMLACzCFxLqBCO',
             cedulas: '1nKhTxkNmxWBCEa1ecqD-EBc59Z90pOZj',
             contratos: '1YX7YMk8m5XFYLO4fXWcoyHyUZKoYFA_7',
@@ -906,8 +1001,8 @@
         let gapiInited = false;
         let gisInited = false;
 
-        let currentDocType = null; // Sin preselección
-        let currentEstado = null; // Sin preselección
+        const currentDocType = 'remision'; // Fijo como remisión
+        let currentEstado = null;
         let currentItems = [];
         let currentPayments = [];
         let currentColaboradores = [];
@@ -917,10 +1012,8 @@
         let currentPhotoType = null;
         let capturedPhotos = {};
 
-        let consecutivos = {
-            factura: 1,
-            remision: 1
-        };
+        let consecutivo = 1; // Un solo consecutivo
+        let clavesAsesores = {}; // Claves por asesor cargadas de Drive
 
         // Formatear números con puntos de mil
         function formatearInput(input) {
@@ -1008,6 +1101,7 @@
                 updateDriveStatus(true);
                 await obtenerConsecutivos();
                 await verificarOCrearSpreadsheet();
+                await cargarClavesAsesores();
                 mostrarToast('✅ Conectado a Google Drive + Sheets');
             };
 
@@ -1052,16 +1146,9 @@
             try {
                 const response = await gapi.client.sheets.spreadsheets.create({
                     properties: {
-                        title: 'Facturas Skaoll - Registro Automático'
+                        title: 'Remisiones Skaoll - Registro Automático'
                     },
                     sheets: [{
-                        properties: {
-                            title: 'Facturas',
-                            gridProperties: {
-                                frozenRowCount: 1
-                            }
-                        }
-                    }, {
                         properties: {
                             title: 'Remisiones',
                             gridProperties: {
@@ -1075,19 +1162,6 @@
                 localStorage.setItem('spreadsheet_id', SPREADSHEET_ID);
 
                 // Agregar encabezados
-                await gapi.client.sheets.spreadsheets.values.update({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: 'Facturas!A1:N1',
-                    valueInputOption: 'RAW',
-                    resource: {
-                        values: [[
-                            'Número', 'Fecha', 'Asesor', 'Colaboradores', 'Cliente', 'NIT/CC', 
-                            'Teléfono', 'Items', 'Total Items', 'Métodos Pago', 'Total Pagado', 
-                            'Saldo', 'Observaciones', 'Link Drive'
-                        ]]
-                    }
-                });
-
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: SPREADSHEET_ID,
                     range: 'Remisiones!A1:N1',
@@ -1110,7 +1184,6 @@
         async function agregarFilaExcel(documento, docName, fileId) {
             if (!SPREADSHEET_ID) return;
 
-            const sheetName = documento.tipo === 'factura' ? 'Facturas' : 'Remisiones';
             const linkDrive = `https://drive.google.com/file/d/${fileId}/view`;
             
             const colaboradores = documento.colaboradores.map(c => c.nombre).join(', ');
@@ -1147,7 +1220,7 @@
             try {
                 await gapi.client.sheets.spreadsheets.values.append({
                     spreadsheetId: SPREADSHEET_ID,
-                    range: `${sheetName}!A:N`,
+                    range: 'Remisiones!A:N',
                     valueInputOption: 'USER_ENTERED',
                     resource: {
                         values: [fila]
@@ -1161,7 +1234,7 @@
         async function obtenerConsecutivos() {
             try {
                 const response = await gapi.client.drive.files.list({
-                    q: `'${FOLDER_IDS.facturas}' in parents and trashed=false`,
+                    q: `'${FOLDER_IDS.remisiones}' in parents and trashed=false`,
                     fields: 'files(name)',
                     orderBy: 'name desc',
                     pageSize: 1
@@ -1169,24 +1242,9 @@
                 
                 if (response.result.files.length > 0) {
                     const lastFile = response.result.files[0].name;
-                    const match = lastFile.match(/Factura-(\d+)/);
-                    if (match) {
-                        consecutivos.factura = parseInt(match[1]) + 1;
-                    }
-                }
-
-                const responseRem = await gapi.client.drive.files.list({
-                    q: `'${FOLDER_IDS.remisiones}' in parents and trashed=false`,
-                    fields: 'files(name)',
-                    orderBy: 'name desc',
-                    pageSize: 1
-                });
-                
-                if (responseRem.result.files.length > 0) {
-                    const lastFile = responseRem.result.files[0].name;
                     const match = lastFile.match(/Remision-(\d+)/);
                     if (match) {
-                        consecutivos.remision = parseInt(match[1]) + 1;
+                        consecutivo = parseInt(match[1]) + 1;
                     }
                 }
 
@@ -1269,20 +1327,7 @@
         }
 
         function actualizarNumeroDocumento() {
-            if (!currentDocType) {
-                document.getElementById('doc-number-display').textContent = '#----';
-                return;
-            }
-            const numero = consecutivos[currentDocType];
-            document.getElementById('doc-number-display').textContent = `#${String(numero).padStart(4, '0')}`;
-        }
-
-        function setDocType(tipo) {
-            currentDocType = tipo;
-            document.getElementById('tipo-factura').classList.toggle('active', tipo === 'factura');
-            document.getElementById('tipo-remision').classList.toggle('active', tipo === 'remision');
-            document.getElementById('doc-type-warning').style.display = 'none';
-            actualizarNumeroDocumento();
+            document.getElementById('doc-number-display').textContent = `#${String(consecutivo).padStart(4, '0')}`;
         }
 
         function setEstado(estado) {
@@ -1735,14 +1780,6 @@
                 return;
             }
 
-            // Validar tipo de documento
-            if (!currentDocType) {
-                mostrarToast('⚠️ Debe seleccionar el tipo de documento');
-                document.getElementById('doc-type-warning').style.display = 'block';
-                window.scrollTo({ top: 0, behavior: 'smooth' });
-                return;
-            }
-
             if (currentItems.length === 0) {
                 mostrarToast('⚠️ Agregue al menos un ítem');
                 return;
@@ -1757,14 +1794,13 @@
 
             try {
                 // Verificar consecutivo disponible (evitar duplicados)
-                let numero = consecutivos[currentDocType];
-                const folderId = currentDocType === 'factura' ? FOLDER_IDS.facturas : FOLDER_IDS.remisiones;
-                const prefix = currentDocType === 'factura' ? 'Factura' : 'Remision';
+                let numero = consecutivo;
+                const folderId = FOLDER_IDS.remisiones;
                 
                 let intentos = 0;
                 while (intentos < 10) {
                     const numeroFormateado = String(numero).padStart(4, '0');
-                    const docName = `${prefix}-${numeroFormateado}`;
+                    const docName = `Remision-${numeroFormateado}`;
                     
                     // Verificar si existe
                     const checkResponse = await gapi.client.drive.files.list({
@@ -1790,10 +1826,10 @@
                 mostrarToast('☁️ Subiendo a Google Drive...');
 
                 const numeroFormateado = String(numero).padStart(4, '0');
-                const docName = `${prefix}-${numeroFormateado}`;
+                const docName = `Remision-${numeroFormateado}`;
                 
                 const documento = {
-                    tipo: currentDocType,
+                    tipo: 'remision',
                     numero,
                     fecha: new Date().toISOString(),
                     asesor,
@@ -1861,13 +1897,11 @@
                 await agregarFilaExcel(documento, docName, jsonResult.id);
 
                 // Actualizar consecutivo al siguiente después del usado
-                consecutivos[currentDocType] = numero + 1;
+                consecutivo = numero + 1;
                 
                 // Mostrar éxito
-                document.getElementById('success-doc-type').textContent = 
-                    currentDocType === 'factura' ? 'Factura' : 'Remisión';
-                document.getElementById('success-doc-number').textContent = 
-                    `#${numeroFormateado}`;
+                document.getElementById('success-doc-type').textContent = 'Remisión';
+                document.getElementById('success-doc-number').textContent = `#${numeroFormateado}`;
                 document.getElementById('success-modal').classList.add('show');
 
                 // Limpiar formulario
@@ -1914,6 +1948,214 @@
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
+
+        // ============= FUNCIONES DE ANULACIÓN =============
+
+        async function cargarClavesAsesores() {
+            try {
+                // Buscar archivo de claves en la carpeta principal
+                const response = await gapi.client.drive.files.list({
+                    q: `name='CLAVES-ASESORES.json' and '${FOLDER_IDS.principal}' in parents and trashed=false`,
+                    fields: 'files(id, name)'
+                });
+
+                if (response.result.files.length === 0) {
+                    // Crear archivo inicial con asesor demo
+                    console.log('Creando archivo de claves inicial...');
+                    const contenidoInicial = {
+                        "Asesor Demo": "1234"
+                    };
+                    
+                    await subirArchivoDrive(
+                        JSON.stringify(contenidoInicial, null, 2),
+                        'CLAVES-ASESORES.json',
+                        FOLDER_IDS.principal,
+                        'application/json'
+                    );
+                    
+                    clavesAsesores = contenidoInicial;
+                    mostrarToast('⚠️ Archivo de claves creado. Configúralo en Drive.');
+                } else {
+                    // Leer archivo existente
+                    const fileId = response.result.files[0].id;
+                    const fileResponse = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                        {
+                            headers: {
+                                'Authorization': 'Bearer ' + accessToken
+                            }
+                        }
+                    );
+                    
+                    clavesAsesores = await fileResponse.json();
+                    console.log('Claves de asesores cargadas:', Object.keys(clavesAsesores).length, 'asesores');
+                }
+
+                // Llenar dropdown de asesores
+                actualizarDropdownAsesores();
+            } catch (error) {
+                console.error('Error cargando claves:', error);
+                mostrarToast('⚠️ Error al cargar claves de asesores');
+                clavesAsesores = {};
+            }
+        }
+
+        function actualizarDropdownAsesores() {
+            const select = document.getElementById('anulacion-asesor');
+            select.innerHTML = '<option value="">Seleccione su nombre...</option>';
+            
+            Object.keys(clavesAsesores).sort().forEach(asesor => {
+                const option = document.createElement('option');
+                option.value = asesor;
+                option.textContent = asesor;
+                select.appendChild(option);
+            });
+        }
+
+        function toggleMenu() {
+            const menu = document.getElementById('dropdown-menu');
+            menu.classList.toggle('show');
+        }
+
+        function mostrarCrear() {
+            document.getElementById('main-content').style.display = 'block';
+            document.getElementById('dropdown-menu').classList.remove('show');
+            
+            // Actualizar botones activos
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.menu-item')[0].classList.add('active');
+        }
+
+        function mostrarAnular() {
+            document.getElementById('anulacion-modal').classList.add('active');
+            document.getElementById('dropdown-menu').classList.remove('show');
+            
+            // Actualizar botones activos
+            document.querySelectorAll('.menu-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelectorAll('.menu-item')[1].classList.add('active');
+        }
+
+        function cerrarAnulacion() {
+            document.getElementById('anulacion-modal').classList.remove('active');
+            limpiarFormularioAnulacion();
+        }
+
+        function limpiarFormularioAnulacion() {
+            document.getElementById('anulacion-asesor').value = '';
+            document.getElementById('anulacion-numero').value = '';
+            document.getElementById('anulacion-motivo').value = '';
+            document.getElementById('anulacion-clave').value = '';
+        }
+
+        async function procesarAnulacion() {
+            const asesor = document.getElementById('anulacion-asesor').value;
+            const numero = document.getElementById('anulacion-numero').value;
+            const motivo = document.getElementById('anulacion-motivo').value.trim();
+            const clave = document.getElementById('anulacion-clave').value;
+
+            // Validaciones
+            if (!asesor || !numero || !motivo || !clave) {
+                mostrarToast('⚠️ Complete todos los campos obligatorios');
+                return;
+            }
+
+            if (clave.length !== 4 || !/^\d+$/.test(clave)) {
+                mostrarToast('⚠️ La clave debe ser de 4 dígitos numéricos');
+                return;
+            }
+
+            // Verificar clave
+            if (clavesAsesores[asesor] !== clave) {
+                mostrarToast('❌ Clave incorrecta');
+                return;
+            }
+
+            mostrarToast('☁️ Procesando anulación...');
+
+            try {
+                const numeroFormateado = String(numero).padStart(4, '0');
+                const docName = `Remision-${numeroFormateado}-ANULACION`;
+                
+                const anulacion = {
+                    tipo: 'anulacion',
+                    remisionAnulada: numeroFormateado,
+                    asesor: asesor,
+                    motivo: motivo,
+                    fechaAnulacion: new Date().toISOString(),
+                    validadoPorClave: true
+                };
+
+                // Subir JSON de anulación a carpeta Facturas
+                const jsonResult = await subirArchivoDrive(
+                    JSON.stringify(anulacion, null, 2),
+                    `${docName}.json`,
+                    FOLDER_IDS.facturas
+                );
+
+                // Agregar a Excel
+                await agregarAnulacionExcel(anulacion, docName, jsonResult.id);
+
+                // Éxito
+                cerrarAnulacion();
+                mostrarToast('✅ Remisión anulada correctamente');
+
+            } catch (error) {
+                console.error('Error procesando anulación:', error);
+                mostrarToast('❌ Error al procesar anulación');
+            }
+        }
+
+        async function agregarAnulacionExcel(anulacion, docName, fileId) {
+            if (!SPREADSHEET_ID) return;
+
+            const linkDrive = `https://drive.google.com/file/d/${fileId}/view`;
+            
+            const fila = [
+                docName,
+                new Date(anulacion.fechaAnulacion).toLocaleString('es-CO'),
+                anulacion.asesor,
+                '-',
+                '-',
+                '-',
+                '-',
+                '-',
+                '-',
+                '-',
+                '-',
+                '-',
+                anulacion.motivo,
+                linkDrive
+            ];
+
+            try {
+                await gapi.client.sheets.spreadsheets.values.append({
+                    spreadsheetId: SPREADSHEET_ID,
+                    range: 'Remisiones!A:N',
+                    valueInputOption: 'USER_ENTERED',
+                    resource: {
+                        values: [fila]
+                    }
+                });
+            } catch (error) {
+                console.error('Error agregando anulación a Excel:', error);
+            }
+        }
+
+        // Cerrar menú al hacer click fuera
+        document.addEventListener('click', function(event) {
+            const menu = document.getElementById('dropdown-menu');
+            const btnMenu = document.querySelector('.btn-menu');
+            
+            if (menu && btnMenu && !menu.contains(event.target) && !btnMenu.contains(event.target)) {
+                menu.classList.remove('show');
+            }
+        });
+
+        // ============= FIN FUNCIONES DE ANULACIÓN =============
 
         // Inicializar
         window.addEventListener('load', () => {
