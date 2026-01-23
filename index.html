@@ -1800,38 +1800,84 @@
 
             mostrarToast('☁️ Verificando consecutivo...');
 
+            let lockFileId = null; // Para rastrear el archivo de bloqueo
+
             try {
-                // Verificar consecutivo disponible (evitar duplicados)
+                // Verificar consecutivo disponible y BLOQUEARLO inmediatamente
                 let numero = consecutivo;
                 const folderId = FOLDER_IDS.remisiones;
                 
                 let intentos = 0;
-                while (intentos < 10) {
+                let consecutivoReservado = false;
+                
+                while (intentos < 10 && !consecutivoReservado) {
                     const numeroFormateado = String(numero).padStart(4, '0');
                     const docName = `Remision-${numeroFormateado}`;
                     
-                    // Verificar si existe
+                    // Verificar si existe el archivo O el lock
                     const checkResponse = await gapi.client.drive.files.list({
-                        q: `name='${docName}.json' and '${folderId}' in parents and trashed=false`,
+                        q: `(name='${docName}.json' or name='${docName}.lock') and '${folderId}' in parents and trashed=false`,
                         fields: 'files(id, name)'
                     });
                     
                     if (checkResponse.result.files.length === 0) {
-                        // Consecutivo disponible
-                        break;
+                        // Consecutivo disponible, crear archivo de bloqueo INMEDIATAMENTE
+                        try {
+                            const lockContent = JSON.stringify({
+                                locked: true,
+                                by: document.getElementById('asesor-principal').value.trim(),
+                                at: new Date().toISOString()
+                            });
+                            
+                            const lockResult = await subirArchivoDrive(
+                                lockContent,
+                                `${docName}.lock`,
+                                folderId,
+                                'application/json'
+                            );
+                            
+                            lockFileId = lockResult.id;
+                            consecutivoReservado = true;
+                            
+                            // Esperar un momento para asegurar que se creó
+                            await new Promise(resolve => setTimeout(resolve, 500));
+                            
+                            // Verificar nuevamente que no haya duplicado
+                            const doubleCheck = await gapi.client.drive.files.list({
+                                q: `name='${docName}.json' and '${folderId}' in parents and trashed=false`,
+                                fields: 'files(id, name)'
+                            });
+                            
+                            if (doubleCheck.result.files.length > 0) {
+                                // Alguien más lo creó, eliminar nuestro lock y probar siguiente
+                                await gapi.client.drive.files.delete({ fileId: lockFileId });
+                                lockFileId = null;
+                                consecutivoReservado = false;
+                                numero++;
+                                intentos++;
+                            } else {
+                                // Éxito, consecutivo reservado
+                                break;
+                            }
+                        } catch (lockError) {
+                            console.error('Error creando lock:', lockError);
+                            // Si falla crear el lock, probar siguiente número
+                            numero++;
+                            intentos++;
+                        }
+                    } else {
+                        // Ya existe, probar siguiente
+                        numero++;
+                        intentos++;
                     }
-                    
-                    // Ya existe, probar siguiente
-                    numero++;
-                    intentos++;
                 }
                 
-                if (intentos >= 10) {
-                    mostrarToast('❌ Error: No se pudo encontrar consecutivo disponible');
+                if (intentos >= 10 || !consecutivoReservado) {
+                    mostrarToast('❌ Error: No se pudo reservar consecutivo');
                     return;
                 }
 
-                mostrarToast('☁️ Subiendo a Google Drive...');
+                mostrarToast('☁️ Consecutivo reservado, subiendo documento...');
 
                 const numeroFormateado = String(numero).padStart(4, '0');
                 const docName = `Remision-${numeroFormateado}`;
@@ -1904,6 +1950,16 @@
                 // Agregar a Excel
                 await agregarFilaExcel(documento, docName, jsonResult.id);
 
+                // Eliminar archivo de bloqueo
+                if (lockFileId) {
+                    try {
+                        await gapi.client.drive.files.delete({ fileId: lockFileId });
+                        console.log('Lock file eliminado correctamente');
+                    } catch (deleteLockError) {
+                        console.error('Error eliminando lock (no crítico):', deleteLockError);
+                    }
+                }
+
                 // Actualizar consecutivo al siguiente después del usado
                 consecutivo = numero + 1;
                 
@@ -1919,6 +1975,17 @@
 
             } catch (error) {
                 console.error('Error guardando documento:', error);
+                
+                // Limpiar archivo de bloqueo si existe
+                if (lockFileId) {
+                    try {
+                        await gapi.client.drive.files.delete({ fileId: lockFileId });
+                        console.log('Lock file limpiado después de error');
+                    } catch (cleanupError) {
+                        console.error('Error limpiando lock:', cleanupError);
+                    }
+                }
+                
                 mostrarToast('❌ Error al subir. Intente de nuevo.');
             }
         }
