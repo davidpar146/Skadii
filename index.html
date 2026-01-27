@@ -756,6 +756,8 @@
                     <option value="transferencia">Transferencia</option>
                     <option value="tarjeta">Tarjeta</option>
                     <option value="credito">Crédito</option>
+                    <option value="addi">ADDI</option>
+                    <option value="coordinadora">Coordinadora</option>
                     <option value="retoma">Retoma (Parte de Pago)</option>
                     <option value="otro">Otro</option>
                 </select>
@@ -914,15 +916,34 @@
         <div class="success-content">
             <div class="success-icon">✓</div>
             <h2 style="margin-bottom: 1rem;">¡Documento Guardado!</h2>
-            <p style="color: var(--gray-600); margin-bottom: 0.5rem;">
-                <strong id="success-doc-type">Factura</strong> <span id="success-doc-number">#0001</span>
-            </p>
+            
+            <div style="background: var(--gray-50); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: left;">
+                <p style="margin-bottom: 0.5rem;">
+                    <strong style="color: var(--primary);">Remisión #<span id="success-doc-number">0001</span></strong>
+                </p>
+                <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
+                    <strong>Cliente:</strong> <span id="success-cliente">-</span>
+                </p>
+                <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
+                    <strong>NIT/CC:</strong> <span id="success-nit">-</span>
+                </p>
+                
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
+                    <strong style="color: var(--gray-800);">Items:</strong>
+                    <ul id="success-items" style="margin: 0.5rem 0 0 1.5rem; padding: 0; list-style: disc;">
+                    </ul>
+                </div>
+                
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 2px solid var(--primary);">
+                    <strong style="color: var(--gray-800);">Total Pagado:</strong>
+                    <span id="success-total" style="font-size: 1.25rem; font-weight: 700; color: var(--success); margin-left: 0.5rem;">$0</span>
+                </div>
+            </div>
+            
             <p style="font-size: 0.875rem; color: var(--gray-500);">
-                ✅ Datos en Google Drive<br>
-                ✅ Fotos subidas<br>
-                ✅ Excel actualizado<br>
-                ✅ Consecutivo actualizado
+                ✅ Datos guardados en Google Drive
             </p>
+            
             <button class="btn btn-primary" onclick="cerrarExito()" style="margin-top: 1.5rem;">
                 Aceptar
             </button>
@@ -1202,6 +1223,8 @@
                     transferencia: 'Transferencia',
                     tarjeta: 'Tarjeta',
                     credito: 'Crédito',
+                    addi: 'ADDI',
+                    coordinadora: 'Coordinadora',
                     retoma: 'Retoma',
                     otro: 'Otro'
                 };
@@ -1510,6 +1533,11 @@
                 refGroup.style.display = 'block';
                 refLabel.textContent = 'Referencia/Comprobante';
                 refInput.placeholder = 'Número de referencia';
+            } else if (this.value === 'addi' || this.value === 'coordinadora') {
+                photoSection.style.display = 'block';
+                refGroup.style.display = 'block';
+                refLabel.textContent = 'Número de Aprobación *';
+                refInput.placeholder = 'Código de aprobación';
             } else if (this.value === 'retoma') {
                 retomaSection.style.display = 'block';
             }
@@ -1600,6 +1628,8 @@
                 transferencia: '🏦 Transferencia',
                 tarjeta: '💳 Tarjeta',
                 credito: '📋 Crédito',
+                addi: '🔵 ADDI',
+                coordinadora: '📦 Coordinadora',
                 retoma: '🔄 Retoma',
                 otro: '💰 Otro'
             };
@@ -1963,9 +1993,21 @@
                 // Actualizar consecutivo al siguiente después del usado
                 consecutivo = numero + 1;
                 
-                // Mostrar éxito
-                document.getElementById('success-doc-type').textContent = 'Remisión';
-                document.getElementById('success-doc-number').textContent = `#${numeroFormateado}`;
+                // Mostrar éxito con información completa
+                document.getElementById('success-doc-number').textContent = numeroFormateado;
+                document.getElementById('success-cliente').textContent = cliente;
+                document.getElementById('success-nit').textContent = nit;
+                
+                // Llenar lista de items
+                const itemsList = document.getElementById('success-items');
+                itemsList.innerHTML = currentItems.map(item => 
+                    `<li>${item.descripcion}</li>`
+                ).join('');
+                
+                // Total pagado
+                const totalPagado = currentPayments.reduce((sum, p) => sum + p.amount, 0);
+                document.getElementById('success-total').textContent = formatMoney(totalPagado);
+                
                 document.getElementById('success-modal').classList.add('show');
 
                 // Limpiar formulario
