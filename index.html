@@ -696,17 +696,11 @@
             <div class="card-title">📦 Agregar Ítem</div>
             <div class="form-group">
                 <label>Descripción *</label>
-                <input type="text" id="item-descripcion" placeholder="15 Demax 867">
+                <input type="text" id="item-descripcion" placeholder="iPhone 15 Pro Max">
             </div>
-            <div class="form-row">
-                <div class="form-group">
-                    <label>Cantidad</label>
-                    <input type="number" id="item-cantidad" value="1" min="1">
-                </div>
-                <div class="form-group">
-                    <label>Valor Unitario</label>
-                    <input type="text" id="item-valor" placeholder="0" oninput="formatearInput(this)">
-                </div>
+            <div class="form-group">
+                <label>Cantidad *</label>
+                <input type="number" id="item-cantidad" value="1" min="1">
             </div>
             <div class="form-group">
                 <label>IMEI / Serie *</label>
@@ -714,6 +708,10 @@
                     <input type="text" id="item-imei" placeholder="351016864369465">
                     <button onclick="escanearCodigo()">📷</button>
                 </div>
+            </div>
+            <div class="form-group">
+                <label>Precio Unitario *</label>
+                <input type="text" id="item-valor" placeholder="0" oninput="formatearInput(this)">
             </div>
             <div class="form-group">
                 <label>Estado del Equipo *</label>
@@ -727,6 +725,13 @@
                 </div>
                 <div id="estado-warning" style="display: none; color: var(--danger); font-size: 0.875rem; margin-top: 0.5rem;">
                     ⚠️ Debe seleccionar el estado del equipo
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Costo del Equipo (Opcional - Solo contabilidad)</label>
+                <input type="text" id="item-costo" placeholder="0" oninput="formatearInput(this)">
+                <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 0.25rem;">
+                    💡 Campo interno para contabilidad. No visible para el cliente.
                 </div>
             </div>
             <div class="form-group">
@@ -926,6 +931,9 @@
                 </p>
                 <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
                     <strong>NIT/CC:</strong> <span id="success-nit">-</span>
+                </p>
+                <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
+                    <strong>Asesor(es):</strong> <span id="success-asesores">-</span>
                 </p>
                 
                 <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
@@ -1193,13 +1201,13 @@
                 // Agregar encabezados
                 await gapi.client.sheets.spreadsheets.values.update({
                     spreadsheetId: SPREADSHEET_ID,
-                    range: 'Remisiones!A1:N1',
+                    range: 'Remisiones!A1:Q1',
                     valueInputOption: 'RAW',
                     resource: {
                         values: [[
                             'Número', 'Fecha', 'Asesor', 'Colaboradores', 'Cliente', 'NIT/CC', 
-                            'Teléfono', 'Items', 'Total Items', 'Métodos Pago', 'Total Pagado', 
-                            'Saldo', 'Observaciones', 'Link Drive'
+                            'Teléfono', 'Item', 'IMEI', 'Precio Unit.', 'Costo Unit.', 'Total Item',
+                            'Métodos Pago', 'Total Pagado', 'Saldo', 'Observaciones', 'Link Drive'
                         ]]
                     }
                 });
@@ -1216,7 +1224,6 @@
             const linkDrive = `https://drive.google.com/file/d/${fileId}/view`;
             
             const colaboradores = documento.colaboradores.map(c => c.nombre).join(', ');
-            const items = documento.items.map(i => `${i.descripcion} (${i.cantidad})`).join('; ');
             const pagos = documento.payments.map(p => {
                 const methodNames = {
                     efectivo: 'Efectivo',
@@ -1231,7 +1238,8 @@
                 return `${methodNames[p.method]}: ${formatMoney(p.amount)}`;
             }).join('; ');
 
-            const fila = [
+            // Crear una fila por cada ítem
+            const filas = documento.items.map(item => [
                 docName,
                 new Date(documento.fecha).toLocaleString('es-CO'),
                 documento.asesor,
@@ -1239,22 +1247,25 @@
                 documento.cliente,
                 documento.nit,
                 documento.telefono || '-',
-                items,
-                documento.totalItems,
+                `${item.descripcion} (${item.cantidad})`,
+                item.imei || '-',
+                formatMoney(item.valor),
+                formatMoney(item.costo || 0),
+                formatMoney(item.total),
                 pagos,
                 documento.totalPaid,
                 documento.totalItems - documento.totalPaid,
                 documento.observaciones || '-',
                 linkDrive
-            ];
+            ]);
 
             try {
                 await gapi.client.sheets.spreadsheets.values.append({
                     spreadsheetId: SPREADSHEET_ID,
-                    range: 'Remisiones!A:N',
+                    range: 'Remisiones!A:Q',
                     valueInputOption: 'USER_ENTERED',
                     resource: {
-                        values: [fila]
+                        values: filas
                     }
                 });
             } catch (error) {
@@ -1436,11 +1447,16 @@
                 return;
             }
 
+            // Capturar costo (opcional)
+            const costoInput = document.getElementById('item-costo').value;
+            const costo = costoInput ? parseMoney(costoInput) : 0;
+
             currentItems.push({
                 id: Date.now(),
                 descripcion,
                 cantidad,
                 valor,
+                costo,
                 imei,
                 estado: currentEstado,
                 notas,
@@ -1496,6 +1512,7 @@
             document.getElementById('item-descripcion').value = '';
             document.getElementById('item-cantidad').value = '1';
             document.getElementById('item-valor').value = '';
+            document.getElementById('item-costo').value = '';
             document.getElementById('item-imei').value = '';
             document.getElementById('item-notas').value = '';
             currentEstado = null;
@@ -1998,11 +2015,24 @@
                 document.getElementById('success-cliente').textContent = cliente;
                 document.getElementById('success-nit').textContent = nit;
                 
-                // Llenar lista de items
+                // Asesores (principal + colaboradores)
+                let asesores = asesor;
+                if (isColaborativa && currentColaboradores.length > 0) {
+                    const colabNombres = currentColaboradores.map(c => c.nombre).join(', ');
+                    asesores = `${asesor}, ${colabNombres}`;
+                }
+                document.getElementById('success-asesores').textContent = asesores;
+                
+                // Llenar lista de items con IMEI (solo si > 12 caracteres)
                 const itemsList = document.getElementById('success-items');
-                itemsList.innerHTML = currentItems.map(item => 
-                    `<li>${item.descripcion}</li>`
-                ).join('');
+                itemsList.innerHTML = currentItems.map(item => {
+                    const showIMEI = item.imei && item.imei.length > 12;
+                    if (showIMEI) {
+                        return `<li>${item.descripcion} - IMEI: ${item.imei}</li>`;
+                    } else {
+                        return `<li>${item.descripcion}</li>`;
+                    }
+                }).join('');
                 
                 // Total pagado
                 const totalPagado = currentPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -2072,72 +2102,42 @@
             try {
                 mostrarToast('🔄 Cargando asesores...');
                 
-                // Buscar en carpeta principal primero
-                let response = await gapi.client.drive.files.list({
-                    q: `name='CLAVES-ASESORES.json' and '${FOLDER_IDS.principal}' in parents and trashed=false`,
-                    fields: 'files(id, name)',
-                    spaces: 'drive'
-                });
-
-                // Si no está en principal, buscar en toda la carpeta raíz
-                if (response.result.files.length === 0) {
-                    console.log('No encontrado en Principal, buscando en carpeta raíz...');
-                    response = await gapi.client.drive.files.list({
-                        q: `name='CLAVES-ASESORES.json' and trashed=false`,
-                        fields: 'files(id, name, parents)',
-                        spaces: 'drive',
-                        pageSize: 10
-                    });
-                }
-
-                if (response.result.files.length === 0) {
-                    console.log('Archivo no encontrado, creando uno nuevo...');
-                    // Crear archivo inicial
-                    const contenidoInicial = {
-                        "Asesor Demo": "1234"
-                    };
-                    
-                    const resultado = await subirArchivoDrive(
-                        JSON.stringify(contenidoInicial, null, 2),
-                        'CLAVES-ASESORES.json',
-                        FOLDER_IDS.principal,
-                        'application/json'
+                // ID directo del archivo CLAVES-ASESORES.json
+                const fileId = '1rm5BDjPhLeJH679y2p3c27MuvBZK3zcm';
+                
+                console.log('Buscando archivo con ID:', fileId);
+                
+                try {
+                    // Leer el archivo directamente por ID
+                    const fileResponse = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                        {
+                            headers: {
+                                'Authorization': 'Bearer ' + accessToken
+                            }
+                        }
                     );
                     
-                    clavesAsesores = contenidoInicial;
-                    actualizarDropdownAsesores();
-                    mostrarToast('⚠️ Archivo de claves creado. Edítalo en Drive.');
-                    console.log('Archivo creado con ID:', resultado.id);
-                    return;
-                }
-
-                // Leer el archivo encontrado
-                const fileId = response.result.files[0].id;
-                console.log('Archivo encontrado con ID:', fileId);
-                console.log('Ubicación:', response.result.files[0].parents);
-                
-                const fileResponse = await fetch(
-                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-                    {
-                        headers: {
-                            'Authorization': 'Bearer ' + accessToken
-                        }
+                    if (!fileResponse.ok) {
+                        throw new Error(`HTTP error! status: ${fileResponse.status}`);
                     }
-                );
-                
-                if (!fileResponse.ok) {
-                    throw new Error(`HTTP error! status: ${fileResponse.status}`);
+                    
+                    const contenido = await fileResponse.text();
+                    console.log('Contenido del archivo:', contenido);
+                    
+                    clavesAsesores = JSON.parse(contenido);
+                    console.log('Claves cargadas:', Object.keys(clavesAsesores));
+                    console.log('Total asesores:', Object.keys(clavesAsesores).length);
+                    
+                    actualizarDropdownAsesores();
+                    mostrarToast('✅ Asesores cargados: ' + Object.keys(clavesAsesores).length);
+                    
+                } catch (error) {
+                    console.error('Error leyendo archivo por ID:', error);
+                    mostrarToast('❌ Error: Verifica que el archivo CLAVES-ASESORES.json esté compartido');
+                    clavesAsesores = {};
+                    actualizarDropdownAsesores();
                 }
-                
-                const contenido = await fileResponse.text();
-                console.log('Contenido del archivo:', contenido);
-                
-                clavesAsesores = JSON.parse(contenido);
-                console.log('Claves cargadas:', Object.keys(clavesAsesores));
-                console.log('Total asesores:', Object.keys(clavesAsesores).length);
-                
-                actualizarDropdownAsesores();
-                mostrarToast('✅ Asesores cargados: ' + Object.keys(clavesAsesores).length);
 
             } catch (error) {
                 console.error('Error detallado al cargar claves:', error);
