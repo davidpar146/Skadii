@@ -936,6 +936,9 @@
                     <strong>NIT/CC:</strong> <span id="success-nit">-</span>
                 </p>
                 <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
+                    <strong>Teléfono:</strong> <span id="success-telefono">-</span>
+                </p>
+                <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
                     <strong>Asesor(es):</strong> <span id="success-asesores">-</span>
                 </p>
                 
@@ -1543,7 +1546,7 @@
                 refGroup.style.display = 'block';
                 refLabel.textContent = 'Referencia/Comprobante';
                 refInput.placeholder = 'Número de referencia';
-            } else if (this.value === 'transferencia') {
+            } else if (this.value === 'transferencia' || this.value === 'coordinadora') {
                 photoSection.style.display = 'block';
                 refGroup.style.display = 'block';
                 refLabel.textContent = 'Banco al que ingresó *';
@@ -1553,7 +1556,7 @@
                 refGroup.style.display = 'block';
                 refLabel.textContent = 'Referencia/Comprobante';
                 refInput.placeholder = 'Número de referencia';
-            } else if (this.value === 'addi' || this.value === 'coordinadora') {
+            } else if (this.value === 'addi') {
                 photoSection.style.display = 'block';
                 refGroup.style.display = 'block';
                 refLabel.textContent = 'Número de Aprobación *';
@@ -1573,9 +1576,15 @@
                 return;
             }
 
-            // Validación para transferencia
-            if (method === 'transferencia' && !reference) {
-                mostrarToast('⚠️ Debe ingresar el banco al que ingresó');
+            // Validación para transferencia y coordinadora
+            if ((method === 'transferencia' || method === 'coordinadora') && !reference) {
+                mostrarToast('⚠️ Debe ingresar el banco');
+                return;
+            }
+
+            // Validación de foto para transferencia, tarjeta, addi y coordinadora
+            if ((method === 'transferencia' || method === 'tarjeta' || method === 'addi' || method === 'coordinadora') && !capturedPhotos.soporte) {
+                mostrarToast('⚠️ Debe capturar foto del comprobante');
                 return;
             }
 
@@ -2077,6 +2086,7 @@
                 document.getElementById('success-doc-number').textContent = numeroFormateado;
                 document.getElementById('success-cliente').textContent = cliente;
                 document.getElementById('success-nit').textContent = nit;
+                document.getElementById('success-telefono').textContent = telefono;
                 
                 // Asesores (principal + colaboradores)
                 let asesores = asesor;
