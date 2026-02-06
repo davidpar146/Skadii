@@ -811,13 +811,13 @@
                 <div style="background: #fee2e2; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
                     <strong>📋 Documentos Obligatorios para Retoma</strong>
                 </div>
-                <button class="btn btn-photo" id="btn-retoma-cedulaFrontal" onclick="tomarFoto('retomaCedulaFrontal')" style="margin-bottom: 0.5rem;">
+                <button class="btn btn-photo" id="btn-retomaCedulaFrontal" onclick="tomarFoto('retomaCedulaFrontal')" style="margin-bottom: 0.5rem;">
                     📸 Cédula Frontal
                 </button>
-                <button class="btn btn-photo" id="btn-retoma-cedulaPosterior" onclick="tomarFoto('retomaCedulaPosterior')" style="margin-bottom: 0.5rem;">
+                <button class="btn btn-photo" id="btn-retomaCedulaPosterior" onclick="tomarFoto('retomaCedulaPosterior')" style="margin-bottom: 0.5rem;">
                     📸 Cédula Posterior
                 </button>
-                <button class="btn btn-photo" id="btn-retoma-contrato" onclick="tomarFoto('retomaContrato')" style="margin-bottom: 1rem;">
+                <button class="btn btn-photo" id="btn-retomaContrato" onclick="tomarFoto('retomaContrato')" style="margin-bottom: 1rem;">
                     📸 Contrato Firmado
                 </button>
                 
@@ -915,6 +915,9 @@
             </button>
         </div>
     </div>
+
+    <!-- Input oculto para galería -->
+    <input type="file" id="file-input-gallery" accept="image/*" style="display: none;" onchange="seleccionarDeGaleria(event)">
 
     <!-- Modal Éxito -->
     <div id="success-modal" class="success-modal">
@@ -1711,7 +1714,7 @@
 
         function resetPhotoButtons() {
             ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato', 
-             'retoma-cedulaFrontal', 'retoma-cedulaPosterior', 'retoma-contrato'].forEach(type => {
+             'retomaCedulaFrontal', 'retomaCedulaPosterior', 'retomaContrato'].forEach(type => {
                 const btn = document.getElementById(`btn-${type}`);
                 if (btn) {
                     btn.classList.remove('captured');
@@ -1723,7 +1726,67 @@
         // Manejo de cámara
         function tomarFoto(type) {
             currentPhotoType = type;
-            abrirCamara();
+            mostrarOpcionesFoto();
+        }
+
+        function mostrarOpcionesFoto() {
+            // Crear modal de opciones
+            const modalHTML = `
+                <div id="foto-opciones-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;">
+                    <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 400px; width: 100%;">
+                        <h3 style="margin-bottom: 1.5rem; text-align: center;">📸 Seleccionar Foto</h3>
+                        <button onclick="abrirCamara(); cerrarOpcionesFoto();" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem; padding: 1rem;">
+                            📷 Tomar con Cámara
+                        </button>
+                        <button onclick="document.getElementById('file-input-gallery').click(); cerrarOpcionesFoto();" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem; padding: 1rem;">
+                            🖼️ Seleccionar de Galería
+                        </button>
+                        <button onclick="cerrarOpcionesFoto();" class="btn" style="width: 100%; padding: 1rem; background: var(--gray-200);">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+            `;
+            
+            // Agregar modal al body si no existe
+            if (!document.getElementById('foto-opciones-modal')) {
+                document.body.insertAdjacentHTML('beforeend', modalHTML);
+            } else {
+                document.getElementById('foto-opciones-modal').style.display = 'flex';
+            }
+        }
+
+        function cerrarOpcionesFoto() {
+            const modal = document.getElementById('foto-opciones-modal');
+            if (modal) {
+                modal.style.display = 'none';
+            }
+        }
+
+        function seleccionarDeGaleria(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                mostrarToast('❌ Por favor selecciona una imagen');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const dataUrl = e.target.result;
+                capturedPhotos[currentPhotoType] = dataUrl;
+
+                const btn = document.getElementById(`btn-${currentPhotoType}`);
+                if (btn) {
+                    btn.classList.add('captured');
+                    btn.textContent = btn.textContent.replace('📸', '✅');
+                }
+
+                mostrarToast('✅ Foto seleccionada');
+                event.target.value = ''; // Reset input
+            };
+            reader.readAsDataURL(file);
         }
 
         function abrirCamara() {
