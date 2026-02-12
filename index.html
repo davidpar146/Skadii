@@ -1472,9 +1472,14 @@
                 return;
             }
 
-            // Capturar costo (opcional) - usar parseInt directamente del input number
+            // Capturar costo (opcional) - múltiples estrategias de parseo
             const costoRaw = document.getElementById('item-costo').value;
-            const costo = costoRaw ? parseInt(costoRaw) || 0 : 0;
+            let costo = 0;
+            if (costoRaw && costoRaw.trim() !== '' && costoRaw.trim() !== '0') {
+                // Limpiar cualquier formato: puntos, comas, $, espacios
+                const costoLimpio = costoRaw.toString().replace(/[$.,\s]/g, '');
+                costo = parseInt(costoLimpio) || 0;
+            }
 
             currentItems.push({
                 id: Date.now(),
@@ -2106,23 +2111,31 @@
                 // Actualizar consecutivo al siguiente después del usado
                 consecutivo = numero + 1;
                 
-                // Mostrar éxito con información completa
-                document.getElementById('success-doc-number').textContent = numeroFormateado;
-                document.getElementById('success-cliente').textContent = cliente;
-                document.getElementById('success-nit').textContent = nit;
-                document.getElementById('success-telefono').textContent = telefono;
-                
-                // Asesores (principal + colaboradores)
-                let asesores = asesor;
+                // *** Guardar datos del modal ANTES de limpiar ***
+                const modalItems = [...currentItems];
+                const modalPayments = [...currentPayments];
+                const modalCliente = cliente;
+                const modalNit = nit;
+                const modalTelefono = telefono;
+                let modalAsesores = asesor;
                 if (isColaborativa && currentColaboradores.length > 0) {
                     const colabNombres = currentColaboradores.map(c => c.nombre).join(', ');
-                    asesores = `${asesor}, ${colabNombres}`;
+                    modalAsesores = `${asesor}, ${colabNombres}`;
                 }
-                document.getElementById('success-asesores').textContent = asesores;
+                
+                // Limpiar formulario ANTES de mostrar modal
+                limpiarTodo();
+                
+                // Mostrar éxito con información completa (usando datos guardados)
+                document.getElementById('success-doc-number').textContent = numeroFormateado;
+                document.getElementById('success-cliente').textContent = modalCliente;
+                document.getElementById('success-nit').textContent = modalNit;
+                document.getElementById('success-telefono').textContent = modalTelefono || '-';
+                document.getElementById('success-asesores').textContent = modalAsesores;
                 
                 // Llenar lista de items con IMEI (solo si > 12 caracteres)
                 const itemsList = document.getElementById('success-items');
-                itemsList.innerHTML = currentItems.map(item => {
+                itemsList.innerHTML = modalItems.map(item => {
                     const showIMEI = item.imei && item.imei.length > 12;
                     if (showIMEI) {
                         return `<li>${item.descripcion} - IMEI: ${item.imei}</li>`;
@@ -2131,16 +2144,11 @@
                     }
                 }).join('');
                 
-                // Total pagado
-                const totalPagado = currentPayments.reduce((sum, p) => sum + p.amount, 0);
+                // Total pagado (usar datos guardados)
+                const totalPagado = modalPayments.reduce((sum, p) => sum + p.amount, 0);
                 document.getElementById('success-total').textContent = formatMoney(totalPagado);
                 
                 document.getElementById('success-modal').classList.add('show');
-
-                // Limpiar formulario
-                setTimeout(() => {
-                    limpiarTodo();
-                }, 2000);
 
             } catch (error) {
                 console.error('Error guardando documento:', error);
