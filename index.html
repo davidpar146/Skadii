@@ -1472,14 +1472,22 @@
                 return;
             }
 
-            // Capturar costo (opcional) - múltiples estrategias de parseo
-            const costoRaw = document.getElementById('item-costo').value;
+            // Capturar costo (opcional) - lectura definitiva
+            const costoEl = document.getElementById('item-costo');
+            const costoRaw = costoEl.value;
+            const costoValNum = costoEl.valueAsNumber; // Para type=number
             let costo = 0;
-            if (costoRaw && costoRaw.trim() !== '' && costoRaw.trim() !== '0') {
-                // Limpiar cualquier formato: puntos, comas, $, espacios
+            
+            // Intentar primero valueAsNumber (más confiable en móviles)
+            if (!isNaN(costoValNum) && costoValNum > 0) {
+                costo = Math.floor(costoValNum);
+            } else if (costoRaw && costoRaw.trim() !== '' && costoRaw.trim() !== '0') {
+                // Fallback: limpiar cualquier formato y parsear
                 const costoLimpio = costoRaw.toString().replace(/[$.,\s]/g, '');
                 costo = parseInt(costoLimpio) || 0;
             }
+            
+            console.log('🔍 COSTO DEBUG:', { costoRaw, costoValNum, costoFinal: costo });
 
             currentItems.push({
                 id: Date.now(),
@@ -1496,7 +1504,7 @@
 
             actualizarListaItems();
             limpiarFormularioItem();
-            mostrarToast('✅ Ítem agregado');
+            mostrarToast(`✅ Ítem agregado${costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''}`);
         }
 
         function actualizarListaItems() {
