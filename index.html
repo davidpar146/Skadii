@@ -1031,13 +1031,30 @@
         ];
 
         // IDs de carpetas en Drive
+        // IDs de carpetas en Drive - ACTUALIZADOS
         const FOLDER_IDS = {
-            principal: '1fnl_8z0737DmVPcMupFwyjalOxATwZmw',
-            facturas: '1VsBkQqMV6tAdPHDgGQm9kSdjwrsa_qZ4', // Para anulaciones
-            remisiones: '1RBcXVnRz_Z2WzeVau8CMLACzCFxLqBCO',
-            cedulas: '1nKhTxkNmxWBCEa1ecqD-EBc59Z90pOZj',
-            contratos: '1YX7YMk8m5XFYLO4fXWcoyHyUZKoYFA_7',
-            soportes: '1NA5iSnaI3wAUUvReA0rKi2yW8OdN2TFk'
+            // Carpetas existentes
+            remisiones: '1w_mmsQptxY7HvRPl_VAMqDvhnWJ1gkZi',
+            facturas: '1575dZwl8cflxjkF4S2uLBCxGLS8sLK7A',
+            cedulas: '1EAoWUxU7Q6XbuzCiFqkwxyHhuTs7gR6x',
+            contratos: '1HO7KvyvZlsqbeHRMvAwhKuT7d2Hg6TP6',
+            soportes: '10TJWBBiW3ePFw62Coh4IA7-OdTQVYoDs',
+            // Carpetas nuevas - Mantenimientos
+            mantenimientos: '1FbIXY5zFSJAh603h1wrN2XFX4VCgxXI7',
+            fotosMantenimientos: '16mJm89X2zZm8q5MtMGu4AYglhxtxJ1l5',
+            // Carpetas nuevas - Garantías
+            garantias: '1gF45uq_Q7gwyf7x2UA8ckIaw1Td-boEv',
+            fotosGarantias: '1_uZUN-Q9xbTKTIpZE_kfhOrlc8A5KnON',
+            // Carpetas nuevas - Préstamos/Pagos
+            prestamosPagos: '1gxBD48FLVZqJe4n5qWBoNxEnuvRAeZpK',
+            recibosCaja: '1iAEaDJ2JSosvbK6rgdE3biVTelAXgn5o',
+            soportesTransferencia: '18Qt70YEpX0WnIUaifLE3yzeQPABziGEq'
+        };
+        
+        // IDs de archivos de configuración
+        const CONFIG_FILES = {
+            clavesAsesores: '1VhvZUKI0gZ7ZnV3u6N8m7OOIyyetTZks',
+            prestadosPendientes: '1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'
         };
 
         // ID de Google Sheet (lo crearemos automáticamente la primera vez)
@@ -2215,8 +2232,8 @@
             try {
                 mostrarToast('🔄 Cargando asesores...');
                 
-                // ID directo del archivo CLAVES-ASESORES.json
-                const fileId = '1gXQdyaPAEncyP8vtnHahFP83ceeFDIFG';
+                // ID directo del archivo CLAVES-ASESORES-V2.json
+                const fileId = CONFIG_FILES.clavesAsesores;
                 
                 console.log('Buscando archivo con ID:', fileId);
                 
@@ -2238,7 +2255,16 @@
                     const contenido = await fileResponse.text();
                     console.log('Contenido del archivo:', contenido);
                     
-                    clavesAsesores = JSON.parse(contenido);
+                    const datosClaves = JSON.parse(contenido);
+                    
+                    // Convertir formato V2 a formato simple
+                    clavesAsesores = {};
+                    if (datosClaves.asesores && Array.isArray(datosClaves.asesores)) {
+                        datosClaves.asesores.forEach(asesor => {
+                            clavesAsesores[asesor.nombre] = asesor.clave;
+                        });
+                    }
+                    
                     console.log('Claves cargadas:', Object.keys(clavesAsesores));
                     console.log('Total asesores:', Object.keys(clavesAsesores).length);
                     
@@ -2247,7 +2273,7 @@
                     
                 } catch (error) {
                     console.error('Error leyendo archivo por ID:', error);
-                    mostrarToast('❌ Error: Verifica que el archivo CLAVES-ASESORES.json esté compartido');
+                    mostrarToast('❌ Error: Verifica que el archivo CLAVES-ASESORES-V2.json esté compartido');
                     clavesAsesores = {};
                     actualizarDropdownAsesores();
                 }
