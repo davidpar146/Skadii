@@ -5103,10 +5103,11 @@
                     return `
                         <div class="equipo-prestado-row" id="${eqId}-row"
                              style="${alerta ? 'background:#fff7ed;' : ''} cursor:pointer;"
-                             onclick="prestToggleEquipo('${eqId}', ${costo}, '${nombreEncoded}')">
+                             onclick="prestToggleEquipoFila('${eqId}', ${costo}, '${nombreEncoded}')">
                             <input type="checkbox" class="equipo-checkbox" id="${eqId}-cb"
                                    style="width:18px; height:18px; margin-right:0.5rem; flex-shrink:0; accent-color:var(--primary); cursor:pointer;"
-                                   onclick="event.stopPropagation(); prestToggleEquipo('${eqId}', ${costo}, '${nombreEncoded}')">
+                                   onchange="prestToggleEquipoCheck('${eqId}', ${costo}, '${nombreEncoded}')"
+                                   onclick="event.stopPropagation()">
                             <div class="equipo-info">
                                 <div class="equipo-nombre">${alerta ? '⚠️ ' : ''}${desc}</div>
                                 ${imei !== '-' ? `<div class="equipo-imei">IMEI: ${imei}</div>` : ''}
@@ -5168,14 +5169,27 @@
         // prestEquiposSeleccionados: { eqId: { costo, nombreEncoded, eq } }
         let prestEquiposSeleccionados = {};
 
-        function prestToggleEquipo(eqId, costo, nombreEncoded) {
+        // Click en el CHECKBOX — el navegador ya cambió cb.checked, solo sincronizamos
+        function prestToggleEquipoCheck(eqId, costo, nombreEncoded) {
             const cb  = document.getElementById(`${eqId}-cb`);
             const row = document.getElementById(`${eqId}-row`);
             if (!cb) return;
+            if (cb.checked) {
+                prestEquiposSeleccionados[eqId] = { costo, nombreEncoded };
+                if (row) row.style.outline = '2px solid var(--primary)';
+            } else {
+                delete prestEquiposSeleccionados[eqId];
+                if (row) row.style.outline = '';
+            }
+            prestActualizarBarraSeleccion();
+        }
 
-            // Sincronizar checkbox
-            cb.checked = !cb.checked;
-
+        // Click en la FILA (fuera del checkbox) — invertimos manualmente
+        function prestToggleEquipoFila(eqId, costo, nombreEncoded) {
+            const cb  = document.getElementById(`${eqId}-cb`);
+            const row = document.getElementById(`${eqId}-row`);
+            if (!cb) return;
+            cb.checked = !cb.checked;  // invertir manualmente
             if (cb.checked) {
                 prestEquiposSeleccionados[eqId] = { costo, nombreEncoded };
                 if (row) row.style.outline = '2px solid var(--primary)';
