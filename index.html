@@ -584,6 +584,387 @@
                 grid-template-columns: 1fr;
             }
         }
+
+        /* ===== ESTILOS MÓDULO MANTENIMIENTOS ===== */
+        .iphone-svg-container {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin: 1rem 0;
+        }
+
+        .iphone-svg-wrapper {
+            text-align: center;
+        }
+
+        .iphone-svg-wrapper h4 {
+            font-size: 0.85rem;
+            color: var(--gray-600);
+            margin-bottom: 0.5rem;
+        }
+
+        .iphone-svg-wrapper svg {
+            border: 2px solid var(--gray-200);
+            border-radius: 8px;
+            cursor: crosshair;
+        }
+
+        .damage-types {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.4rem;
+            margin: 0.75rem 0;
+        }
+
+        .damage-type-btn {
+            padding: 0.4rem 0.3rem;
+            border: 2px solid transparent;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+            opacity: 0.6;
+        }
+
+        .damage-type-btn.selected {
+            opacity: 1;
+            border-color: var(--gray-800);
+            transform: scale(1.05);
+        }
+
+        .damage-list-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: var(--gray-50);
+            border-radius: 6px;
+            margin-bottom: 0.4rem;
+            font-size: 0.8rem;
+        }
+
+        .damage-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        .damage-list-item button {
+            margin-left: auto;
+            background: none;
+            border: none;
+            cursor: pointer;
+            color: var(--danger);
+            font-size: 1rem;
+            line-height: 1;
+        }
+
+        .estado-mant-group {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+
+        .estado-mant-btn {
+            padding: 0.6rem;
+            border: 2px solid var(--gray-200);
+            background: white;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .estado-mant-btn.active {
+            border-color: var(--primary);
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .firma-canvas {
+            border: 2px solid var(--gray-300);
+            border-radius: 8px;
+            touch-action: none;
+            cursor: crosshair;
+            background: white;
+            width: 100%;
+            max-width: 400px;
+            display: block;
+            margin: 0 auto;
+        }
+
+        .mant-card-item {
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-bottom: 0.75rem;
+            border-left: 4px solid #f59e0b;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mant-estado-badge {
+            font-size: 0.7rem;
+            font-weight: 700;
+            padding: 0.2rem 0.5rem;
+            border-radius: 10px;
+        }
+
+        .estado-recibido   { background: #dbeafe; color: #1e40af; }
+        .estado-en_proceso { background: #fef3c7; color: #92400e; }
+        .estado-entregado  { background: #dcfce7; color: #166534; }
+        .estado-no_reparado{ background: #fee2e2; color: #991b1b; }
+
+        /* ===== ESTILOS MÓDULO GARANTÍAS ===== */
+        .gar-remision-encontrada {
+            background: #f0fdf4;
+            border: 2px solid #16a34a;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+        }
+
+        .gar-remision-encontrada strong {
+            color: #15803d;
+            display: block;
+            margin-bottom: 0.25rem;
+        }
+
+        .gar-tipo-btn {
+            padding: 0.6rem 0.5rem;
+            border: 2px solid var(--gray-200);
+            background: white;
+            border-radius: 8px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .gar-tipo-btn.active {
+            border-color: var(--primary);
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .gar-diferencia-positiva {
+            background: #fef9c3;
+            border: 2px solid #eab308;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            font-weight: 700;
+            color: #713f12;
+        }
+
+        .gar-diferencia-negativa {
+            background: #dcfce7;
+            border: 2px solid #16a34a;
+            border-radius: 8px;
+            padding: 0.75rem 1rem;
+            text-align: center;
+            font-weight: 700;
+            color: #166534;
+        }
+
+        .gar-autorizacion-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.85);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .gar-autorizacion-modal.active {
+            display: flex;
+        }
+
+        .gar-auth-box {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 420px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+
+        .gar-auth-box h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+            color: var(--danger);
+        }
+
+        .gar-resumen-box {
+            background: var(--gray-50);
+            border-radius: 8px;
+            padding: 0.75rem;
+            margin: 0.75rem 0;
+            font-size: 0.82rem;
+        }
+
+        .gar-resumen-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.3rem 0;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .gar-resumen-row:last-child {
+            border-bottom: none;
+            font-weight: 700;
+        }
+
+        .destino-grupo {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 0.4rem;
+            margin-top: 0.5rem;
+        }
+
+        .destino-btn {
+            padding: 0.5rem 0.3rem;
+            border: 2px solid var(--gray-200);
+            background: white;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            cursor: pointer;
+            text-align: center;
+            transition: all 0.2s;
+        }
+
+        .destino-btn.active {
+            border-color: var(--warning);
+            background: #fff7ed;
+            color: var(--warning);
+        }
+
+        /* ===== ESTILOS MÓDULO PAGAR PRESTADORES ===== */
+        .prestador-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            margin-bottom: 1rem;
+            overflow: hidden;
+        }
+
+        .prestador-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.75rem 1rem;
+            background: var(--gray-50);
+            cursor: pointer;
+            border-bottom: 1px solid var(--gray-200);
+        }
+
+        .prestador-nombre {
+            font-weight: 700;
+            font-size: 1rem;
+            color: var(--gray-800);
+        }
+
+        .prestador-total {
+            font-weight: 700;
+            color: var(--primary);
+            font-size: 0.95rem;
+        }
+
+        .prestador-body {
+            padding: 0.75rem 1rem;
+        }
+
+        .equipo-prestado-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 0.5rem 0;
+            border-bottom: 1px solid var(--gray-100);
+            font-size: 0.85rem;
+        }
+
+        .equipo-prestado-row:last-child {
+            border-bottom: none;
+        }
+
+        .equipo-info {
+            flex: 1;
+        }
+
+        .equipo-nombre {
+            font-weight: 600;
+            color: var(--gray-800);
+        }
+
+        .equipo-imei {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .equipo-costo {
+            font-weight: 700;
+            color: var(--success);
+            white-space: nowrap;
+            margin-left: 0.5rem;
+        }
+
+        .resumen-total-card {
+            background: linear-gradient(135deg, #1e40af 0%, #2563eb 100%);
+            color: white;
+            border-radius: 10px;
+            padding: 1rem 1.25rem;
+            margin-bottom: 1rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .resumen-total-card .label {
+            font-size: 0.85rem;
+            opacity: 0.85;
+        }
+
+        .resumen-total-card .valor {
+            font-size: 1.3rem;
+            font-weight: 700;
+        }
+
+        .prest-pago-modal {
+            display: none;
+            position: fixed;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background: rgba(0,0,0,0.8);
+            z-index: 2000;
+            align-items: center;
+            justify-content: center;
+            padding: 1rem;
+        }
+
+        .prest-pago-modal.active { display: flex; }
+
+        .prest-pago-box {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            max-width: 420px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
     </style>
 </head>
 <body>
@@ -980,34 +1361,582 @@
 
     <!-- ===== MÓDULO MANTENIMIENTOS ===== -->
     <div class="container" id="modulo-mantenimientos" style="display: none;">
-        <div class="card">
-            <div class="card-title">🔧 Mantenimientos</div>
-            <p style="color: var(--gray-600); text-align: center; padding: 2rem 0;">
-                🚧 Módulo en construcción...<br>
-                <small>Próxima versión</small>
-            </p>
+
+        <!-- Tabs: Nuevo / Lista -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+            <button class="toggle-btn active" id="mant-tab-nuevo" onclick="mantMostrarTab('nuevo')" style="flex:1;">➕ Nuevo</button>
+            <button class="toggle-btn" id="mant-tab-lista" onclick="mantMostrarTab('lista')" style="flex:1;">📋 Lista</button>
         </div>
+
+        <!-- TAB NUEVO MANTENIMIENTO -->
+        <div id="mant-tab-content-nuevo">
+
+            <!-- Consecutivo -->
+            <div class="card">
+                <div class="doc-number-display">
+                    <div class="doc-number-label">Consecutivo Mantenimiento</div>
+                    <div class="doc-number-value" id="mant-numero-display">Mant-0001</div>
+                </div>
+            </div>
+
+            <!-- Datos del cliente -->
+            <div class="card">
+                <div class="card-title">👤 Datos del Cliente</div>
+                <div class="form-group">
+                    <label>Nombre *</label>
+                    <input type="text" id="mant-cliente-nombre" placeholder="Nombre completo">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Teléfono *</label>
+                        <input type="tel" id="mant-cliente-telefono" placeholder="311 2132052">
+                    </div>
+                    <div class="form-group">
+                        <label>Identificación</label>
+                        <input type="text" id="mant-cliente-id" placeholder="CC / NIT">
+                    </div>
+                </div>
+            </div>
+
+            <!-- Datos del equipo -->
+            <div class="card">
+                <div class="card-title">📱 Datos del Equipo</div>
+                <div class="form-group">
+                    <label>Descripción *</label>
+                    <input type="text" id="mant-equipo-descripcion" placeholder="iPhone 13 Pro Max 256GB">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Marca</label>
+                        <input type="text" id="mant-equipo-marca" placeholder="Apple">
+                    </div>
+                    <div class="form-group">
+                        <label>Modelo</label>
+                        <input type="text" id="mant-equipo-modelo" placeholder="iPhone 13 Pro">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>IMEI / Serie *</label>
+                    <div class="input-with-button">
+                        <input type="text" id="mant-equipo-imei" placeholder="351016864369465">
+                        <button onclick="mantEscanearIMEI()">📷</button>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Falla Reportada por el Cliente *</label>
+                    <textarea id="mant-falla" placeholder="Describa la falla que reporta el cliente..." rows="3"></textarea>
+                </div>
+            </div>
+
+            <!-- Inspección visual iPhone SVG -->
+            <div class="card">
+                <div class="card-title">🔍 Inspección Visual</div>
+                <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                    Selecciona el tipo de daño y toca la zona en el gráfico
+                </p>
+
+                <!-- Selector tipo de daño -->
+                <div class="damage-types" id="mant-damage-types">
+                    <button class="damage-type-btn selected" data-tipo="fisura" data-color="#ef4444" onclick="mantSeleccionarTipo(this)" style="background:#fee2e2; color:#991b1b;">🔴 Fisura</button>
+                    <button class="damage-type-btn" data-tipo="rayon" data-color="#f97316" onclick="mantSeleccionarTipo(this)" style="background:#ffedd5; color:#9a3412;">🟠 Rayón</button>
+                    <button class="damage-type-btn" data-tipo="golpe" data-color="#eab308" onclick="mantSeleccionarTipo(this)" style="background:#fef9c3; color:#713f12;">🟡 Golpe</button>
+                    <button class="damage-type-btn" data-tipo="mancha" data-color="#8b5cf6" onclick="mantSeleccionarTipo(this)" style="background:#ede9fe; color:#4c1d95;">🟣 Mancha</button>
+                    <button class="damage-type-btn" data-tipo="no_funciona" data-color="#6b7280" onclick="mantSeleccionarTipo(this)" style="background:#f3f4f6; color:#111827;">⚫ No func.</button>
+                    <button class="damage-type-btn" data-tipo="otro" data-color="#06b6d4" onclick="mantSeleccionarTipo(this)" style="background:#cffafe; color:#164e63;">🔵 Otro</button>
+                </div>
+
+                <!-- SVGs iPhone frente y posterior -->
+                <div class="iphone-svg-container">
+                    <div class="iphone-svg-wrapper">
+                        <h4>📱 Frente</h4>
+                        <svg id="mant-svg-frente" viewBox="0 0 200 400" width="140" height="280"
+                             onclick="mantMarcarDano(event, 'frente')">
+                            <!-- Cuerpo -->
+                            <rect x="10" y="10" width="180" height="380" rx="22" ry="22" fill="#1f2937" />
+                            <rect x="16" y="16" width="168" height="368" rx="18" ry="18" fill="#111827" />
+                            <!-- Pantalla -->
+                            <rect id="mant-zona-pantalla" x="18" y="45" width="164" height="295" rx="4" ry="4" fill="#374151" data-zona="pantalla" style="cursor:crosshair;" />
+                            <!-- Notch / Dynamic Island -->
+                            <rect x="70" y="50" width="60" height="16" rx="8" fill="#111827" />
+                            <!-- Cámara frontal -->
+                            <circle cx="100" cy="58" r="5" fill="#4b5563" data-zona="camara_frontal" style="cursor:crosshair;" />
+                            <!-- Botón home / barra -->
+                            <rect x="75" y="350" width="50" height="5" rx="2.5" fill="#4b5563" />
+                            <!-- Botón lateral derecho -->
+                            <rect x="190" y="120" width="6" height="40" rx="3" fill="#374151" data-zona="boton_lateral" style="cursor:crosshair;" />
+                            <!-- Botones volumen izquierda -->
+                            <rect x="4" y="110" width="6" height="25" rx="3" fill="#374151" data-zona="boton_volumen" style="cursor:crosshair;" />
+                            <rect x="4" y="145" width="6" height="25" rx="3" fill="#374151" data-zona="boton_volumen" style="cursor:crosshair;" />
+                            <!-- Esquinas clickeables invisibles -->
+                            <rect x="10" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_izq" style="cursor:crosshair;" />
+                            <rect x="155" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_der" style="cursor:crosshair;" />
+                            <rect x="10" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_izq" style="cursor:crosshair;" />
+                            <rect x="155" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_der" style="cursor:crosshair;" />
+                            <!-- Puerto carga -->
+                            <rect x="82" y="385" width="36" height="6" rx="3" fill="#374151" data-zona="puerto_carga" style="cursor:crosshair;" />
+                            <!-- Capa de marcadores (se llena dinámicamente) -->
+                            <g id="mant-markers-frente"></g>
+                        </svg>
+                    </div>
+                    <div class="iphone-svg-wrapper">
+                        <h4>🔄 Posterior</h4>
+                        <svg id="mant-svg-posterior" viewBox="0 0 200 400" width="140" height="280"
+                             onclick="mantMarcarDano(event, 'posterior')">
+                            <!-- Cuerpo posterior -->
+                            <rect x="10" y="10" width="180" height="380" rx="22" ry="22" fill="#1f2937" />
+                            <rect x="16" y="16" width="168" height="368" rx="18" ry="18" fill="#374151" />
+                            <!-- Módulo de cámara -->
+                            <rect x="20" y="25" width="70" height="70" rx="12" fill="#111827" data-zona="modulo_camara" style="cursor:crosshair;" />
+                            <circle cx="45" cy="48" r="14" fill="#1f2937" data-zona="camara_principal" style="cursor:crosshair;" />
+                            <circle cx="45" cy="48" r="10" fill="#374151" />
+                            <circle cx="75" cy="48" r="14" fill="#1f2937" data-zona="camara_ultra" style="cursor:crosshair;" />
+                            <circle cx="75" cy="48" r="10" fill="#374151" />
+                            <circle cx="45" cy="78" r="14" fill="#1f2937" data-zona="camara_telefoto" style="cursor:crosshair;" />
+                            <circle cx="45" cy="78" r="10" fill="#374151" />
+                            <circle cx="75" cy="78" r="8" fill="#1f2937" data-zona="flash" style="cursor:crosshair;" />
+                            <circle cx="75" cy="78" r="5" fill="#fef3c7" />
+                            <!-- Logo Apple -->
+                            <circle cx="130" cy="200" r="20" fill="#2d3748" data-zona="tapa_posterior" style="cursor:crosshair;" />
+                            <!-- Esquinas -->
+                            <rect x="10" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_izq" style="cursor:crosshair;" />
+                            <rect x="155" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_der" style="cursor:crosshair;" />
+                            <rect x="10" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_izq" style="cursor:crosshair;" />
+                            <rect x="155" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_der" style="cursor:crosshair;" />
+                            <!-- Capa marcadores posterior -->
+                            <g id="mant-markers-posterior"></g>
+                        </svg>
+                    </div>
+                </div>
+
+                <!-- Lista de daños marcados -->
+                <div id="mant-damage-list" style="margin-top:0.75rem;">
+                    <p style="font-size:0.8rem; color:var(--gray-500); text-align:center;">
+                        Toca el gráfico para marcar daños
+                    </p>
+                </div>
+            </div>
+
+            <!-- Fotos -->
+            <div class="card">
+                <div class="card-title">📸 Fotos del Equipo</div>
+                <button class="btn btn-photo" id="btn-mant-foto-general" onclick="tomarFoto('mantGeneral')" style="margin-bottom:0.5rem;">
+                    📸 Foto General del Equipo
+                </button>
+                <button class="btn btn-photo" id="btn-mant-foto-falla" onclick="tomarFoto('mantFalla')">
+                    📸 Foto de la Falla Específica
+                </button>
+            </div>
+
+            <!-- Costos y fechas -->
+            <div class="card">
+                <div class="card-title">💰 Costos y Entrega</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Costo Estimado</label>
+                        <input type="text" id="mant-costo-estimado" placeholder="0" oninput="formatearInput(this)">
+                    </div>
+                    <div class="form-group">
+                        <label>Anticipo Recibido</label>
+                        <input type="text" id="mant-anticipo" placeholder="0" oninput="formatearInput(this)">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Fecha de Entrega Estimada</label>
+                    <input type="date" id="mant-fecha-entrega">
+                </div>
+            </div>
+
+            <!-- Estado -->
+            <div class="card">
+                <div class="card-title">📊 Estado del Mantenimiento</div>
+                <div class="estado-mant-group">
+                    <button class="estado-mant-btn active" data-estado="recibido" onclick="mantSetEstado(this)">📥 Recibido</button>
+                    <button class="estado-mant-btn" data-estado="en_proceso" onclick="mantSetEstado(this)">⚙️ En Proceso</button>
+                    <button class="estado-mant-btn" data-estado="entregado" onclick="mantSetEstado(this)">✅ Entregado</button>
+                    <button class="estado-mant-btn" data-estado="no_reparado" onclick="mantSetEstado(this)">❌ No Reparado</button>
+                </div>
+            </div>
+
+            <!-- Asesor responsable -->
+            <div class="card">
+                <div class="card-title">👤 Asesor Responsable</div>
+                <div class="form-group">
+                    <input type="text" id="mant-asesor" placeholder="Tu nombre">
+                </div>
+            </div>
+
+            <!-- Firma del cliente -->
+            <div class="card">
+                <div class="card-title">✍️ Firma del Cliente</div>
+                <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                    El cliente firma aceptando el ingreso del equipo
+                </p>
+                <canvas id="mant-firma-canvas" class="firma-canvas" width="400" height="160"></canvas>
+                <button class="btn btn-secondary" onclick="mantLimpiarFirma()" style="margin-top:0.5rem; padding:0.5rem;">
+                    🗑️ Limpiar Firma
+                </button>
+            </div>
+
+            <!-- Guardar -->
+            <button class="btn btn-success" onclick="mantGuardar()">
+                ☁️ Guardar Mantenimiento en Drive
+            </button>
+        </div>
+
+        <!-- TAB LISTA DE MANTENIMIENTOS -->
+        <div id="mant-tab-content-lista" style="display:none;">
+            <div class="card">
+                <div class="card-title">📋 Mantenimientos Registrados</div>
+                <button class="btn btn-secondary" onclick="mantCargarLista()" style="margin-bottom:1rem; padding:0.75rem;">
+                    🔄 Actualizar Lista
+                </button>
+                <div id="mant-lista-container">
+                    <p style="color:var(--gray-500); text-align:center; padding:1rem;">
+                        Presiona "Actualizar Lista" para cargar
+                    </p>
+                </div>
+            </div>
+        </div>
+
     </div>
 
     <!-- ===== MÓDULO GARANTÍAS ===== -->
     <div class="container" id="modulo-garantias" style="display: none;">
+
+        <!-- Buscar remisión original -->
         <div class="card">
-            <div class="card-title">🔄 Garantías y Cambios</div>
-            <p style="color: var(--gray-600); text-align: center; padding: 2rem 0;">
-                🚧 Módulo en construcción...<br>
-                <small>Próxima versión</small>
+            <div class="card-title">🔍 Remisión Original</div>
+            <div class="form-group">
+                <label>Número de Remisión *</label>
+                <div class="input-with-button">
+                    <input type="number" id="gar-remision-numero" placeholder="42" min="1">
+                    <button onclick="garBuscarRemision()">🔍</button>
+                </div>
+            </div>
+            <div id="gar-remision-resultado"></div>
+        </div>
+
+        <!-- Tipo de cambio/garantía -->
+        <div class="card">
+            <div class="card-title">📋 Tipo de Garantía / Cambio</div>
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem;">
+                <button class="gar-tipo-btn active" data-tipo="falla_fabrica" onclick="garSetTipo(this)">🏭 Falla Fábrica</button>
+                <button class="gar-tipo-btn" data-tipo="voluntario" onclick="garSetTipo(this)">🔄 Voluntario</button>
+                <button class="gar-tipo-btn" data-tipo="equipo_diferente" onclick="garSetTipo(this)">📱 Eq. Diferente</button>
+            </div>
+            <div class="form-group" style="margin-top:1rem;">
+                <label>Descripción del Motivo *</label>
+                <textarea id="gar-motivo-descripcion" placeholder="Detalle el motivo de la garantía o cambio..." rows="2"></textarea>
+            </div>
+        </div>
+
+        <!-- Equipo que ENTRA (devuelto por cliente) -->
+        <div class="card" style="border-left: 4px solid var(--danger);">
+            <div class="card-title" style="color:var(--danger);">📥 Equipo que ENTRA (devuelto)</div>
+            <p style="font-size:0.8rem; color:var(--gray-500); margin-bottom:0.75rem;">
+                El equipo que el cliente nos trae de vuelta
             </p>
+            <div class="form-group">
+                <label>Descripción *</label>
+                <input type="text" id="gar-entra-descripcion" placeholder="iPhone 13 Pro 256GB">
+            </div>
+            <div class="form-group">
+                <label>IMEI *</label>
+                <div class="input-with-button">
+                    <input type="text" id="gar-entra-imei" placeholder="351016864369465">
+                    <button onclick="garEscanearIMEI('entra')">📷</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Precio Original de Venta</label>
+                <input type="text" id="gar-entra-precio" placeholder="0" oninput="formatearInput(this); garCalcularDiferencia()">
+            </div>
+
+            <!-- Inspección visual del equipo que entra -->
+            <div style="margin-top:0.75rem;">
+                <label style="display:block; font-weight:500; color:var(--gray-700); margin-bottom:0.5rem; font-size:0.9rem;">
+                    🔍 Inspección Visual
+                </label>
+                <div class="damage-types" id="gar-damage-types">
+                    <button class="damage-type-btn selected" data-tipo="fisura" data-color="#ef4444" onclick="garSeleccionarTipo(this)" style="background:#fee2e2; color:#991b1b;">🔴 Fisura</button>
+                    <button class="damage-type-btn" data-tipo="rayon" data-color="#f97316" onclick="garSeleccionarTipo(this)" style="background:#ffedd5; color:#9a3412;">🟠 Rayón</button>
+                    <button class="damage-type-btn" data-tipo="golpe" data-color="#eab308" onclick="garSeleccionarTipo(this)" style="background:#fef9c3; color:#713f12;">🟡 Golpe</button>
+                    <button class="damage-type-btn" data-tipo="mancha" data-color="#8b5cf6" onclick="garSeleccionarTipo(this)" style="background:#ede9fe; color:#4c1d95;">🟣 Mancha</button>
+                    <button class="damage-type-btn" data-tipo="no_funciona" data-color="#6b7280" onclick="garSeleccionarTipo(this)" style="background:#f3f4f6; color:#111827;">⚫ No func.</button>
+                    <button class="damage-type-btn" data-tipo="otro" data-color="#06b6d4" onclick="garSeleccionarTipo(this)" style="background:#cffafe; color:#164e63;">🔵 Otro</button>
+                </div>
+                <div class="iphone-svg-container" style="margin-top:0.75rem;">
+                    <div class="iphone-svg-wrapper">
+                        <h4>📱 Frente</h4>
+                        <svg id="gar-svg-frente" viewBox="0 0 200 400" width="130" height="260"
+                             onclick="garMarcarDano(event, 'frente')">
+                            <rect x="10" y="10" width="180" height="380" rx="22" ry="22" fill="#1f2937"/>
+                            <rect x="16" y="16" width="168" height="368" rx="18" ry="18" fill="#111827"/>
+                            <rect x="18" y="45" width="164" height="295" rx="4" ry="4" fill="#374151" data-zona="pantalla" style="cursor:crosshair;"/>
+                            <rect x="70" y="50" width="60" height="16" rx="8" fill="#111827"/>
+                            <circle cx="100" cy="58" r="5" fill="#4b5563" data-zona="camara_frontal" style="cursor:crosshair;"/>
+                            <rect x="75" y="350" width="50" height="5" rx="2.5" fill="#4b5563"/>
+                            <rect x="190" y="120" width="6" height="40" rx="3" fill="#374151" data-zona="boton_lateral" style="cursor:crosshair;"/>
+                            <rect x="4" y="110" width="6" height="25" rx="3" fill="#374151" data-zona="boton_volumen" style="cursor:crosshair;"/>
+                            <rect x="4" y="145" width="6" height="25" rx="3" fill="#374151" data-zona="boton_volumen" style="cursor:crosshair;"/>
+                            <rect x="10" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_izq" style="cursor:crosshair;"/>
+                            <rect x="155" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_der" style="cursor:crosshair;"/>
+                            <rect x="10" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_izq" style="cursor:crosshair;"/>
+                            <rect x="155" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_der" style="cursor:crosshair;"/>
+                            <rect x="82" y="385" width="36" height="6" rx="3" fill="#374151" data-zona="puerto_carga" style="cursor:crosshair;"/>
+                            <g id="gar-markers-frente"></g>
+                        </svg>
+                    </div>
+                    <div class="iphone-svg-wrapper">
+                        <h4>🔄 Posterior</h4>
+                        <svg id="gar-svg-posterior" viewBox="0 0 200 400" width="130" height="260"
+                             onclick="garMarcarDano(event, 'posterior')">
+                            <rect x="10" y="10" width="180" height="380" rx="22" ry="22" fill="#1f2937"/>
+                            <rect x="16" y="16" width="168" height="368" rx="18" ry="18" fill="#374151"/>
+                            <rect x="20" y="25" width="70" height="70" rx="12" fill="#111827" data-zona="modulo_camara" style="cursor:crosshair;"/>
+                            <circle cx="45" cy="48" r="14" fill="#1f2937" data-zona="camara_principal" style="cursor:crosshair;"/>
+                            <circle cx="45" cy="48" r="10" fill="#374151"/>
+                            <circle cx="75" cy="48" r="14" fill="#1f2937" data-zona="camara_ultra" style="cursor:crosshair;"/>
+                            <circle cx="75" cy="48" r="10" fill="#374151"/>
+                            <circle cx="45" cy="78" r="14" fill="#1f2937" data-zona="camara_telefoto" style="cursor:crosshair;"/>
+                            <circle cx="45" cy="78" r="10" fill="#374151"/>
+                            <circle cx="75" cy="78" r="8" fill="#1f2937" data-zona="flash" style="cursor:crosshair;"/>
+                            <circle cx="75" cy="78" r="5" fill="#fef3c7"/>
+                            <circle cx="130" cy="200" r="20" fill="#2d3748" data-zona="tapa_posterior" style="cursor:crosshair;"/>
+                            <rect x="10" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_izq" style="cursor:crosshair;"/>
+                            <rect x="155" y="10" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_sup_der" style="cursor:crosshair;"/>
+                            <rect x="10" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_izq" style="cursor:crosshair;"/>
+                            <rect x="155" y="355" width="35" height="35" rx="22" fill="transparent" data-zona="esquina_inf_der" style="cursor:crosshair;"/>
+                            <g id="gar-markers-posterior"></g>
+                        </svg>
+                    </div>
+                </div>
+                <div id="gar-damage-list" style="margin-top:0.5rem;">
+                    <p style="font-size:0.8rem; color:var(--gray-500); text-align:center;">Toca el gráfico para marcar daños</p>
+                </div>
+            </div>
+
+            <!-- Destino del equipo que entra -->
+            <div style="margin-top:1rem;">
+                <label style="display:block; font-weight:500; color:var(--gray-700); margin-bottom:0.5rem; font-size:0.9rem;">
+                    📦 Destino del equipo devuelto *
+                </label>
+                <div class="destino-grupo">
+                    <button class="destino-btn active" data-destino="inventario" onclick="garSetDestino(this)">📦 Inventario</button>
+                    <button class="destino-btn" data-destino="proveedor" onclick="garSetDestino(this)">🔁 Proveedor</button>
+                    <button class="destino-btn" data-destino="perdida" onclick="garSetDestino(this)">❌ Pérdida</button>
+                </div>
+            </div>
+
+            <!-- Foto del equipo que entra -->
+            <button class="btn btn-photo" id="btn-gar-foto-entra" onclick="tomarFoto('garEntra')" style="margin-top:1rem;">
+                📸 Foto del Equipo Devuelto
+            </button>
+        </div>
+
+        <!-- Equipo que SALE (nuevo para el cliente) -->
+        <div class="card" style="border-left: 4px solid var(--success);">
+            <div class="card-title" style="color:var(--success);">📤 Equipo que SALE (nuevo)</div>
+            <p style="font-size:0.8rem; color:var(--gray-500); margin-bottom:0.75rem;">
+                El equipo que le entregamos al cliente
+            </p>
+            <div class="form-group">
+                <label>Descripción *</label>
+                <input type="text" id="gar-sale-descripcion" placeholder="iPhone 13 Pro 256GB">
+            </div>
+            <div class="form-group">
+                <label>IMEI *</label>
+                <div class="input-with-button">
+                    <input type="text" id="gar-sale-imei" placeholder="351016864369465">
+                    <button onclick="garEscanearIMEI('sale')">📷</button>
+                </div>
+            </div>
+            <div class="form-group">
+                <label>Precio del Equipo Nuevo</label>
+                <input type="text" id="gar-sale-precio" placeholder="0" oninput="formatearInput(this); garCalcularDiferencia()">
+            </div>
+        </div>
+
+        <!-- Diferencia calculada -->
+        <div class="card">
+            <div class="card-title">💰 Diferencia de Precios</div>
+            <div id="gar-diferencia-display">
+                <p style="color:var(--gray-500); font-size:0.85rem; text-align:center;">
+                    Complete los precios para calcular la diferencia
+                </p>
+            </div>
+            <!-- Método de pago de la diferencia (aparece si hay cobro) -->
+            <div id="gar-metodo-pago-section" style="display:none; margin-top:0.75rem;">
+                <div class="form-group">
+                    <label>Método de Pago de la Diferencia</label>
+                    <select id="gar-metodo-pago">
+                        <option value="">Seleccione...</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="tarjeta">Tarjeta</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Firma del cliente -->
+        <div class="card">
+            <div class="card-title">✍️ Firma del Cliente</div>
+            <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                El cliente firma aceptando el cambio o garantía
+            </p>
+            <canvas id="gar-firma-canvas" class="firma-canvas" width="400" height="160"></canvas>
+            <button class="btn btn-secondary" onclick="garLimpiarFirma()" style="margin-top:0.5rem; padding:0.5rem;">
+                🗑️ Limpiar Firma
+            </button>
+        </div>
+
+        <!-- Botón guardar → dispara modal autorización -->
+        <button class="btn btn-success" onclick="garSolicitarAutorizacion()">
+            🔐 Solicitar Autorización y Guardar
+        </button>
+
+    </div>
+
+    <!-- Modal de Autorización de Garantía -->
+    <div id="gar-autorizacion-modal" class="gar-autorizacion-modal">
+        <div class="gar-auth-box">
+            <h3>🔐 Autorización Requerida</h3>
+            <p style="font-size:0.85rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                Solo <strong>Sirley</strong> o <strong>Camilo</strong> pueden autorizar garantías y cambios.
+            </p>
+
+            <!-- Resumen de la operación -->
+            <div class="gar-resumen-box" id="gar-resumen-autorizacion"></div>
+
+            <div class="form-group">
+                <label>Autorizador *</label>
+                <select id="gar-auth-asesor">
+                    <option value="">Seleccione...</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Clave de Seguridad *</label>
+                <input type="password" id="gar-auth-clave" placeholder="••••" maxlength="4"
+                       pattern="[0-9]*" inputmode="numeric">
+            </div>
+            <div class="form-group">
+                <label>Nota de Autorización</label>
+                <textarea id="gar-auth-nota" placeholder="Observaciones del autorizador..." rows="2"></textarea>
+            </div>
+            <button class="btn btn-success" onclick="garConfirmarAutorizacion()" style="margin-bottom:0.5rem;">
+                ✅ Autorizar y Guardar
+            </button>
+            <button class="btn btn-secondary" onclick="garCerrarAutorizacion()">
+                Cancelar
+            </button>
         </div>
     </div>
 
     <!-- ===== MÓDULO PAGAR PRESTADORES ===== -->
     <div class="container" id="modulo-prestadores" style="display: none;">
-        <div class="card">
-            <div class="card-title">💰 Pagar Prestadores</div>
-            <p style="color: var(--gray-600); text-align: center; padding: 2rem 0;">
-                🚧 Módulo en construcción...<br>
-                <small>Próxima versión</small>
-            </p>
+
+        <!-- Botón cargar / recargar -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+            <button class="btn btn-primary" onclick="prestCargar()" style="flex:1; padding:0.85rem;">
+                🔄 Cargar Prestados Pendientes
+            </button>
+        </div>
+
+        <!-- Estado de carga -->
+        <div id="prest-estado" style="display:none;">
+
+            <!-- Resumen global -->
+            <div id="prest-resumen-global"></div>
+
+            <!-- Filtro por prestador -->
+            <div class="card" style="padding:0.75rem 1rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem;">
+                    <span style="font-size:0.85rem; color:var(--gray-600);">🔍 Filtrar:</span>
+                    <input type="text" id="prest-filtro" placeholder="Nombre del prestador..."
+                           oninput="prestFiltrar()"
+                           style="flex:1; padding:0.5rem 0.75rem; border:2px solid var(--gray-200);
+                                  border-radius:8px; font-size:0.9rem;">
+                </div>
+            </div>
+
+            <!-- Lista agrupada por prestador -->
+            <div id="prest-lista"></div>
+
+        </div>
+
+        <!-- Sin datos -->
+        <div id="prest-vacio" style="display:none;">
+            <div class="card" style="text-align:center; padding:2rem;">
+                <div style="font-size:2.5rem; margin-bottom:0.75rem;">✅</div>
+                <p style="font-weight:600; color:var(--gray-700);">No hay equipos prestados pendientes</p>
+                <p style="font-size:0.85rem; color:var(--gray-500); margin-top:0.5rem;">
+                    El archivo PRESTADOS-PENDIENTES.json está vacío o no tiene registros
+                </p>
+            </div>
+        </div>
+
+        <!-- Error -->
+        <div id="prest-error" style="display:none;">
+            <div class="card" style="border-left:4px solid var(--danger);">
+                <p style="color:var(--danger); font-weight:600;">❌ Error al cargar el archivo</p>
+                <p id="prest-error-msg" style="font-size:0.85rem; color:var(--gray-600); margin-top:0.5rem;"></p>
+                <p style="font-size:0.8rem; color:var(--gray-500); margin-top:0.75rem;">
+                    Verifica que el archivo <strong>PRESTADOS-PENDIENTES.json</strong> esté compartido
+                    y tenga el formato correcto.
+                </p>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Modal de Pago a Prestador -->
+    <div id="prest-pago-modal" class="prest-pago-modal">
+        <div class="prest-pago-box">
+            <div class="modal-header" style="margin-bottom:1rem;">
+                <h3 style="font-size:1.1rem;">💰 Registrar Pago</h3>
+                <button class="modal-close" onclick="prestCerrarPago()">×</button>
+            </div>
+
+            <div id="prest-pago-resumen" class="gar-resumen-box" style="margin-bottom:1rem;"></div>
+
+            <div class="form-group">
+                <label>Método de Pago *</label>
+                <select id="prest-pago-metodo">
+                    <option value="">Seleccione...</option>
+                    <option value="efectivo">Efectivo</option>
+                    <option value="transferencia">Transferencia</option>
+                    <option value="nequi">Nequi</option>
+                    <option value="daviplata">Daviplata</option>
+                    <option value="otro">Otro</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Monto a Pagar *</label>
+                <input type="text" id="prest-pago-monto" placeholder="0" oninput="formatearInput(this)">
+            </div>
+
+            <div class="form-group">
+                <label>Referencia / Comprobante</label>
+                <input type="text" id="prest-pago-referencia" placeholder="Número de referencia">
+            </div>
+
+            <div class="form-group">
+                <label>Nota</label>
+                <textarea id="prest-pago-nota" placeholder="Observaciones del pago..." rows="2"></textarea>
+            </div>
+
+            <button class="btn btn-photo" id="btn-prest-soporte" onclick="tomarFoto('prestSoporte')"
+                    style="margin-bottom:0.75rem;">
+                📸 Foto del Comprobante
+            </button>
+
+            <button class="btn btn-success" onclick="prestConfirmarPago()" style="margin-bottom:0.5rem;">
+                ✅ Confirmar Pago
+            </button>
+            <button class="btn btn-secondary" onclick="prestCerrarPago()">Cancelar</button>
         </div>
     </div>
 
@@ -2434,6 +3363,17 @@
                 if (el) el.style.display = 'block';
             }
 
+            // Lógica específica por módulo
+            if (modulo === 'mantenimientos') {
+                setTimeout(() => {
+                    mantIniciarFirma();
+                    if (accessToken) mantObtenerConsecutivo();
+                }, 100);
+            }
+            if (modulo === 'garantias') {
+                setTimeout(() => garIniciarFirma(), 100);
+            }
+
             // Actualizar ítem activo del menú
             document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
             const btnActivo = document.getElementById(`menu-${modulo}`);
@@ -2574,7 +3514,1043 @@
             }
         });
 
-        // ============= FIN FUNCIONES DE ANULACIÓN =============
+        // ============= MÓDULO MANTENIMIENTOS =============
+
+        // Estado del módulo
+        let mantConsecutivo = 1;
+        let mantDanos = { frente: [], posterior: [] };
+        let mantTipoDanoActual = { tipo: 'fisura', color: '#ef4444' };
+        let mantEstadoActual = 'recibido';
+        let mantFirmaCtx = null;
+        let mantFirmaActiva = false;
+
+        const MANT_TIPO_LABELS = {
+            fisura: 'Fisura', rayon: 'Rayón', golpe: 'Golpe',
+            mancha: 'Mancha', no_funciona: 'No funciona', otro: 'Otro'
+        };
+
+        const MANT_ZONA_LABELS = {
+            pantalla: 'Pantalla', camara_frontal: 'Cámara frontal',
+            boton_lateral: 'Botón lateral', boton_volumen: 'Botón volumen',
+            esquina_sup_izq: 'Esquina sup. izq.', esquina_sup_der: 'Esquina sup. der.',
+            esquina_inf_izq: 'Esquina inf. izq.', esquina_inf_der: 'Esquina inf. der.',
+            puerto_carga: 'Puerto de carga', modulo_camara: 'Módulo cámara',
+            camara_principal: 'Cámara principal', camara_ultra: 'Cámara ultra',
+            camara_telefoto: 'Cámara telefoto', flash: 'Flash',
+            tapa_posterior: 'Tapa posterior'
+        };
+
+        function mantMostrarTab(tab) {
+            document.getElementById('mant-tab-content-nuevo').style.display = tab === 'nuevo' ? 'block' : 'none';
+            document.getElementById('mant-tab-content-lista').style.display = tab === 'lista' ? 'block' : 'none';
+            document.getElementById('mant-tab-nuevo').classList.toggle('active', tab === 'nuevo');
+            document.getElementById('mant-tab-lista').classList.toggle('active', tab === 'lista');
+            if (tab === 'lista') mantCargarLista();
+        }
+
+        function mantSeleccionarTipo(btn) {
+            document.querySelectorAll('.damage-type-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            mantTipoDanoActual = { tipo: btn.dataset.tipo, color: btn.dataset.color };
+        }
+
+        function mantMarcarDano(event, cara) {
+            const svg = document.getElementById(`mant-svg-${cara}`);
+            const rect = svg.getBoundingClientRect();
+            const viewBox = svg.viewBox.baseVal;
+
+            // Convertir coordenadas de pantalla a viewBox
+            const scaleX = viewBox.width / rect.width;
+            const scaleY = viewBox.height / rect.height;
+            const x = (event.clientX - rect.left) * scaleX;
+            const y = (event.clientY - rect.top) * scaleY;
+
+            // Detectar zona por el elemento clickeado
+            const zona = event.target.dataset.zona || 'cuerpo';
+
+            const dano = {
+                id: Date.now(),
+                cara,
+                zona,
+                tipo: mantTipoDanoActual.tipo,
+                color: mantTipoDanoActual.color,
+                x: Math.round(x),
+                y: Math.round(y),
+                descripcion: `${MANT_TIPO_LABELS[mantTipoDanoActual.tipo]} en ${MANT_ZONA_LABELS[zona] || zona}`
+            };
+
+            mantDanos[cara].push(dano);
+            mantRenderizarMarcadores();
+            mantActualizarListaDanos();
+        }
+
+        function mantRenderizarMarcadores() {
+            ['frente', 'posterior'].forEach(cara => {
+                const g = document.getElementById(`mant-markers-${cara}`);
+                g.innerHTML = mantDanos[cara].map(d => `
+                    <circle cx="${d.x}" cy="${d.y}" r="8" fill="${d.color}" fill-opacity="0.8"
+                            stroke="white" stroke-width="1.5"
+                            onclick="mantEliminarDano(${d.id}, '${cara}', event)" style="cursor:pointer;" />
+                    <text x="${d.x}" y="${d.y + 4}" text-anchor="middle"
+                          font-size="8" fill="white" pointer-events="none">×</text>
+                `).join('');
+            });
+        }
+
+        function mantEliminarDano(id, cara, event) {
+            event.stopPropagation();
+            mantDanos[cara] = mantDanos[cara].filter(d => d.id !== id);
+            mantRenderizarMarcadores();
+            mantActualizarListaDanos();
+        }
+
+        function mantActualizarListaDanos() {
+            const container = document.getElementById('mant-damage-list');
+            const todos = [...mantDanos.frente, ...mantDanos.posterior];
+            if (todos.length === 0) {
+                container.innerHTML = '<p style="font-size:0.8rem; color:var(--gray-500); text-align:center;">Toca el gráfico para marcar daños</p>';
+                return;
+            }
+            container.innerHTML = todos.map(d => `
+                <div class="damage-list-item">
+                    <div class="damage-dot" style="background:${d.color};"></div>
+                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
+                    <button onclick="mantEliminarDanoPorId(${d.id}, '${d.cara}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        function mantEliminarDanoPorId(id, cara) {
+            mantDanos[cara] = mantDanos[cara].filter(d => d.id !== id);
+            mantRenderizarMarcadores();
+            mantActualizarListaDanos();
+        }
+
+        function mantSetEstado(btn) {
+            document.querySelectorAll('.estado-mant-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            mantEstadoActual = btn.dataset.estado;
+        }
+
+        // Firma táctil
+        function mantIniciarFirma() {
+            const canvas = document.getElementById('mant-firma-canvas');
+            if (mantFirmaCtx) return; // ya iniciado
+            mantFirmaCtx = canvas.getContext('2d');
+            mantFirmaCtx.strokeStyle = '#1f2937';
+            mantFirmaCtx.lineWidth = 2.5;
+            mantFirmaCtx.lineCap = 'round';
+            mantFirmaCtx.lineJoin = 'round';
+
+            // Ajustar resolución canvas al tamaño real
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            mantFirmaCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            // Mouse
+            canvas.addEventListener('mousedown', e => { mantFirmaActiva = true; mantFirmaCtx.beginPath(); mantFirmaIrA(e); });
+            canvas.addEventListener('mousemove', e => { if (mantFirmaActiva) mantFirmaLinea(e); });
+            canvas.addEventListener('mouseup', () => mantFirmaActiva = false);
+            canvas.addEventListener('mouseleave', () => mantFirmaActiva = false);
+
+            // Touch
+            canvas.addEventListener('touchstart', e => { e.preventDefault(); mantFirmaActiva = true; mantFirmaCtx.beginPath(); mantFirmaIrA(e.touches[0]); }, { passive: false });
+            canvas.addEventListener('touchmove', e => { e.preventDefault(); if (mantFirmaActiva) mantFirmaLinea(e.touches[0]); }, { passive: false });
+            canvas.addEventListener('touchend', () => mantFirmaActiva = false);
+        }
+
+        function mantFirmaIrA(e) {
+            const r = document.getElementById('mant-firma-canvas').getBoundingClientRect();
+            mantFirmaCtx.moveTo(e.clientX - r.left, e.clientY - r.top);
+        }
+
+        function mantFirmaLinea(e) {
+            const r = document.getElementById('mant-firma-canvas').getBoundingClientRect();
+            mantFirmaCtx.lineTo(e.clientX - r.left, e.clientY - r.top);
+            mantFirmaCtx.stroke();
+        }
+
+        function mantLimpiarFirma() {
+            const canvas = document.getElementById('mant-firma-canvas');
+            if (mantFirmaCtx) {
+                mantFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+            }
+        }
+
+        function mantEscanearIMEI() {
+            currentPhotoType = null; // No es foto
+            document.getElementById('scanner-modal').classList.add('active');
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    document.getElementById('mant-equipo-imei').value = decodedText;
+                    cerrarEscaner();
+                    mostrarToast('✅ IMEI escaneado');
+                },
+                () => {}
+            ).catch(() => { mostrarToast('❌ Error al acceder a la cámara'); cerrarEscaner(); });
+        }
+
+        async function mantObtenerConsecutivo() {
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.mantenimientos}' in parents and trashed=false and name contains 'Mantenimiento-'`,
+                    fields: 'files(name)',
+                    orderBy: 'name desc',
+                    pageSize: 1
+                });
+                if (response.result.files.length > 0) {
+                    const match = response.result.files[0].name.match(/Mantenimiento-(\d+)/);
+                    if (match) mantConsecutivo = parseInt(match[1]) + 1;
+                }
+                document.getElementById('mant-numero-display').textContent =
+                    `Mant-${String(mantConsecutivo).padStart(4, '0')}`;
+            } catch (e) {
+                console.error('Error obteniendo consecutivo mantenimiento:', e);
+            }
+        }
+
+        async function mantGuardar() {
+            const nombre = document.getElementById('mant-cliente-nombre').value.trim();
+            const telefono = document.getElementById('mant-cliente-telefono').value.trim();
+            const descripcion = document.getElementById('mant-equipo-descripcion').value.trim();
+            const imei = document.getElementById('mant-equipo-imei').value.trim();
+            const falla = document.getElementById('mant-falla').value.trim();
+            const asesor = document.getElementById('mant-asesor').value.trim();
+
+            if (!nombre || !telefono || !descripcion || !imei || !falla || !asesor) {
+                mostrarToast('⚠️ Complete los campos obligatorios (*)');
+                return;
+            }
+
+            mostrarToast('☁️ Guardando mantenimiento...');
+
+            try {
+                const numeroFormateado = String(mantConsecutivo).padStart(4, '0');
+                const docName = `Mantenimiento-${numeroFormateado}`;
+
+                // Capturar firma
+                const canvas = document.getElementById('mant-firma-canvas');
+                const firmaBase64 = canvas.toDataURL('image/png');
+
+                const doc = {
+                    tipo: 'mantenimiento',
+                    numero: mantConsecutivo,
+                    fecha_ingreso: new Date().toISOString(),
+                    cliente: {
+                        nombre,
+                        telefono,
+                        identificacion: document.getElementById('mant-cliente-id').value.trim()
+                    },
+                    equipo: {
+                        descripcion,
+                        imei,
+                        marca: document.getElementById('mant-equipo-marca').value.trim(),
+                        modelo: document.getElementById('mant-equipo-modelo').value.trim()
+                    },
+                    falla_reportada: falla,
+                    inspeccion_visual: mantDanos,
+                    costos: {
+                        estimado: parsearValor(document.getElementById('mant-costo-estimado').value),
+                        anticipo: parsearValor(document.getElementById('mant-anticipo').value)
+                    },
+                    fecha_entrega_estimada: document.getElementById('mant-fecha-entrega').value,
+                    estado_actual: mantEstadoActual,
+                    asesor_responsable: asesor,
+                    firma_cliente: firmaBase64
+                };
+
+                // Subir JSON
+                await subirArchivoDrive(
+                    JSON.stringify(doc, null, 2),
+                    `${docName}.json`,
+                    FOLDER_IDS.mantenimientos
+                );
+
+                // Subir fotos si existen
+                const fotoGeneral = capturedPhotos['mantGeneral'];
+                const fotoFalla = capturedPhotos['mantFalla'];
+
+                if (fotoGeneral) {
+                    await subirImagenDrive(fotoGeneral, `${docName}-General.jpg`, FOLDER_IDS.fotosMantenimientos);
+                }
+                if (fotoFalla) {
+                    await subirImagenDrive(fotoFalla, `${docName}-Falla.jpg`, FOLDER_IDS.fotosMantenimientos);
+                }
+
+                mantConsecutivo++;
+                mantLimpiarFormulario();
+                mostrarToast(`✅ ${docName} guardado en Drive`);
+
+            } catch (error) {
+                console.error('Error guardando mantenimiento:', error);
+                mostrarToast('❌ Error al guardar. Revisa consola.');
+            }
+        }
+
+        function mantLimpiarFormulario() {
+            ['mant-cliente-nombre','mant-cliente-telefono','mant-cliente-id',
+             'mant-equipo-descripcion','mant-equipo-marca','mant-equipo-modelo',
+             'mant-equipo-imei','mant-falla','mant-costo-estimado',
+             'mant-anticipo','mant-fecha-entrega','mant-asesor'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            mantDanos = { frente: [], posterior: [] };
+            mantRenderizarMarcadores();
+            mantActualizarListaDanos();
+            mantEstadoActual = 'recibido';
+            document.querySelectorAll('.estado-mant-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.estado-mant-btn[data-estado="recibido"]').classList.add('active');
+            mantLimpiarFirma();
+            delete capturedPhotos['mantGeneral'];
+            delete capturedPhotos['mantFalla'];
+            const btnG = document.getElementById('btn-mant-foto-general');
+            const btnF = document.getElementById('btn-mant-foto-falla');
+            if (btnG) { btnG.classList.remove('captured'); btnG.innerHTML = '📸 Foto General del Equipo'; }
+            if (btnF) { btnF.classList.remove('captured'); btnF.innerHTML = '📸 Foto de la Falla Específica'; }
+            document.getElementById('mant-numero-display').textContent =
+                `Mant-${String(mantConsecutivo).padStart(4, '0')}`;
+            window.scrollTo(0, 0);
+        }
+
+        async function mantCargarLista() {
+            const container = document.getElementById('mant-lista-container');
+            container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando...</p>';
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.mantenimientos}' in parents and trashed=false and name contains 'Mantenimiento-'`,
+                    fields: 'files(id, name, createdTime)',
+                    orderBy: 'name desc',
+                    pageSize: 50
+                });
+                const files = response.result.files;
+                if (files.length === 0) {
+                    container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No hay mantenimientos registrados</p>';
+                    return;
+                }
+                container.innerHTML = files.map(f => {
+                    const fecha = new Date(f.createdTime).toLocaleDateString('es-CO');
+                    return `
+                        <div class="mant-card-item">
+                            <div>
+                                <div style="font-weight:600; font-size:0.9rem;">${f.name.replace('.json','')}</div>
+                                <div style="font-size:0.75rem; color:var(--gray-500);">${fecha}</div>
+                            </div>
+                            <a href="https://drive.google.com/file/d/${f.id}/view" target="_blank"
+                               style="font-size:0.8rem; color:var(--primary);">Ver →</a>
+                        </div>
+                    `;
+                }).join('');
+            } catch (e) {
+                container.innerHTML = '<p style="text-align:center; color:var(--danger);">❌ Error cargando lista</p>';
+                console.error(e);
+            }
+        }
+
+        // ============= FIN MÓDULO MANTENIMIENTOS =============
+
+        // ============= MÓDULO GARANTÍAS =============
+
+        let garRemisionOriginal = null;       // Datos de la remisión encontrada
+        let garTipoActual = 'falla_fabrica';
+        let garDestinoActual = 'inventario';
+        let garDanos = { frente: [], posterior: [] };
+        let garTipoDanoActual = { tipo: 'fisura', color: '#ef4444' };
+        let garFirmaCtx = null;
+        let garFirmaActiva = false;
+        let garIMEIScanTarget = 'entra';      // 'entra' o 'sale'
+        let garDatosPendientes = null;        // Datos completos antes de autorizar
+
+        // Buscar remisión original en Drive
+        async function garBuscarRemision() {
+            const numero = document.getElementById('gar-remision-numero').value;
+            if (!numero) { mostrarToast('⚠️ Ingrese el número de remisión'); return; }
+
+            const numeroFormateado = String(numero).padStart(4, '0');
+            const resultado = document.getElementById('gar-remision-resultado');
+            resultado.innerHTML = '<p style="font-size:0.85rem; color:var(--gray-500);">⏳ Buscando...</p>';
+
+            try {
+                const response = await gapi.client.drive.files.list({
+                    q: `name='Remision-${numeroFormateado}.json' and '${FOLDER_IDS.remisiones}' in parents and trashed=false`,
+                    fields: 'files(id, name)'
+                });
+
+                if (response.result.files.length === 0) {
+                    resultado.innerHTML = `<p style="color:var(--danger); font-size:0.85rem;">❌ No se encontró la Remisión-${numeroFormateado}</p>`;
+                    garRemisionOriginal = null;
+                    return;
+                }
+
+                const fileId = response.result.files[0].id;
+                const fileResp = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
+                garRemisionOriginal = await fileResp.json();
+
+                // Precargar datos del equipo original en el formulario
+                const primerItem = garRemisionOriginal.items && garRemisionOriginal.items[0];
+                if (primerItem) {
+                    document.getElementById('gar-entra-descripcion').value = primerItem.descripcion || '';
+                    document.getElementById('gar-entra-imei').value = primerItem.imei || '';
+                    document.getElementById('gar-entra-precio').value =
+                        new Intl.NumberFormat('es-CO').format(primerItem.valor || 0);
+                    document.getElementById('gar-sale-descripcion').value = primerItem.descripcion || '';
+                    garCalcularDiferencia();
+                }
+
+                resultado.innerHTML = `
+                    <div class="gar-remision-encontrada">
+                        <strong>✅ Remisión-${numeroFormateado} encontrada</strong>
+                        <span>Cliente: ${garRemisionOriginal.cliente || '-'}</span><br>
+                        <span>Fecha: ${new Date(garRemisionOriginal.fecha).toLocaleDateString('es-CO')}</span><br>
+                        <span>Asesor: ${garRemisionOriginal.asesor || '-'}</span><br>
+                        ${primerItem ? `<span>Equipo: ${primerItem.descripcion}</span>` : ''}
+                    </div>`;
+                mostrarToast('✅ Remisión encontrada');
+
+            } catch (e) {
+                console.error('Error buscando remisión:', e);
+                resultado.innerHTML = '<p style="color:var(--danger); font-size:0.85rem;">❌ Error al buscar. Revisa consola.</p>';
+            }
+        }
+
+        function garSetTipo(btn) {
+            document.querySelectorAll('.gar-tipo-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            garTipoActual = btn.dataset.tipo;
+        }
+
+        function garSetDestino(btn) {
+            document.querySelectorAll('.destino-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            garDestinoActual = btn.dataset.destino;
+        }
+
+        function garSeleccionarTipo(btn) {
+            document.querySelectorAll('#gar-damage-types .damage-type-btn').forEach(b => b.classList.remove('selected'));
+            btn.classList.add('selected');
+            garTipoDanoActual = { tipo: btn.dataset.tipo, color: btn.dataset.color };
+        }
+
+        function garMarcarDano(event, cara) {
+            const svg = document.getElementById(`gar-svg-${cara}`);
+            const rect = svg.getBoundingClientRect();
+            const vb = svg.viewBox.baseVal;
+            const x = (event.clientX - rect.left) * (vb.width / rect.width);
+            const y = (event.clientY - rect.top) * (vb.height / rect.height);
+            const zona = event.target.dataset.zona || 'cuerpo';
+
+            const dano = {
+                id: Date.now(), cara, zona,
+                tipo: garTipoDanoActual.tipo,
+                color: garTipoDanoActual.color,
+                x: Math.round(x), y: Math.round(y),
+                descripcion: `${MANT_TIPO_LABELS[garTipoDanoActual.tipo]} en ${MANT_ZONA_LABELS[zona] || zona}`
+            };
+            garDanos[cara].push(dano);
+            garRenderizarMarcadores();
+            garActualizarListaDanos();
+        }
+
+        function garRenderizarMarcadores() {
+            ['frente', 'posterior'].forEach(cara => {
+                const g = document.getElementById(`gar-markers-${cara}`);
+                if (!g) return;
+                g.innerHTML = garDanos[cara].map(d => `
+                    <circle cx="${d.x}" cy="${d.y}" r="8" fill="${d.color}" fill-opacity="0.8"
+                            stroke="white" stroke-width="1.5"
+                            onclick="garEliminarDano(${d.id},'${cara}',event)" style="cursor:pointer;"/>
+                    <text x="${d.x}" y="${d.y+4}" text-anchor="middle" font-size="8"
+                          fill="white" pointer-events="none">×</text>
+                `).join('');
+            });
+        }
+
+        function garEliminarDano(id, cara, event) {
+            event.stopPropagation();
+            garDanos[cara] = garDanos[cara].filter(d => d.id !== id);
+            garRenderizarMarcadores();
+            garActualizarListaDanos();
+        }
+
+        function garActualizarListaDanos() {
+            const container = document.getElementById('gar-damage-list');
+            const todos = [...garDanos.frente, ...garDanos.posterior];
+            if (todos.length === 0) {
+                container.innerHTML = '<p style="font-size:0.8rem; color:var(--gray-500); text-align:center;">Toca el gráfico para marcar daños</p>';
+                return;
+            }
+            container.innerHTML = todos.map(d => `
+                <div class="damage-list-item">
+                    <div class="damage-dot" style="background:${d.color};"></div>
+                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
+                    <button onclick="garEliminarDanoPorId(${d.id},'${d.cara}')">×</button>
+                </div>
+            `).join('');
+        }
+
+        function garEliminarDanoPorId(id, cara) {
+            garDanos[cara] = garDanos[cara].filter(d => d.id !== id);
+            garRenderizarMarcadores();
+            garActualizarListaDanos();
+        }
+
+        function garCalcularDiferencia() {
+            const precioEntra = parsearValor(document.getElementById('gar-entra-precio').value);
+            const precioSale = parsearValor(document.getElementById('gar-sale-precio').value);
+            const display = document.getElementById('gar-diferencia-display');
+            const pagoSection = document.getElementById('gar-metodo-pago-section');
+
+            if (!precioEntra && !precioSale) {
+                display.innerHTML = '<p style="color:var(--gray-500); font-size:0.85rem; text-align:center;">Complete los precios para calcular la diferencia</p>';
+                pagoSection.style.display = 'none';
+                return;
+            }
+
+            const diff = precioSale - precioEntra;
+
+            if (diff > 0) {
+                display.innerHTML = `
+                    <div class="gar-diferencia-positiva">
+                        💰 El cliente debe pagar: <span style="font-size:1.1rem;">${formatMoney(diff)}</span>
+                    </div>`;
+                pagoSection.style.display = 'block';
+            } else if (diff < 0) {
+                display.innerHTML = `
+                    <div class="gar-diferencia-negativa">
+                        💚 Devolver al cliente: <span style="font-size:1.1rem;">${formatMoney(Math.abs(diff))}</span>
+                    </div>`;
+                pagoSection.style.display = 'none';
+            } else {
+                display.innerHTML = `
+                    <div style="background:#f3f4f6; border:2px solid var(--gray-300); border-radius:8px; padding:0.75rem; text-align:center; font-weight:700; color:var(--gray-700);">
+                        ⚖️ Mismo precio — Sin diferencia
+                    </div>`;
+                pagoSection.style.display = 'none';
+            }
+        }
+
+        function garEscanearIMEI(target) {
+            garIMEIScanTarget = target;
+            document.getElementById('scanner-modal').classList.add('active');
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    const campo = garIMEIScanTarget === 'entra' ? 'gar-entra-imei' : 'gar-sale-imei';
+                    document.getElementById(campo).value = decodedText;
+                    cerrarEscaner();
+                    mostrarToast('✅ IMEI escaneado');
+                },
+                () => {}
+            ).catch(() => { mostrarToast('❌ Error al acceder a la cámara'); cerrarEscaner(); });
+        }
+
+        // Firma garantía
+        function garIniciarFirma() {
+            const canvas = document.getElementById('gar-firma-canvas');
+            if (garFirmaCtx) return;
+            garFirmaCtx = canvas.getContext('2d');
+            garFirmaCtx.strokeStyle = '#1f2937';
+            garFirmaCtx.lineWidth = 2.5;
+            garFirmaCtx.lineCap = 'round';
+            garFirmaCtx.lineJoin = 'round';
+            const rect = canvas.getBoundingClientRect();
+            canvas.width = rect.width * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            garFirmaCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            canvas.addEventListener('mousedown', e => { garFirmaActiva = true; garFirmaCtx.beginPath(); garFirmaIrA(e); });
+            canvas.addEventListener('mousemove', e => { if (garFirmaActiva) garFirmaLinea(e); });
+            canvas.addEventListener('mouseup', () => garFirmaActiva = false);
+            canvas.addEventListener('mouseleave', () => garFirmaActiva = false);
+            canvas.addEventListener('touchstart', e => { e.preventDefault(); garFirmaActiva = true; garFirmaCtx.beginPath(); garFirmaIrA(e.touches[0]); }, { passive: false });
+            canvas.addEventListener('touchmove', e => { e.preventDefault(); if (garFirmaActiva) garFirmaLinea(e.touches[0]); }, { passive: false });
+            canvas.addEventListener('touchend', () => garFirmaActiva = false);
+        }
+
+        function garFirmaIrA(e) {
+            const r = document.getElementById('gar-firma-canvas').getBoundingClientRect();
+            garFirmaCtx.moveTo(e.clientX - r.left, e.clientY - r.top);
+        }
+
+        function garFirmaLinea(e) {
+            const r = document.getElementById('gar-firma-canvas').getBoundingClientRect();
+            garFirmaCtx.lineTo(e.clientX - r.left, e.clientY - r.top);
+            garFirmaCtx.stroke();
+        }
+
+        function garLimpiarFirma() {
+            const canvas = document.getElementById('gar-firma-canvas');
+            if (garFirmaCtx) garFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        // Poblar select de autorizadores con solo quienes tienen permiso
+        function garPoblarAutorizadores() {
+            const select = document.getElementById('gar-auth-asesor');
+            select.innerHTML = '<option value="">Seleccione...</option>';
+            Object.keys(asesoresPermisos).forEach(nombre => {
+                if (tienePermiso(nombre, 'autorizar_garantias')) {
+                    const opt = document.createElement('option');
+                    opt.value = nombre;
+                    opt.textContent = nombre;
+                    select.appendChild(opt);
+                }
+            });
+            // Fallback si V2 no está disponible: mostrar todos
+            if (select.options.length === 1) {
+                Object.keys(clavesAsesores).forEach(nombre => {
+                    const opt = document.createElement('option');
+                    opt.value = nombre;
+                    opt.textContent = nombre;
+                    select.appendChild(opt);
+                });
+            }
+        }
+
+        function garSolicitarAutorizacion() {
+            // Validaciones previas
+            if (!garRemisionOriginal) {
+                mostrarToast('⚠️ Primero busca la remisión original');
+                return;
+            }
+            const entraDesc = document.getElementById('gar-entra-descripcion').value.trim();
+            const entraImei = document.getElementById('gar-entra-imei').value.trim();
+            const saleDesc  = document.getElementById('gar-sale-descripcion').value.trim();
+            const saleImei  = document.getElementById('gar-sale-imei').value.trim();
+            const motivo    = document.getElementById('gar-motivo-descripcion').value.trim();
+
+            if (!entraDesc || !entraImei || !saleDesc || !saleImei || !motivo) {
+                mostrarToast('⚠️ Complete todos los campos obligatorios (*)');
+                return;
+            }
+
+            // Calcular diferencia para el resumen
+            const precioEntra = parsearValor(document.getElementById('gar-entra-precio').value);
+            const precioSale  = parsearValor(document.getElementById('gar-sale-precio').value);
+            const diff = precioSale - precioEntra;
+            const numOriginal = String(garRemisionOriginal.numero).padStart(4, '0');
+
+            // Mostrar resumen en el modal
+            document.getElementById('gar-resumen-autorizacion').innerHTML = `
+                <div class="gar-resumen-row"><span>Remisión original:</span><span>Remision-${numOriginal}</span></div>
+                <div class="gar-resumen-row"><span>Cliente:</span><span>${garRemisionOriginal.cliente}</span></div>
+                <div class="gar-resumen-row"><span>Tipo:</span><span>${garTipoActual.replace('_',' ')}</span></div>
+                <div class="gar-resumen-row"><span>Equipo entra:</span><span>${entraDesc}</span></div>
+                <div class="gar-resumen-row"><span>IMEI entra:</span><span>${entraImei}</span></div>
+                <div class="gar-resumen-row"><span>Equipo sale:</span><span>${saleDesc}</span></div>
+                <div class="gar-resumen-row"><span>IMEI sale:</span><span>${saleImei}</span></div>
+                <div class="gar-resumen-row"><span>Diferencia:</span>
+                    <span style="font-weight:700; color:${diff > 0 ? 'var(--warning)' : diff < 0 ? 'var(--success)' : 'var(--gray-700)'};">
+                        ${diff > 0 ? 'Cobrar ' : diff < 0 ? 'Devolver ' : 'Sin diferencia '}${diff !== 0 ? formatMoney(Math.abs(diff)) : ''}
+                    </span>
+                </div>
+                <div class="gar-resumen-row"><span>Destino equipo:</span><span>${garDestinoActual}</span></div>
+            `;
+
+            garPoblarAutorizadores();
+            document.getElementById('gar-auth-clave').value = '';
+            document.getElementById('gar-auth-nota').value = '';
+            document.getElementById('gar-autorizacion-modal').classList.add('active');
+        }
+
+        function garCerrarAutorizacion() {
+            document.getElementById('gar-autorizacion-modal').classList.remove('active');
+        }
+
+        async function garConfirmarAutorizacion() {
+            const autorizador = document.getElementById('gar-auth-asesor').value;
+            const clave       = document.getElementById('gar-auth-clave').value;
+            const nota        = document.getElementById('gar-auth-nota').value.trim();
+
+            if (!autorizador || !clave) {
+                mostrarToast('⚠️ Selecciona el autorizador e ingresa la clave');
+                return;
+            }
+
+            // Verificar que tiene permiso de autorizar garantías
+            if (!tienePermiso(autorizador, 'autorizar_garantias')) {
+                mostrarToast(`❌ ${autorizador} no tiene permiso para autorizar garantías`);
+                return;
+            }
+
+            // Verificar clave
+            if (clavesAsesores[autorizador] !== clave) {
+                mostrarToast('❌ Clave incorrecta');
+                return;
+            }
+
+            garCerrarAutorizacion();
+            mostrarToast('☁️ Guardando garantía autorizada...');
+
+            try {
+                const numOriginal = String(garRemisionOriginal.numero).padStart(4, '0');
+                const docName = `Garantia-${numOriginal}-01`;
+
+                const precioEntra = parsearValor(document.getElementById('gar-entra-precio').value);
+                const precioSale  = parsearValor(document.getElementById('gar-sale-precio').value);
+                const diff = precioSale - precioEntra;
+
+                const canvas = document.getElementById('gar-firma-canvas');
+
+                const doc = {
+                    tipo: 'cambio_garantia',
+                    numero: docName,
+                    remision_original: numOriginal,
+                    fecha: new Date().toISOString(),
+                    cliente: garRemisionOriginal.cliente,
+                    motivo: {
+                        tipo: garTipoActual,
+                        descripcion: document.getElementById('gar-motivo-descripcion').value.trim()
+                    },
+                    equipo_que_entra: {
+                        descripcion: document.getElementById('gar-entra-descripcion').value.trim(),
+                        imei: document.getElementById('gar-entra-imei').value.trim(),
+                        precio: precioEntra,
+                        destino: garDestinoActual,
+                        inspeccion_visual: garDanos
+                    },
+                    equipo_que_sale: {
+                        descripcion: document.getElementById('gar-sale-descripcion').value.trim(),
+                        imei: document.getElementById('gar-sale-imei').value.trim(),
+                        precio: precioSale
+                    },
+                    diferencia: {
+                        monto: Math.abs(diff),
+                        tipo: diff > 0 ? 'cobro' : diff < 0 ? 'devolucion' : 'sin_diferencia',
+                        metodo_pago: document.getElementById('gar-metodo-pago').value || null
+                    },
+                    autorizacion: {
+                        autorizado_por: autorizador,
+                        fecha: new Date().toISOString(),
+                        nota: nota
+                    },
+                    firma_cliente: canvas.toDataURL('image/png')
+                };
+
+                // Subir JSON
+                await subirArchivoDrive(
+                    JSON.stringify(doc, null, 2),
+                    `${docName}.json`,
+                    FOLDER_IDS.garantias
+                );
+
+                // Foto del equipo que entra
+                if (capturedPhotos['garEntra']) {
+                    await subirImagenDrive(capturedPhotos['garEntra'], `${docName}-Equipo-Entra.jpg`, FOLDER_IDS.fotosGarantias);
+                }
+
+                garLimpiarFormulario();
+                mostrarToast(`✅ ${docName} guardada y autorizada por ${autorizador}`);
+
+            } catch (error) {
+                console.error('Error guardando garantía:', error);
+                mostrarToast('❌ Error al guardar. Revisa consola.');
+            }
+        }
+
+        function garLimpiarFormulario() {
+            garRemisionOriginal = null;
+            garDanos = { frente: [], posterior: [] };
+            garRenderizarMarcadores();
+            garActualizarListaDanos();
+            garDestinoActual = 'inventario';
+            garTipoActual = 'falla_fabrica';
+            document.querySelectorAll('.gar-tipo-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.gar-tipo-btn[data-tipo="falla_fabrica"]').classList.add('active');
+            document.querySelectorAll('.destino-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector('.destino-btn[data-destino="inventario"]').classList.add('active');
+            ['gar-remision-numero','gar-motivo-descripcion','gar-entra-descripcion',
+             'gar-entra-imei','gar-entra-precio','gar-sale-descripcion',
+             'gar-sale-imei','gar-sale-precio'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.value = '';
+            });
+            document.getElementById('gar-remision-resultado').innerHTML = '';
+            document.getElementById('gar-diferencia-display').innerHTML =
+                '<p style="color:var(--gray-500); font-size:0.85rem; text-align:center;">Complete los precios para calcular la diferencia</p>';
+            document.getElementById('gar-metodo-pago-section').style.display = 'none';
+            garLimpiarFirma();
+            delete capturedPhotos['garEntra'];
+            const btnE = document.getElementById('btn-gar-foto-entra');
+            if (btnE) { btnE.classList.remove('captured'); btnE.innerHTML = '📸 Foto del Equipo Devuelto'; }
+            window.scrollTo(0, 0);
+        }
+
+        // ============= FIN MÓDULO GARANTÍAS =============
+
+        // ============= MÓDULO PAGAR PRESTADORES =============
+
+        let prestDatos = null;          // Contenido de PRESTADOS-PENDIENTES.json
+        let prestGrupos = {};           // { nombrePrestador: [equipos] }
+        let prestPagoActual = null;     // { prestador, equipos, total } en proceso de pago
+
+        async function prestCargar() {
+            // Resetear UI
+            ['prest-estado','prest-vacio','prest-error'].forEach(id =>
+                document.getElementById(id).style.display = 'none'
+            );
+            mostrarToast('⏳ Cargando prestados pendientes...');
+
+            try {
+                const fileId = CONFIG_FILES.prestadosPendientes;
+                const resp = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
+
+                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+
+                const texto = await resp.text();
+                prestDatos = JSON.parse(texto);
+
+                // Normalizar: acepta array directo o { prestados: [...] }
+                const lista = Array.isArray(prestDatos)
+                    ? prestDatos
+                    : (prestDatos.prestados || prestDatos.items || []);
+
+                if (lista.length === 0) {
+                    document.getElementById('prest-vacio').style.display = 'block';
+                    return;
+                }
+
+                // Agrupar por prestador
+                prestGrupos = {};
+                lista.forEach(eq => {
+                    const key = eq.prestador || eq.prestado_por || eq.nombre_prestador || 'Sin nombre';
+                    if (!prestGrupos[key]) prestGrupos[key] = [];
+                    prestGrupos[key].push(eq);
+                });
+
+                prestRenderizar(prestGrupos);
+                document.getElementById('prest-estado').style.display = 'block';
+                mostrarToast(`✅ ${lista.length} equipos pendientes cargados`);
+
+            } catch (err) {
+                console.error('Error cargando prestados:', err);
+                document.getElementById('prest-error').style.display = 'block';
+                document.getElementById('prest-error-msg').textContent = err.message;
+                mostrarToast('❌ Error al cargar el archivo');
+            }
+        }
+
+        function prestRenderizar(grupos) {
+            const lista = document.getElementById('prest-lista');
+            const resumen = document.getElementById('prest-resumen-global');
+
+            // Calcular totales globales
+            let totalEquipos = 0;
+            let totalMonto = 0;
+            Object.values(grupos).forEach(eqs => {
+                totalEquipos += eqs.length;
+                eqs.forEach(eq => {
+                    totalMonto += Number(eq.costo || eq.valor || eq.precio || 0);
+                });
+            });
+
+            // Resumen global
+            const prestadores = Object.keys(grupos).length;
+            resumen.innerHTML = `
+                <div class="resumen-total-card">
+                    <div>
+                        <div class="label">Total pendiente</div>
+                        <div class="valor">${formatMoney(totalMonto)}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <div class="label">${totalEquipos} equipos</div>
+                        <div class="label">${prestadores} prestador${prestadores !== 1 ? 'es' : ''}</div>
+                    </div>
+                </div>
+            `;
+
+            // Tarjetas por prestador
+            lista.innerHTML = Object.entries(grupos).map(([nombre, equipos]) => {
+                const subtotal = equipos.reduce((s, eq) =>
+                    s + Number(eq.costo || eq.valor || eq.precio || 0), 0);
+
+                const filas = equipos.map(eq => {
+                    const imei = eq.imei || eq.IMEI || '-';
+                    const costo = Number(eq.costo || eq.valor || eq.precio || 0);
+                    const desc = eq.descripcion || eq.equipo || eq.nombre || 'Sin descripción';
+                    return `
+                        <div class="equipo-prestado-row">
+                            <div class="equipo-info">
+                                <div class="equipo-nombre">${desc}</div>
+                                ${imei !== '-' ? `<div class="equipo-imei">IMEI: ${imei}</div>` : ''}
+                                ${eq.remision ? `<div class="equipo-imei">Remisión: ${eq.remision}</div>` : ''}
+                            </div>
+                            <div class="equipo-costo">${formatMoney(costo)}</div>
+                        </div>
+                    `;
+                }).join('');
+
+                return `
+                    <div class="prestador-card" data-prestador="${nombre}">
+                        <div class="prestador-header" onclick="prestToggle(this)">
+                            <div>
+                                <div class="prestador-nombre">👤 ${nombre}</div>
+                                <div style="font-size:0.75rem; color:var(--gray-500);">
+                                    ${equipos.length} equipo${equipos.length !== 1 ? 's' : ''}
+                                </div>
+                            </div>
+                            <div style="text-align:right;">
+                                <div class="prestador-total">${formatMoney(subtotal)}</div>
+                                <div style="font-size:0.75rem; color:var(--gray-500);">▼</div>
+                            </div>
+                        </div>
+                        <div class="prestador-body">
+                            ${filas}
+                            <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                                <button class="btn btn-primary"
+                                        onclick="prestAbrirPago('${nombre}', 'masivo')"
+                                        style="flex:1; padding:0.65rem; font-size:0.85rem;">
+                                    💰 Pagar Todo (${formatMoney(subtotal)})
+                                </button>
+                                <button class="btn btn-secondary"
+                                        onclick="prestAbrirPago('${nombre}', 'personalizado')"
+                                        style="flex:1; padding:0.65rem; font-size:0.85rem;">
+                                    ✏️ Monto Custom
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function prestToggle(header) {
+            const body = header.nextElementSibling;
+            const flecha = header.querySelector('div[style*="right"] div:last-child');
+            const oculto = body.style.display === 'none';
+            body.style.display = oculto ? 'block' : 'none';
+            if (flecha) flecha.textContent = oculto ? '▲' : '▼';
+        }
+
+        function prestFiltrar() {
+            const q = document.getElementById('prest-filtro').value.toLowerCase().trim();
+            if (!q) { prestRenderizar(prestGrupos); return; }
+            const filtrado = {};
+            Object.entries(prestGrupos).forEach(([nombre, equipos]) => {
+                if (nombre.toLowerCase().includes(q)) filtrado[nombre] = equipos;
+            });
+            prestRenderizar(filtrado);
+        }
+
+        function prestAbrirPago(nombrePrestador, modo) {
+            const equipos = prestGrupos[nombrePrestador] || [];
+            const subtotal = equipos.reduce((s, eq) =>
+                s + Number(eq.costo || eq.valor || eq.precio || 0), 0);
+
+            prestPagoActual = { prestador: nombrePrestador, equipos, total: subtotal, modo };
+
+            // Llenar resumen del modal
+            const filas = equipos.map(eq => {
+                const costo = Number(eq.costo || eq.valor || eq.precio || 0);
+                const desc = eq.descripcion || eq.equipo || eq.nombre || 'Sin descripción';
+                return `
+                    <div class="gar-resumen-row">
+                        <span>${desc}</span>
+                        <span>${formatMoney(costo)}</span>
+                    </div>`;
+            }).join('');
+
+            document.getElementById('prest-pago-resumen').innerHTML = `
+                <div class="gar-resumen-row">
+                    <span><strong>Prestador</strong></span>
+                    <span><strong>${nombrePrestador}</strong></span>
+                </div>
+                ${filas}
+                <div class="gar-resumen-row">
+                    <span><strong>Total</strong></span>
+                    <span><strong>${formatMoney(subtotal)}</strong></span>
+                </div>
+            `;
+
+            // En modo masivo precarga el monto total; en personalizado lo deja vacío
+            document.getElementById('prest-pago-monto').value =
+                modo === 'masivo' ? new Intl.NumberFormat('es-CO').format(subtotal) : '';
+            document.getElementById('prest-pago-metodo').value = '';
+            document.getElementById('prest-pago-referencia').value = '';
+            document.getElementById('prest-pago-nota').value = '';
+            delete capturedPhotos['prestSoporte'];
+            const btnS = document.getElementById('btn-prest-soporte');
+            if (btnS) { btnS.classList.remove('captured'); btnS.innerHTML = '📸 Foto del Comprobante'; }
+
+            document.getElementById('prest-pago-modal').classList.add('active');
+        }
+
+        function prestCerrarPago() {
+            document.getElementById('prest-pago-modal').classList.remove('active');
+            prestPagoActual = null;
+        }
+
+        async function prestConfirmarPago() {
+            if (!prestPagoActual) return;
+
+            const metodo = document.getElementById('prest-pago-metodo').value;
+            const monto  = parsearValor(document.getElementById('prest-pago-monto').value);
+            const ref    = document.getElementById('prest-pago-referencia').value.trim();
+            const nota   = document.getElementById('prest-pago-nota').value.trim();
+
+            if (!metodo || !monto) {
+                mostrarToast('⚠️ Selecciona método y monto');
+                return;
+            }
+
+            mostrarToast('☁️ Registrando pago...');
+
+            try {
+                const fechaStr = new Date().toISOString();
+                const docName  = `Pago-${prestPagoActual.prestador.replace(/\s+/g,'-')}-${Date.now()}`;
+
+                const doc = {
+                    tipo: 'pago_prestador',
+                    fecha: fechaStr,
+                    prestador: prestPagoActual.prestador,
+                    equipos: prestPagoActual.equipos,
+                    total_deuda: prestPagoActual.total,
+                    pago: {
+                        monto,
+                        metodo,
+                        referencia: ref || null,
+                        nota: nota || null
+                    },
+                    soporte_foto: capturedPhotos['prestSoporte'] ? true : false
+                };
+
+                // Subir JSON del pago
+                await subirArchivoDrive(
+                    JSON.stringify(doc, null, 2),
+                    `${docName}.json`,
+                    FOLDER_IDS.prestamosPagos
+                );
+
+                // Subir foto soporte si existe
+                if (capturedPhotos['prestSoporte']) {
+                    await subirImagenDrive(
+                        capturedPhotos['prestSoporte'],
+                        `${docName}-Soporte.jpg`,
+                        FOLDER_IDS.recibosCaja
+                    );
+                }
+
+                prestCerrarPago();
+                mostrarToast(`✅ Pago de ${formatMoney(monto)} a ${prestPagoActual.prestador} registrado`);
+
+            } catch (err) {
+                console.error('Error registrando pago:', err);
+                mostrarToast('❌ Error al registrar pago. Revisa consola.');
+            }
+        }
+
+        // ============= FIN MÓDULO PAGAR PRESTADORES =============
 
         // Inicializar
         window.addEventListener('load', () => {
