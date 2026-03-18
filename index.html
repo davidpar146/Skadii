@@ -1026,6 +1026,50 @@
 
         .prest-pago-modal.active { display: flex; }
 
+        /* ===== SELECCIÓN MÚLTIPLE PRESTADORES ===== */
+        .prest-seleccion-bar {
+            display: none;
+            position: sticky;
+            bottom: 0;
+            background: var(--primary);
+            color: white;
+            padding: 0.85rem 1rem;
+            border-radius: 10px 10px 0 0;
+            margin-top: 0.5rem;
+            align-items: center;
+            justify-content: space-between;
+            gap: 0.75rem;
+            z-index: 50;
+            box-shadow: 0 -3px 12px rgba(0,0,0,0.15);
+        }
+
+        .prest-seleccion-bar.visible { display: flex; }
+
+        .prest-seleccion-bar .info {
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+
+        .prest-seleccion-bar .info small {
+            display: block;
+            font-size: 0.75rem;
+            opacity: 0.85;
+            font-weight: 400;
+        }
+
+        .prestador-checkbox {
+            width: 20px;
+            height: 20px;
+            cursor: pointer;
+            accent-color: var(--primary);
+            flex-shrink: 0;
+        }
+
+        .prestador-card.seleccionada {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37,99,235,0.25);
+        }
+
         .prest-pago-box {
             background: white;
             border-radius: 12px;
@@ -1194,7 +1238,7 @@
             </div>
             <div class="form-group">
                 <label>Costo del Equipo <span style="font-size:0.75rem; color:var(--gray-500);">(Opcional - Solo contabilidad)</span></label>
-                <input type="number" id="item-costo" placeholder="0" min="0" step="1">
+                <input type="text" id="item-costo" placeholder="0" oninput="formatearInput(this)" inputmode="numeric">
                 <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 0.25rem;">
                     💡 Campo interno. No visible para el cliente.
                 </div>
@@ -2013,19 +2057,41 @@
             <!-- Resumen global -->
             <div id="prest-resumen-global"></div>
 
-            <!-- Filtro por prestador -->
+            <!-- Filtro + botón seleccionar todos -->
             <div class="card" style="padding:0.75rem 1rem;">
-                <div style="display:flex; align-items:center; gap:0.5rem;">
+                <div style="display:flex; align-items:center; gap:0.5rem; margin-bottom:0.5rem;">
                     <span style="font-size:0.85rem; color:var(--gray-600);">🔍 Filtrar:</span>
                     <input type="text" id="prest-filtro" placeholder="Nombre del prestador..."
                            oninput="prestFiltrar()"
                            style="flex:1; padding:0.5rem 0.75rem; border:2px solid var(--gray-200);
                                   border-radius:8px; font-size:0.9rem;">
                 </div>
+                <div style="display:flex; gap:0.5rem;">
+                    <button class="btn btn-secondary" onclick="prestSeleccionarTodos()"
+                            style="flex:1; padding:0.5rem; font-size:0.82rem;">
+                        ☑️ Seleccionar todos
+                    </button>
+                    <button class="btn btn-secondary" onclick="prestDeseleccionarTodos()"
+                            style="flex:1; padding:0.5rem; font-size:0.82rem;">
+                        🔲 Deseleccionar
+                    </button>
+                </div>
             </div>
 
             <!-- Lista agrupada por prestador -->
             <div id="prest-lista"></div>
+
+            <!-- Barra de pago masivo (aparece al seleccionar) -->
+            <div id="prest-seleccion-bar" class="prest-seleccion-bar">
+                <div class="info">
+                    <span id="prest-sel-count">0 seleccionados</span>
+                    <small id="prest-sel-monto">$0</small>
+                </div>
+                <button class="btn btn-success" onclick="prestAbrirPagoMasivo()"
+                        style="padding:0.65rem 1.25rem; font-size:0.9rem; width:auto;">
+                    💰 Pagar Seleccionados
+                </button>
+            </div>
 
         </div>
 
@@ -2621,22 +2687,8 @@
                 return;
             }
 
-            // Capturar costo (opcional) - lectura definitiva
-            const costoEl = document.getElementById('item-costo');
-            const costoRaw = costoEl.value;
-            const costoValNum = costoEl.valueAsNumber; // Para type=number
-            let costo = 0;
-            
-            // Intentar primero valueAsNumber (más confiable en móviles)
-            if (!isNaN(costoValNum) && costoValNum > 0) {
-                costo = Math.floor(costoValNum);
-            } else if (costoRaw && costoRaw.trim() !== '' && costoRaw.trim() !== '0') {
-                // Fallback: limpiar cualquier formato y parsear
-                const costoLimpio = costoRaw.toString().replace(/[$.,\s]/g, '');
-                costo = parseInt(costoLimpio) || 0;
-            }
-            
-            console.log('🔍 COSTO DEBUG:', { costoRaw, costoValNum, costoFinal: costo });
+            // Capturar costo — ahora es type=text con formato de miles
+            const costo = parsearValor(document.getElementById('item-costo').value);
 
             if (itemEditandoId !== null) {
                 // MODO EDICIÓN: actualizar el ítem existente
@@ -2690,7 +2742,9 @@
             document.getElementById('item-valor').value = new Intl.NumberFormat('es-CO').format(item.valor);
             document.getElementById('item-imei').value = item.imei;
             document.getElementById('item-notas').value = item.notas || '';
-            document.getElementById('item-costo').value = item.costo || '';
+            document.getElementById('item-costo').value = item.costo > 0
+                ? new Intl.NumberFormat('es-CO').format(item.costo)
+                : '';
 
             // Estado del equipo
             setEstado(item.estado);
@@ -5045,32 +5099,37 @@
                         </div>`;
                 }).join('');
 
+                const nombreEncoded = encodeURIComponent(nombre);
                 return `
-                    <div class="prestador-card" data-prestador="${nombre}">
-                        <div class="prestador-header" onclick="prestToggle(this)">
-                            <div>
+                    <div class="prestador-card" id="pcard-${nombreEncoded}" data-prestador="${nombre}" data-subtotal="${subtotal}">
+                        <div class="prestador-header">
+                            <input type="checkbox" class="prestador-checkbox"
+                                   id="pcheck-${nombreEncoded}"
+                                   onchange="prestToggleSeleccion('${nombreEncoded}', ${subtotal})"
+                                   onclick="event.stopPropagation()">
+                            <div style="flex:1; cursor:pointer;" onclick="prestToggleBody('${nombreEncoded}')">
                                 <div class="prestador-nombre">👤 ${nombre}</div>
                                 <div style="font-size:0.75rem; color:var(--gray-500);">
                                     ${equipos.length} equipo${equipos.length !== 1 ? 's' : ''}
                                 </div>
                             </div>
-                            <div style="text-align:right;">
+                            <div style="text-align:right; cursor:pointer;" onclick="prestToggleBody('${nombreEncoded}')">
                                 <div class="prestador-total">${formatMoney(subtotal)}</div>
                                 <div style="font-size:0.75rem; color:var(--gray-500);">▼</div>
                             </div>
                         </div>
-                        <div class="prestador-body">
+                        <div class="prestador-body" id="pbody-${nombreEncoded}">
                             ${filas}
                             <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
                                 <button class="btn btn-primary"
                                         onclick="prestAbrirPago('${nombre}', 'masivo')"
                                         style="flex:1; padding:0.65rem; font-size:0.85rem;">
-                                    💰 Pagar Todo (${formatMoney(subtotal)})
+                                    💰 Pagar (${formatMoney(subtotal)})
                                 </button>
                                 <button class="btn btn-secondary"
                                         onclick="prestAbrirPago('${nombre}', 'personalizado')"
-                                        style="flex:1; padding:0.65rem; font-size:0.85rem;">
-                                    ✏️ Monto Custom
+                                        style="flex:0.6; padding:0.65rem; font-size:0.85rem;">
+                                    ✏️ Custom
                                 </button>
                             </div>
                         </div>
@@ -5078,12 +5137,117 @@
             }).join('');
         }
 
-        function prestToggle(header) {
-            const body = header.nextElementSibling;
-            const flecha = header.querySelector('div[style*="right"] div:last-child');
-            const oculto = body.style.display === 'none';
-            body.style.display = oculto ? 'block' : 'none';
-            if (flecha) flecha.textContent = oculto ? '▲' : '▼';
+        function prestToggleBody(nombreEncoded) {
+            const body   = document.getElementById(`pbody-${nombreEncoded}`);
+            const header = document.getElementById(`pcard-${nombreEncoded}`)
+                              .querySelector('.prestador-header div[style*="right"] div:last-child');
+            const abierto = body.classList.contains('open');
+            body.classList.toggle('open', !abierto);
+            if (header) header.textContent = abierto ? '▼' : '▲';
+        }
+
+        // --- SELECCIÓN MÚLTIPLE ---
+        let prestSeleccionados = {}; // { nombreEncoded: { nombre, subtotal, equipos } }
+
+        function prestToggleSeleccion(nombreEncoded, subtotal) {
+            const checkbox = document.getElementById(`pcheck-${nombreEncoded}`);
+            const card     = document.getElementById(`pcard-${nombreEncoded}`);
+            const nombre   = card.dataset.prestador;
+
+            if (checkbox.checked) {
+                prestSeleccionados[nombreEncoded] = {
+                    nombre, subtotal, equipos: prestGrupos[nombre] || []
+                };
+                card.classList.add('seleccionada');
+            } else {
+                delete prestSeleccionados[nombreEncoded];
+                card.classList.remove('seleccionada');
+            }
+            prestActualizarBarraSeleccion();
+        }
+
+        function prestActualizarBarraSeleccion() {
+            const barra = document.getElementById('prest-seleccion-bar');
+            const count = Object.keys(prestSeleccionados).length;
+            const total = Object.values(prestSeleccionados).reduce((s, p) => s + p.subtotal, 0);
+
+            if (count > 0) {
+                barra.classList.add('visible');
+                document.getElementById('prest-sel-count').textContent =
+                    `${count} prestador${count !== 1 ? 'es' : ''} seleccionado${count !== 1 ? 's' : ''}`;
+                document.getElementById('prest-sel-monto').textContent =
+                    `Total: ${formatMoney(total)}`;
+            } else {
+                barra.classList.remove('visible');
+            }
+        }
+
+        function prestSeleccionarTodos() {
+            document.querySelectorAll('.prestador-checkbox').forEach(cb => {
+                if (!cb.checked) {
+                    cb.checked = true;
+                    const nombreEncoded = cb.id.replace('pcheck-', '');
+                    const card = document.getElementById(`pcard-${nombreEncoded}`);
+                    const subtotal = Number(card.dataset.subtotal || 0);
+                    const nombre = card.dataset.prestador;
+                    prestSeleccionados[nombreEncoded] = {
+                        nombre, subtotal, equipos: prestGrupos[nombre] || []
+                    };
+                    card.classList.add('seleccionada');
+                }
+            });
+            prestActualizarBarraSeleccion();
+        }
+
+        function prestDeseleccionarTodos() {
+            document.querySelectorAll('.prestador-checkbox').forEach(cb => {
+                cb.checked = false;
+                const nombreEncoded = cb.id.replace('pcheck-', '');
+                const card = document.getElementById(`pcard-${nombreEncoded}`);
+                if (card) card.classList.remove('seleccionada');
+            });
+            prestSeleccionados = {};
+            prestActualizarBarraSeleccion();
+        }
+
+        function prestAbrirPagoMasivo() {
+            const seleccionados = Object.values(prestSeleccionados);
+            if (seleccionados.length === 0) return;
+
+            // Aplanar todos los equipos de todos los prestadores seleccionados
+            const todosEquipos = seleccionados.flatMap(p => p.equipos);
+            const totalGlobal  = seleccionados.reduce((s, p) => s + p.subtotal, 0);
+            const nombresCombinados = seleccionados.map(p => p.nombre).join(', ');
+
+            // Reusar prestAbrirPago con datos combinados
+            prestGrupos['__MASIVO__'] = todosEquipos;
+            prestAbrirPago('__MASIVO__', 'masivo');
+
+            // Actualizar el resumen del modal para reflejar múltiples prestadores
+            const filas = seleccionados.map(p => `
+                <div class="gar-resumen-row">
+                    <span>👤 ${p.nombre} (${p.equipos.length} equipo${p.equipos.length !== 1 ? 's' : ''})</span>
+                    <span>${formatMoney(p.subtotal)}</span>
+                </div>`).join('');
+
+            document.getElementById('prest-pago-resumen').innerHTML = `
+                <div class="gar-resumen-row">
+                    <span><strong>Prestadores</strong></span>
+                    <span><strong>${seleccionados.length} seleccionados</strong></span>
+                </div>
+                ${filas}
+                <div class="gar-resumen-row">
+                    <span><strong>Total combinado</strong></span>
+                    <span><strong>${formatMoney(totalGlobal)}</strong></span>
+                </div>`;
+
+            document.getElementById('prest-pago-monto').value =
+                new Intl.NumberFormat('es-CO').format(totalGlobal);
+
+            // Guardar lista de prestadores seleccionados para el pago
+            prestPagoActual.prestador = nombresCombinados;
+            prestPagoActual.total = totalGlobal;
+            prestPagoActual.seleccionMultiple = seleccionados;
         }
 
         function prestFiltrar() {
@@ -5155,6 +5319,7 @@
 
         function prestCerrarPago() {
             document.getElementById('prest-pago-modal').classList.remove('active');
+            if (prestPagoActual?.seleccionMultiple) delete prestGrupos['__MASIVO__'];
             prestPagoActual = null;
         }
 
@@ -5193,29 +5358,33 @@
                     soporte_foto: capturedPhotos['prestSoporte'] ? true : false
                 };
 
-                // Obtener los fileIds únicos de los equipos de este prestador
-                const equipos = prestPagoActual.equipos;
-                const fileIdsUnicos = [...new Set(equipos.map(eq => eq._fileId).filter(Boolean))];
+                // Guardar datos necesarios antes de cualquier operación async
+                // (prestPagoActual puede volverse null si algo falla en el camino)
+                const nombrePrestador = prestPagoActual.prestador || 'Prestador';
+                const montoFinal = monto;
+
+                // Obtener equipos — puede ser pago individual o masivo multi-prestador
+                const todosEquipos = prestPagoActual.seleccionMultiple
+                    ? prestPagoActual.seleccionMultiple.flatMap(p => p.equipos)
+                    : (prestPagoActual.equipos || []);
+
+                const fileIdsUnicos = [...new Set(todosEquipos.map(eq => eq._fileId).filter(Boolean))];
 
                 // Actualizar cada archivo Prestado-*.json en Drive → estado: 'pagado'
                 for (const fileId of fileIdsUnicos) {
                     try {
-                        // Leer el doc actual
                         const getResp = await fetch(
                             `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
                             { headers: { 'Authorization': 'Bearer ' + accessToken } }
                         );
                         const docActual = await getResp.json();
 
-                        // Marcar como pagado
                         docActual.estado = 'pagado';
                         docActual.pago   = infoPago;
 
-                        // Obtener nombre del archivo desde los equipos del prestador
-                        const nombreArchivo = prestPagoActual.equipos
+                        const nombreArchivo = todosEquipos
                             .find(e => e._fileId === fileId)?._fileName || `Prestado-pagado-${fileId}.json`;
 
-                        // Sobreescribir en Drive con PATCH
                         const patchForm = new FormData();
                         patchForm.append('metadata', new Blob(
                             [JSON.stringify({ name: nombreArchivo })],
@@ -5234,15 +5403,15 @@
                                 body: patchForm
                             }
                         );
-                        console.log(`✅ Prestado ${fileId} marcado como pagado`);
+                        console.log(`✅ ${fileId} marcado como pagado`);
                     } catch (e) {
-                        console.error(`Error actualizando prestado ${fileId}:`, e);
+                        console.error(`Error actualizando ${fileId}:`, e);
                     }
                 }
 
                 // Subir foto soporte si existe (en recibosCaja)
                 if (capturedPhotos['prestSoporte']) {
-                    const nombreFoto = `Pago-${prestPagoActual.prestador.replace(/\s+/g,'-')}-${Date.now()}-Soporte.jpg`;
+                    const nombreFoto = `Pago-${nombrePrestador.replace(/\s+/g,'-')}-${Date.now()}-Soporte.jpg`;
                     await subirImagenDrive(
                         capturedPhotos['prestSoporte'],
                         nombreFoto,
@@ -5251,9 +5420,9 @@
                 }
 
                 prestCerrarPago();
-                mostrarToast(`✅ Pago de ${formatMoney(monto)} a ${prestPagoActual.prestador} registrado`);
-
-                // Recargar la lista para reflejar los pagados
+                prestSeleccionados = {};
+                delete prestGrupos['__MASIVO__'];
+                mostrarToast(`✅ Pago de ${formatMoney(montoFinal)} registrado correctamente`);
                 setTimeout(() => prestCargar(), 800);
 
             } catch (err) {
