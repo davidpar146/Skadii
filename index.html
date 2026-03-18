@@ -5020,10 +5020,9 @@
             }
 
             lista.innerHTML = Object.entries(grupos).map(([nombre, equipos]) => {
-                const subtotal = equipos.reduce((s, eq) =>
-                    s + Number(eq.costo || eq.valor || eq.precio || eq.monto || 0), 0);
+                const subtotal = equipos.reduce((s, eq) => s + Number(eq.costo || 0), 0);
 
-                const config = prestDatos.configuracion || {};
+                const DIAS_ALERTA = 15; // días sin pagar para mostrar alerta
                 const filas = equipos.map(eq => {
                     const imei  = eq.imei || eq.IMEI || '-';
                     const costo = Number(eq.costo || 0);
@@ -5032,8 +5031,7 @@
                     const dias  = eq._docCompleto?.fecha_remision
                         ? Math.floor((Date.now() - new Date(eq._docCompleto.fecha_remision)) / 86400000)
                         : null;
-                    const config2 = prestDatos?.configuracion || {};
-                    const alerta = config2.alertar_dias_sin_pagar && dias !== null && dias >= config2.alertar_dias_sin_pagar;
+                    const alerta = dias !== null && dias >= DIAS_ALERTA;
 
                     return `
                         <div class="equipo-prestado-row" ${alerta ? 'style="background:#fff7ed;"' : ''}>
@@ -5046,11 +5044,6 @@
                             <div class="equipo-costo">${formatMoney(costo)}</div>
                         </div>`;
                 }).join('');
-
-                // Determinar qué métodos requieren soporte fotográfico
-                const config2 = prestDatos.configuracion || {};
-                const metodosPago = config2.metodos_pago_permitidos ||
-                    ['efectivo','transferencia','tarjeta','nequi','daviplata','otro'];
 
                 return `
                     <div class="prestador-card" data-prestador="${nombre}">
@@ -5178,12 +5171,10 @@
                 return;
             }
 
-            // Validar soporte obligatorio según config del archivo base (si cargó)
-            const config = prestDatos?.configuracion || {};
+            // Validar soporte: transferencia y tarjeta requieren foto
             const requiereFoto =
-                (metodo === 'efectivo'      && config.requiere_soporte_efectivo) ||
-                (metodo === 'transferencia' && config.requiere_soporte_transferencia) ||
-                (metodo === 'tarjeta'       && config.requiere_soporte_tarjeta);
+                (metodo === 'transferencia') ||
+                (metodo === 'tarjeta');
 
             if (requiereFoto && !capturedPhotos['prestSoporte']) {
                 mostrarToast(`⚠️ El método "${metodo}" requiere foto del comprobante`);
@@ -5220,10 +5211,14 @@
                         docActual.estado = 'pagado';
                         docActual.pago   = infoPago;
 
+                        // Obtener nombre del archivo desde los equipos del prestador
+                        const nombreArchivo = prestPagoActual.equipos
+                            .find(e => e._fileId === fileId)?._fileName || `Prestado-pagado-${fileId}.json`;
+
                         // Sobreescribir en Drive con PATCH
                         const patchForm = new FormData();
                         patchForm.append('metadata', new Blob(
-                            [JSON.stringify({ name: docActual._fileName || equipos.find(e=>e._fileId===fileId)?._fileName })],
+                            [JSON.stringify({ name: nombreArchivo })],
                             { type: 'application/json' }
                         ));
                         patchForm.append('file', new Blob(
