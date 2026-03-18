@@ -723,6 +723,76 @@
         .estado-entregado  { background: #dcfce7; color: #166534; }
         .estado-no_reparado{ background: #fee2e2; color: #991b1b; }
 
+        /* ===== ESTILOS NOVEDADES MANTENIMIENTO ===== */
+        .novedad-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            padding: 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .novedad-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 0.5rem;
+        }
+
+        .novedad-estado-tag {
+            font-size: 0.72rem;
+            font-weight: 700;
+            padding: 0.2rem 0.6rem;
+            border-radius: 10px;
+        }
+
+        .novedad-fecha {
+            font-size: 0.75rem;
+            color: var(--gray-500);
+        }
+
+        .novedad-texto {
+            font-size: 0.85rem;
+            color: var(--gray-700);
+            margin-top: 0.25rem;
+        }
+
+        .novedad-pago {
+            margin-top: 0.5rem;
+            padding: 0.4rem 0.6rem;
+            background: #f0fdf4;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            color: #166534;
+        }
+
+        .mant-lista-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-radius: 10px;
+            margin-bottom: 0.75rem;
+            overflow: hidden;
+        }
+
+        .mant-lista-header {
+            padding: 0.85rem 1rem;
+            background: var(--gray-50);
+            border-bottom: 1px solid var(--gray-200);
+            cursor: pointer;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .mant-lista-body {
+            padding: 0.85rem 1rem;
+            display: none;
+        }
+
+        .mant-lista-body.open {
+            display: block;
+        }
+
         /* ===== ESTILOS MÓDULO GARANTÍAS ===== */
         .gar-remision-encontrada {
             background: #f0fdf4;
@@ -1598,6 +1668,99 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- Modal de Novedad de Mantenimiento -->
+    <div id="mant-novedad-modal" class="modal">
+        <div class="modal-content" style="max-width:520px;">
+            <div class="modal-header">
+                <h3>📝 Agregar Novedad</h3>
+                <button class="modal-close" onclick="mantCerrarNovedad()">×</button>
+            </div>
+
+            <!-- Info del mantenimiento -->
+            <div id="mant-novedad-info" style="background:var(--gray-50); border-radius:8px; padding:0.75rem; margin-bottom:1rem; font-size:0.85rem;"></div>
+
+            <!-- Nuevo estado -->
+            <div class="form-group">
+                <label>Nuevo Estado *</label>
+                <div class="estado-mant-group" id="mant-novedad-estados">
+                    <button class="estado-mant-btn" data-estado="recibido" onclick="mantNovedadSetEstado(this)">📥 Recibido</button>
+                    <button class="estado-mant-btn" data-estado="en_proceso" onclick="mantNovedadSetEstado(this)">⚙️ En Proceso</button>
+                    <button class="estado-mant-btn" data-estado="entregado" onclick="mantNovedadSetEstado(this)">✅ Entregado</button>
+                    <button class="estado-mant-btn" data-estado="no_reparado" onclick="mantNovedadSetEstado(this)">❌ No Reparado</button>
+                </div>
+            </div>
+
+            <!-- Nota de la novedad -->
+            <div class="form-group">
+                <label>Descripción de la Novedad *</label>
+                <textarea id="mant-novedad-texto" placeholder="¿Qué ocurrió? Cambio de estado, diagnóstico, repuesto encontrado..." rows="3"></textarea>
+            </div>
+
+            <!-- Sección de pago (precio final) -->
+            <div id="mant-novedad-pago-section">
+                <div style="background:#fef3c7; padding:0.75rem; border-radius:8px; margin-bottom:0.75rem; font-size:0.85rem;">
+                    <strong>💰 Liquidación del Servicio</strong>
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Precio Final del Servicio</label>
+                        <input type="text" id="mant-novedad-precio-final" placeholder="0" oninput="formatearInput(this); mantCalcularSaldo()">
+                    </div>
+                    <div class="form-group">
+                        <label>Anticipo ya recibido</label>
+                        <input type="text" id="mant-novedad-anticipo-display" placeholder="0" disabled
+                               style="background:var(--gray-100);">
+                    </div>
+                </div>
+                <div id="mant-novedad-saldo-display" style="margin-bottom:0.75rem;"></div>
+                <div class="form-group">
+                    <label>Método de Pago del Saldo</label>
+                    <select id="mant-novedad-metodo-pago">
+                        <option value="">Seleccione...</option>
+                        <option value="efectivo">Efectivo</option>
+                        <option value="transferencia">Transferencia</option>
+                        <option value="nequi">Nequi</option>
+                        <option value="daviplata">Daviplata</option>
+                        <option value="otro">Otro</option>
+                    </select>
+                </div>
+                <button class="btn btn-photo" id="btn-mant-soporte-pago" onclick="tomarFoto('mantSoportePago')" style="margin-bottom:0.75rem;">
+                    📸 Foto Soporte de Pago
+                </button>
+                <button class="btn btn-photo" id="btn-mant-soporte-anticipo" onclick="tomarFoto('mantSoporteAnticipo')" style="margin-bottom:0.75rem;">
+                    📸 Foto Soporte del Anticipo
+                </button>
+            </div>
+
+            <!-- Inspección visual (solo para entregado / no reparado) -->
+            <div id="mant-novedad-inspeccion-section" style="display:none;">
+                <div style="background:#dbeafe; padding:0.75rem; border-radius:8px; margin-bottom:0.75rem; font-size:0.85rem;">
+                    <strong>🔍 Inspección Visual al Cierre</strong><br>
+                    <span style="color:var(--gray-600);">El cliente confirma con su firma el estado del equipo tal como ingresó.</span>
+                </div>
+                <div id="mant-novedad-inspeccion-display"></div>
+            </div>
+
+            <!-- Firma (solo para entregado / no reparado) -->
+            <div id="mant-novedad-firma-section" style="display:none;">
+                <div class="form-group">
+                    <label>✍️ Firma del Cliente al Cierre</label>
+                    <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.5rem;">
+                        El cliente firma aceptando el estado final del equipo
+                    </p>
+                    <canvas id="mant-novedad-firma-canvas" class="firma-canvas" width="400" height="160"></canvas>
+                    <button class="btn btn-secondary" onclick="mantNovedadLimpiarFirma()" style="margin-top:0.4rem; padding:0.5rem;">
+                        🗑️ Limpiar Firma
+                    </button>
+                </div>
+            </div>
+
+            <button class="btn btn-success" onclick="mantGuardarNovedad()">
+                💾 Guardar Novedad
+            </button>
+        </div>
     </div>
 
     <!-- ===== MÓDULO GARANTÍAS ===== -->
@@ -3296,7 +3459,12 @@
 
             } catch (error) {
                 console.error('Error cargando claves de asesores:', error);
-                mostrarToast('❌ Error cargando asesores. Ver consola.');
+                const msg = error.message.includes('403')
+                    ? '❌ Acceso denegado al archivo de claves. Verifica que esté compartido.'
+                    : error.message.includes('404')
+                    ? '❌ Archivo CLAVES-ASESORES-V2 no encontrado. Verifica el ID.'
+                    : '❌ Error cargando asesores. Ver consola.';
+                mostrarToast(msg);
                 clavesAsesores = {};
                 asesoresPermisos = {};
                 actualizarDropdownAsesores();
@@ -3391,6 +3559,10 @@
         function mostrarAnular() {
             document.getElementById('anulacion-modal').classList.add('active');
             document.getElementById('dropdown-menu').classList.remove('show');
+            // Si no hay asesores cargados, intentar cargar automáticamente
+            if (Object.keys(clavesAsesores).length === 0 && accessToken) {
+                cargarClavesAsesores();
+            }
         }
 
         async function recargarAsesores() {
@@ -3822,7 +3994,7 @@
             container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando...</p>';
             try {
                 const response = await gapi.client.drive.files.list({
-                    q: `'${FOLDER_IDS.mantenimientos}' in parents and trashed=false and name contains 'Mantenimiento-'`,
+                    q: `'${FOLDER_IDS.mantenimientos}' in parents and trashed=false and name contains 'Mantenimiento-' and not name contains '-Novedad'`,
                     fields: 'files(id, name, createdTime)',
                     orderBy: 'name desc',
                     pageSize: 50
@@ -3832,22 +4004,368 @@
                     container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No hay mantenimientos registrados</p>';
                     return;
                 }
-                container.innerHTML = files.map(f => {
-                    const fecha = new Date(f.createdTime).toLocaleDateString('es-CO');
+
+                // Cargar cada archivo para obtener estado actual y datos
+                container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando detalles...</p>';
+                const tarjetas = await Promise.all(files.map(async f => {
+                    try {
+                        const r = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        const doc = await r.json();
+                        return { fileId: f.id, fileName: f.name, doc };
+                    } catch {
+                        return { fileId: f.id, fileName: f.name, doc: null };
+                    }
+                }));
+
+                const ESTADO_LABELS = {
+                    recibido: '📥 Recibido', en_proceso: '⚙️ En Proceso',
+                    entregado: '✅ Entregado', no_reparado: '❌ No Reparado'
+                };
+                const ESTADO_CLASE = {
+                    recibido: 'estado-recibido', en_proceso: 'estado-en_proceso',
+                    entregado: 'estado-entregado', no_reparado: 'estado-no_reparado'
+                };
+
+                container.innerHTML = tarjetas.map(({ fileId, fileName, doc }) => {
+                    const nombre = fileName.replace('.json', '');
+                    const fecha = doc ? new Date(doc.fecha_ingreso).toLocaleDateString('es-CO') : '-';
+                    const cliente = doc ? (doc.cliente?.nombre || '-') : '-';
+                    const equipo = doc ? (doc.equipo?.descripcion || '-') : '-';
+                    const estado = doc ? (doc.estado_actual || 'recibido') : 'recibido';
+                    const anticipo = doc ? (doc.costos?.anticipo || 0) : 0;
+                    const novedades = doc ? (doc.novedades || []) : [];
+
+                    const novedadesHTML = novedades.length > 0
+                        ? novedades.map(n => `
+                            <div class="novedad-card">
+                                <div class="novedad-card-header">
+                                    <span class="novedad-estado-tag ${ESTADO_CLASE[n.estado] || 'estado-recibido'}">
+                                        ${ESTADO_LABELS[n.estado] || n.estado}
+                                    </span>
+                                    <span class="novedad-fecha">${new Date(n.fecha).toLocaleDateString('es-CO')}</span>
+                                </div>
+                                <div class="novedad-texto">${n.texto}</div>
+                                ${n.pago ? `<div class="novedad-pago">
+                                    💰 Precio final: ${formatMoney(n.pago.precio_final || 0)} |
+                                    Anticipo: ${formatMoney(n.pago.anticipo || 0)} |
+                                    Saldo: ${formatMoney(n.pago.saldo || 0)} |
+                                    ${n.pago.metodo || '-'}
+                                </div>` : ''}
+                            </div>`).join('')
+                        : '<p style="font-size:0.8rem; color:var(--gray-500);">Sin novedades registradas</p>';
+
+                    // Serializar doc para pasarlo al botón (solo lo esencial)
+                    const docResumen = encodeURIComponent(JSON.stringify({
+                        fileId, fileName, estado, anticipo,
+                        cliente: doc?.cliente, equipo: doc?.equipo,
+                        inspeccion_visual: doc?.inspeccion_visual,
+                        novedades: doc?.novedades || []
+                    }));
+
                     return `
-                        <div class="mant-card-item">
-                            <div>
-                                <div style="font-weight:600; font-size:0.9rem;">${f.name.replace('.json','')}</div>
-                                <div style="font-size:0.75rem; color:var(--gray-500);">${fecha}</div>
+                        <div class="mant-lista-card">
+                            <div class="mant-lista-header" onclick="mantToggleCard(this)">
+                                <div>
+                                    <div style="font-weight:700; font-size:0.9rem;">${nombre}</div>
+                                    <div style="font-size:0.75rem; color:var(--gray-600);">
+                                        ${cliente} · ${equipo}
+                                    </div>
+                                    <div style="font-size:0.75rem; color:var(--gray-500);">${fecha}</div>
+                                </div>
+                                <div style="text-align:right;">
+                                    <span class="mant-estado-badge ${ESTADO_CLASE[estado]}">${ESTADO_LABELS[estado] || estado}</span>
+                                    <div style="font-size:0.7rem; color:var(--gray-400); margin-top:0.25rem;">▼</div>
+                                </div>
                             </div>
-                            <a href="https://drive.google.com/file/d/${f.id}/view" target="_blank"
-                               style="font-size:0.8rem; color:var(--primary);">Ver →</a>
-                        </div>
-                    `;
+                            <div class="mant-lista-body">
+                                <div style="margin-bottom:0.75rem;">
+                                    <strong style="font-size:0.85rem; color:var(--gray-700);">Novedades:</strong>
+                                </div>
+                                ${novedadesHTML}
+                                <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                                    <button class="btn btn-primary"
+                                        style="flex:1; padding:0.65rem; font-size:0.85rem;"
+                                        onclick="mantAbrirNovedad('${docResumen}')">
+                                        ➕ Agregar Novedad
+                                    </button>
+                                    <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank"
+                                       class="btn btn-secondary"
+                                       style="flex:0.5; padding:0.65rem; font-size:0.85rem; text-align:center; text-decoration:none;">
+                                        📄 Ver
+                                    </a>
+                                </div>
+                            </div>
+                        </div>`;
                 }).join('');
+
             } catch (e) {
                 container.innerHTML = '<p style="text-align:center; color:var(--danger);">❌ Error cargando lista</p>';
                 console.error(e);
+            }
+        }
+
+        function mantToggleCard(header) {
+            const body = header.nextElementSibling;
+            const flecha = header.querySelector('div[style*="right"] div:last-child');
+            const abierto = body.classList.contains('open');
+            body.classList.toggle('open', !abierto);
+            if (flecha) flecha.textContent = abierto ? '▼' : '▲';
+        }
+
+        // ====== NOVEDADES ======
+        let mantNovedadDoc = null;           // Datos del mantenimiento en edición
+        let mantNovedadEstado = null;
+        let mantNovedadFirmaCtx = null;
+        let mantNovedadFirmaActiva = false;
+        const ESTADOS_CON_CIERRE = ['entregado', 'no_reparado'];
+
+        function mantAbrirNovedad(docResumenEncoded) {
+            mantNovedadDoc = JSON.parse(decodeURIComponent(docResumenEncoded));
+            mantNovedadEstado = null;
+            mantNovedadFirmaCtx = null;
+
+            // Mostrar info del mantenimiento
+            const cliente = mantNovedadDoc.cliente?.nombre || '-';
+            const equipo  = mantNovedadDoc.equipo?.descripcion || '-';
+            const imei    = mantNovedadDoc.equipo?.imei || '-';
+            document.getElementById('mant-novedad-info').innerHTML = `
+                <strong>${mantNovedadDoc.fileName.replace('.json','')}</strong><br>
+                👤 ${cliente} · 📱 ${equipo}<br>
+                <span style="color:var(--gray-500);">IMEI: ${imei}</span>
+            `;
+
+            // Limpiar estado de botones
+            document.querySelectorAll('#mant-novedad-estados .estado-mant-btn')
+                .forEach(b => b.classList.remove('active'));
+
+            // Precargar anticipo
+            const anticipo = mantNovedadDoc.anticipo || 0;
+            document.getElementById('mant-novedad-anticipo-display').value =
+                new Intl.NumberFormat('es-CO').format(anticipo);
+            document.getElementById('mant-novedad-precio-final').value = '';
+            document.getElementById('mant-novedad-saldo-display').innerHTML = '';
+            document.getElementById('mant-novedad-metodo-pago').value = '';
+            document.getElementById('mant-novedad-texto').value = '';
+
+            // Ocultar secciones condicionales
+            document.getElementById('mant-novedad-pago-section').style.display = 'none';
+            document.getElementById('mant-novedad-inspeccion-section').style.display = 'none';
+            document.getElementById('mant-novedad-firma-section').style.display = 'none';
+
+            // Reset fotos
+            ['mantSoportePago','mantSoporteAnticipo'].forEach(k => delete capturedPhotos[k]);
+            ['btn-mant-soporte-pago','btn-mant-soporte-anticipo'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) { btn.classList.remove('captured'); btn.innerHTML = btn.innerHTML.replace('✅','📸'); }
+            });
+
+            document.getElementById('mant-novedad-modal').classList.add('active');
+        }
+
+        function mantNovedadSetEstado(btn) {
+            document.querySelectorAll('#mant-novedad-estados .estado-mant-btn')
+                .forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            mantNovedadEstado = btn.dataset.estado;
+
+            const esCierre = ESTADOS_CON_CIERRE.includes(mantNovedadEstado);
+
+            // Sección de pago: siempre visible al cambiar estado
+            document.getElementById('mant-novedad-pago-section').style.display = 'block';
+
+            // Inspección visual y firma: solo si es cierre
+            document.getElementById('mant-novedad-inspeccion-section').style.display = esCierre ? 'block' : 'none';
+            document.getElementById('mant-novedad-firma-section').style.display = esCierre ? 'block' : 'none';
+
+            if (esCierre) {
+                // Mostrar inspección visual del ingreso
+                mantMostrarInspeccionCierre();
+                // Inicializar canvas firma si no está listo
+                setTimeout(() => mantNovedadIniciarFirma(), 150);
+            }
+        }
+
+        function mantMostrarInspeccionCierre() {
+            const inspeccion = mantNovedadDoc.inspeccion_visual;
+            const container = document.getElementById('mant-novedad-inspeccion-display');
+            if (!inspeccion) {
+                container.innerHTML = '<p style="font-size:0.8rem; color:var(--gray-500);">Sin inspección visual registrada</p>';
+                return;
+            }
+            const todos = [...(inspeccion.frente || []), ...(inspeccion.posterior || [])];
+            if (todos.length === 0) {
+                container.innerHTML = '<p style="font-size:0.8rem; color:var(--gray-500);">Sin daños registrados en el ingreso</p>';
+                return;
+            }
+            container.innerHTML = `
+                <div style="margin-bottom:0.5rem; font-size:0.8rem; color:var(--gray-600);">
+                    Daños registrados al ingreso:
+                </div>
+                ${todos.map(d => `
+                    <div class="damage-list-item">
+                        <div class="damage-dot" style="background:${d.color};"></div>
+                        <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
+                    </div>`).join('')}
+            `;
+        }
+
+        function mantCalcularSaldo() {
+            const precioFinal = parsearValor(document.getElementById('mant-novedad-precio-final').value);
+            const anticipo    = mantNovedadDoc ? (mantNovedadDoc.anticipo || 0) : 0;
+            const saldo       = precioFinal - anticipo;
+            const display     = document.getElementById('mant-novedad-saldo-display');
+
+            if (!precioFinal) { display.innerHTML = ''; return; }
+
+            if (saldo > 0) {
+                display.innerHTML = `<div class="gar-diferencia-positiva">
+                    💰 Saldo por cobrar: <strong>${formatMoney(saldo)}</strong>
+                </div>`;
+            } else if (saldo < 0) {
+                display.innerHTML = `<div class="gar-diferencia-negativa">
+                    💚 Devolver al cliente: <strong>${formatMoney(Math.abs(saldo))}</strong>
+                </div>`;
+            } else {
+                display.innerHTML = `<div style="background:var(--gray-100); padding:0.6rem; border-radius:6px; text-align:center; font-size:0.85rem;">
+                    ⚖️ Sin saldo pendiente
+                </div>`;
+            }
+        }
+
+        // Canvas firma novedad
+        function mantNovedadIniciarFirma() {
+            const canvas = document.getElementById('mant-novedad-firma-canvas');
+            if (mantNovedadFirmaCtx) return;
+            mantNovedadFirmaCtx = canvas.getContext('2d');
+            mantNovedadFirmaCtx.strokeStyle = '#1f2937';
+            mantNovedadFirmaCtx.lineWidth = 2.5;
+            mantNovedadFirmaCtx.lineCap = 'round';
+            mantNovedadFirmaCtx.lineJoin = 'round';
+            const rect = canvas.getBoundingClientRect();
+            canvas.width  = rect.width * window.devicePixelRatio;
+            canvas.height = canvas.offsetHeight * window.devicePixelRatio;
+            mantNovedadFirmaCtx.scale(window.devicePixelRatio, window.devicePixelRatio);
+
+            canvas.addEventListener('mousedown', e => { mantNovedadFirmaActiva = true; mantNovedadFirmaCtx.beginPath(); mantNovedadFirmaIr(e); });
+            canvas.addEventListener('mousemove', e => { if (mantNovedadFirmaActiva) mantNovedadFirmaLinea(e); });
+            canvas.addEventListener('mouseup',   () => mantNovedadFirmaActiva = false);
+            canvas.addEventListener('mouseleave',() => mantNovedadFirmaActiva = false);
+            canvas.addEventListener('touchstart', e => { e.preventDefault(); mantNovedadFirmaActiva = true; mantNovedadFirmaCtx.beginPath(); mantNovedadFirmaIr(e.touches[0]); }, { passive: false });
+            canvas.addEventListener('touchmove',  e => { e.preventDefault(); if (mantNovedadFirmaActiva) mantNovedadFirmaLinea(e.touches[0]); }, { passive: false });
+            canvas.addEventListener('touchend',   () => mantNovedadFirmaActiva = false);
+        }
+
+        function mantNovedadFirmaIr(e) {
+            const r = document.getElementById('mant-novedad-firma-canvas').getBoundingClientRect();
+            mantNovedadFirmaCtx.moveTo(e.clientX - r.left, e.clientY - r.top);
+        }
+        function mantNovedadFirmaLinea(e) {
+            const r = document.getElementById('mant-novedad-firma-canvas').getBoundingClientRect();
+            mantNovedadFirmaCtx.lineTo(e.clientX - r.left, e.clientY - r.top);
+            mantNovedadFirmaCtx.stroke();
+        }
+        function mantNovedadLimpiarFirma() {
+            const canvas = document.getElementById('mant-novedad-firma-canvas');
+            if (mantNovedadFirmaCtx) mantNovedadFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function mantCerrarNovedad() {
+            document.getElementById('mant-novedad-modal').classList.remove('active');
+            mantNovedadDoc = null;
+            mantNovedadEstado = null;
+            mantNovedadFirmaCtx = null;
+        }
+
+        async function mantGuardarNovedad() {
+            const texto = document.getElementById('mant-novedad-texto').value.trim();
+            if (!mantNovedadEstado) { mostrarToast('⚠️ Selecciona el nuevo estado'); return; }
+            if (!texto)             { mostrarToast('⚠️ Escribe una descripción de la novedad'); return; }
+
+            const esCierre = ESTADOS_CON_CIERRE.includes(mantNovedadEstado);
+            const precioFinal = parsearValor(document.getElementById('mant-novedad-precio-final').value);
+            const anticipo    = mantNovedadDoc.anticipo || 0;
+            const saldo       = precioFinal > 0 ? precioFinal - anticipo : null;
+            const metodo      = document.getElementById('mant-novedad-metodo-pago').value;
+
+            let firmaBase64 = null;
+            if (esCierre) {
+                firmaBase64 = document.getElementById('mant-novedad-firma-canvas').toDataURL('image/png');
+            }
+
+            mostrarToast('☁️ Guardando novedad...');
+
+            try {
+                // 1. Leer el JSON original desde Drive
+                const getResp = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${mantNovedadDoc.fileId}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
+                const docOriginal = await getResp.json();
+
+                // 2. Construir la novedad
+                const novedad = {
+                    fecha: new Date().toISOString(),
+                    estado: mantNovedadEstado,
+                    texto,
+                    pago: precioFinal > 0 ? {
+                        precio_final: precioFinal,
+                        anticipo,
+                        saldo,
+                        metodo: metodo || null
+                    } : null,
+                    firma_cliente: firmaBase64
+                };
+
+                // 3. Actualizar el documento
+                if (!docOriginal.novedades) docOriginal.novedades = [];
+                docOriginal.novedades.push(novedad);
+                docOriginal.estado_actual = mantNovedadEstado;
+
+                // 4. Subir el JSON actualizado (sobreescribir)
+                const numStr = mantNovedadDoc.fileName.replace('Mantenimiento-','').replace('.json','');
+                const docName = `Mantenimiento-${numStr}`;
+
+                // Actualizar archivo existente con PATCH
+                const patchForm = new FormData();
+                patchForm.append('metadata', new Blob([JSON.stringify({ name: mantNovedadDoc.fileName })], { type: 'application/json' }));
+                patchForm.append('file', new Blob([JSON.stringify(docOriginal, null, 2)], { type: 'application/json' }));
+
+                await fetch(
+                    `https://www.googleapis.com/upload/drive/v3/files/${mantNovedadDoc.fileId}?uploadType=multipart`,
+                    {
+                        method: 'PATCH',
+                        headers: { 'Authorization': 'Bearer ' + accessToken },
+                        body: patchForm
+                    }
+                );
+
+                // 5. Subir fotos de soporte si existen
+                if (capturedPhotos['mantSoportePago']) {
+                    await subirImagenDrive(
+                        capturedPhotos['mantSoportePago'],
+                        `${docName}-Soporte-Pago.jpg`,
+                        FOLDER_IDS.fotosMantenimientos
+                    );
+                }
+                if (capturedPhotos['mantSoporteAnticipo']) {
+                    await subirImagenDrive(
+                        capturedPhotos['mantSoporteAnticipo'],
+                        `${docName}-Soporte-Anticipo.jpg`,
+                        FOLDER_IDS.fotosMantenimientos
+                    );
+                }
+
+                mantCerrarNovedad();
+                mostrarToast(`✅ Novedad guardada — Estado: ${mantNovedadEstado}`);
+                // Recargar lista para reflejar el cambio
+                setTimeout(() => mantCargarLista(), 800);
+
+            } catch (err) {
+                console.error('Error guardando novedad:', err);
+                mostrarToast('❌ Error al guardar novedad. Revisa consola.');
             }
         }
 
@@ -4293,7 +4811,6 @@
         let prestPagoActual = null;     // { prestador, equipos, total } en proceso de pago
 
         async function prestCargar() {
-            // Resetear UI
             ['prest-estado','prest-vacio','prest-error'].forEach(id =>
                 document.getElementById(id).style.display = 'none'
             );
@@ -4305,16 +4822,26 @@
                     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
                     { headers: { 'Authorization': 'Bearer ' + accessToken } }
                 );
-
                 if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
 
                 const texto = await resp.text();
                 prestDatos = JSON.parse(texto);
 
-                // Normalizar: acepta array directo o { prestados: [...] }
-                const lista = Array.isArray(prestDatos)
-                    ? prestDatos
-                    : (prestDatos.prestados || prestDatos.items || []);
+                // Leer desde la estructura real: { prestamos: [...], prestadores: [...] }
+                // Solo tomar los que tienen estado pendiente (o sin estado)
+                let lista = [];
+
+                if (Array.isArray(prestDatos.prestamos)) {
+                    lista = prestDatos.prestamos.filter(p =>
+                        !p.estado || p.estado === 'pendiente'
+                    );
+                } else if (Array.isArray(prestDatos)) {
+                    // Fallback: array directo
+                    lista = prestDatos;
+                }
+
+                // Leer resumen del archivo para mostrarlo
+                const resumenArchivo = prestDatos.resumen || null;
 
                 if (lista.length === 0) {
                     document.getElementById('prest-vacio').style.display = 'block';
@@ -4322,74 +4849,127 @@
                 }
 
                 // Agrupar por prestador
+                // Soporta: prestamo.prestador (string) o prestamo.prestador_id
+                // y busca el nombre en prestadores[] si existe
+                const mapaPrestadores = {};
+                if (Array.isArray(prestDatos.prestadores)) {
+                    prestDatos.prestadores.forEach(p => {
+                        mapaPrestadores[p.id] = p.nombre || p.id;
+                    });
+                }
+
                 prestGrupos = {};
-                lista.forEach(eq => {
-                    const key = eq.prestador || eq.prestado_por || eq.nombre_prestador || 'Sin nombre';
+                lista.forEach(prestamo => {
+                    // Resolver nombre del prestador
+                    let key = 'Sin nombre';
+                    if (typeof prestamo.prestador === 'string') {
+                        key = prestamo.prestador;
+                    } else if (prestamo.prestador_id && mapaPrestadores[prestamo.prestador_id]) {
+                        key = mapaPrestadores[prestamo.prestador_id];
+                    } else if (prestamo.prestado_por) {
+                        key = prestamo.prestado_por;
+                    } else if (prestamo.nombre_prestador) {
+                        key = prestamo.nombre_prestador;
+                    }
+
                     if (!prestGrupos[key]) prestGrupos[key] = [];
-                    prestGrupos[key].push(eq);
+                    prestGrupos[key].push(prestamo);
                 });
 
-                prestRenderizar(prestGrupos);
+                prestRenderizar(prestGrupos, resumenArchivo);
                 document.getElementById('prest-estado').style.display = 'block';
-                mostrarToast(`✅ ${lista.length} equipos pendientes cargados`);
+                mostrarToast(`✅ ${lista.length} préstamo${lista.length !== 1 ? 's' : ''} pendiente${lista.length !== 1 ? 's' : ''}`);
 
             } catch (err) {
                 console.error('Error cargando prestados:', err);
                 document.getElementById('prest-error').style.display = 'block';
-                document.getElementById('prest-error-msg').textContent = err.message;
+                const msgEl = document.getElementById('prest-error-msg');
+                if (err.message.includes('403')) {
+                    msgEl.textContent = 'Acceso denegado. Verifica que PRESTADOS-PENDIENTES.json esté compartido con tu cuenta.';
+                } else if (err.message.includes('404')) {
+                    msgEl.textContent = 'Archivo no encontrado. Verifica el ID en CONFIG_FILES.';
+                } else {
+                    msgEl.textContent = err.message;
+                }
                 mostrarToast('❌ Error al cargar el archivo');
             }
         }
 
-        function prestRenderizar(grupos) {
-            const lista = document.getElementById('prest-lista');
-            const resumen = document.getElementById('prest-resumen-global');
+        function prestRenderizar(grupos, resumenArchivo) {
+            const lista    = document.getElementById('prest-lista');
+            const resumenEl = document.getElementById('prest-resumen-global');
 
-            // Calcular totales globales
-            let totalEquipos = 0;
-            let totalMonto = 0;
-            Object.values(grupos).forEach(eqs => {
-                totalEquipos += eqs.length;
-                eqs.forEach(eq => {
-                    totalMonto += Number(eq.costo || eq.valor || eq.precio || 0);
+            // Usar resumen del archivo si está disponible, si no calcularlo
+            let totalMonto, totalEquipos;
+            if (resumenArchivo && resumenArchivo.monto_pendiente > 0) {
+                totalMonto   = resumenArchivo.monto_pendiente;
+                totalEquipos = resumenArchivo.total_pendientes;
+            } else {
+                totalMonto   = 0;
+                totalEquipos = 0;
+                Object.values(grupos).forEach(eqs => {
+                    totalEquipos += eqs.length;
+                    eqs.forEach(eq => {
+                        totalMonto += Number(eq.costo || eq.valor || eq.precio || eq.monto || 0);
+                    });
                 });
-            });
+            }
 
-            // Resumen global
-            const prestadores = Object.keys(grupos).length;
-            resumen.innerHTML = `
+            const numPrestadores = Object.keys(grupos).length;
+            resumenEl.innerHTML = `
                 <div class="resumen-total-card">
                     <div>
                         <div class="label">Total pendiente</div>
                         <div class="valor">${formatMoney(totalMonto)}</div>
                     </div>
                     <div style="text-align:right;">
-                        <div class="label">${totalEquipos} equipos</div>
-                        <div class="label">${prestadores} prestador${prestadores !== 1 ? 'es' : ''}</div>
+                        <div class="label">${totalEquipos} equipo${totalEquipos !== 1 ? 's' : ''}</div>
+                        <div class="label">${numPrestadores} prestador${numPrestadores !== 1 ? 'es' : ''}</div>
+                        ${resumenArchivo ? `<div class="label" style="font-size:0.7rem; opacity:0.7;">
+                            Pagado: ${formatMoney(resumenArchivo.monto_pagado || 0)}
+                        </div>` : ''}
                     </div>
                 </div>
             `;
 
-            // Tarjetas por prestador
+            if (numPrestadores === 0) {
+                lista.innerHTML = '<p style="text-align:center; color:var(--gray-500); padding:1rem;">No hay prestadores con saldo pendiente</p>';
+                return;
+            }
+
             lista.innerHTML = Object.entries(grupos).map(([nombre, equipos]) => {
                 const subtotal = equipos.reduce((s, eq) =>
-                    s + Number(eq.costo || eq.valor || eq.precio || 0), 0);
+                    s + Number(eq.costo || eq.valor || eq.precio || eq.monto || 0), 0);
 
+                const config = prestDatos.configuracion || {};
                 const filas = equipos.map(eq => {
-                    const imei = eq.imei || eq.IMEI || '-';
-                    const costo = Number(eq.costo || eq.valor || eq.precio || 0);
-                    const desc = eq.descripcion || eq.equipo || eq.nombre || 'Sin descripción';
+                    const imei  = eq.imei || eq.IMEI || '-';
+                    const costo = Number(eq.costo || eq.valor || eq.precio || eq.monto || 0);
+                    const desc  = eq.descripcion || eq.equipo || eq.nombre || eq.producto || 'Sin descripción';
+                    const rem   = eq.remision || eq.numero_remision || null;
+                    const dias  = eq.fecha_prestamo
+                        ? Math.floor((Date.now() - new Date(eq.fecha_prestamo)) / 86400000)
+                        : null;
+                    const alerta = config.alertar_dias_sin_pagar && dias !== null && dias >= config.alertar_dias_sin_pagar;
+
                     return `
-                        <div class="equipo-prestado-row">
+                        <div class="equipo-prestado-row" ${alerta ? 'style="background:#fff7ed;"' : ''}>
                             <div class="equipo-info">
-                                <div class="equipo-nombre">${desc}</div>
+                                <div class="equipo-nombre">
+                                    ${alerta ? '⚠️ ' : ''}${desc}
+                                </div>
                                 ${imei !== '-' ? `<div class="equipo-imei">IMEI: ${imei}</div>` : ''}
-                                ${eq.remision ? `<div class="equipo-imei">Remisión: ${eq.remision}</div>` : ''}
+                                ${rem ? `<div class="equipo-imei">Remisión: ${rem}</div>` : ''}
+                                ${dias !== null ? `<div class="equipo-imei">${dias} día${dias !== 1 ? 's' : ''} pendiente</div>` : ''}
                             </div>
                             <div class="equipo-costo">${formatMoney(costo)}</div>
-                        </div>
-                    `;
+                        </div>`;
                 }).join('');
+
+                // Determinar qué métodos requieren soporte fotográfico
+                const config2 = prestDatos.configuracion || {};
+                const metodosPago = config2.metodos_pago_permitidos ||
+                    ['efectivo','transferencia','tarjeta','nequi','daviplata','otro'];
 
                 return `
                     <div class="prestador-card" data-prestador="${nombre}">
@@ -4420,8 +5000,7 @@
                                 </button>
                             </div>
                         </div>
-                    </div>
-                `;
+                    </div>`;
             }).join('');
         }
 
@@ -4444,19 +5023,20 @@
         }
 
         function prestAbrirPago(nombrePrestador, modo) {
-            const equipos = prestGrupos[nombrePrestador] || [];
+            const equipos  = prestGrupos[nombrePrestador] || [];
             const subtotal = equipos.reduce((s, eq) =>
-                s + Number(eq.costo || eq.valor || eq.precio || 0), 0);
+                s + Number(eq.costo || eq.valor || eq.precio || eq.monto || 0), 0);
 
             prestPagoActual = { prestador: nombrePrestador, equipos, total: subtotal, modo };
 
-            // Llenar resumen del modal
+            // Resumen en modal
             const filas = equipos.map(eq => {
-                const costo = Number(eq.costo || eq.valor || eq.precio || 0);
-                const desc = eq.descripcion || eq.equipo || eq.nombre || 'Sin descripción';
+                const costo = Number(eq.costo || eq.valor || eq.precio || eq.monto || 0);
+                const desc  = eq.descripcion || eq.equipo || eq.nombre || eq.producto || 'Sin descripción';
+                const imei  = eq.imei || eq.IMEI || null;
                 return `
                     <div class="gar-resumen-row">
-                        <span>${desc}</span>
+                        <span>${desc}${imei ? `<br><small style="color:var(--gray-500);">IMEI: ${imei}</small>` : ''}</span>
                         <span>${formatMoney(costo)}</span>
                     </div>`;
             }).join('');
@@ -4468,15 +5048,26 @@
                 </div>
                 ${filas}
                 <div class="gar-resumen-row">
-                    <span><strong>Total</strong></span>
+                    <span><strong>Total deuda</strong></span>
                     <span><strong>${formatMoney(subtotal)}</strong></span>
                 </div>
             `;
 
-            // En modo masivo precarga el monto total; en personalizado lo deja vacío
+            // Poblar métodos de pago desde configuración
+            const metodosPerm = (prestDatos?.configuracion?.metodos_pago_permitidos) ||
+                ['efectivo','transferencia','tarjeta','nequi','daviplata','otro'];
+            const selectMetodo = document.getElementById('prest-pago-metodo');
+            selectMetodo.innerHTML = '<option value="">Seleccione...</option>';
+            metodosPerm.forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+                selectMetodo.appendChild(opt);
+            });
+
+            // Modo masivo: precarga total; personalizado: vacío
             document.getElementById('prest-pago-monto').value =
                 modo === 'masivo' ? new Intl.NumberFormat('es-CO').format(subtotal) : '';
-            document.getElementById('prest-pago-metodo').value = '';
             document.getElementById('prest-pago-referencia').value = '';
             document.getElementById('prest-pago-nota').value = '';
             delete capturedPhotos['prestSoporte'];
@@ -4504,6 +5095,18 @@
                 return;
             }
 
+            // Validar soporte según configuración
+            const config = prestDatos?.configuracion || {};
+            const requiereFoto =
+                (metodo === 'efectivo'      && config.requiere_soporte_efectivo) ||
+                (metodo === 'transferencia' && config.requiere_soporte_transferencia) ||
+                (metodo === 'tarjeta'       && config.requiere_soporte_tarjeta);
+
+            if (requiereFoto && !capturedPhotos['prestSoporte']) {
+                mostrarToast(`⚠️ El método "${metodo}" requiere foto del comprobante`);
+                return;
+            }
+
             mostrarToast('☁️ Registrando pago...');
 
             try {
@@ -4520,9 +5123,9 @@
                         monto,
                         metodo,
                         referencia: ref || null,
-                        nota: nota || null
-                    },
-                    soporte_foto: capturedPhotos['prestSoporte'] ? true : false
+                        nota: nota || null,
+                        soporte_foto: capturedPhotos['prestSoporte'] ? true : false
+                    }
                 };
 
                 // Subir JSON del pago
