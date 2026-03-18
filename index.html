@@ -5499,22 +5499,49 @@
                 document.getElementById('prest-seleccion-bar').classList.remove('visible');
 
                 // Mostrar modal de éxito con detalle del pago
+                const filasEquipos = todosEquipos.map(eq => {
+                    const desc  = (eq.descripcion || eq.equipo || eq.nombre || '-').substring(0, 10);
+                    const imei  = eq.imei || eq.IMEI || '-';
+                    const costo = Number(eq.costo || 0);
+                    return `
+                        <div style="display:flex; justify-content:space-between; align-items:center;
+                                    padding:0.35rem 0; border-bottom:1px solid var(--gray-200);
+                                    font-size:0.82rem; gap:0.5rem;">
+                            <span style="flex:1; font-weight:600; color:var(--gray-800);">${desc}</span>
+                            <span style="flex:1.2; color:var(--gray-500); font-size:0.75rem;">${imei}</span>
+                            <span style="white-space:nowrap; font-weight:700; color:var(--success);">${formatMoney(costo)}</span>
+                        </div>`;
+                }).join('');
+
                 document.getElementById('prest-exito-detalle').innerHTML = `
-                    <div style="margin-bottom:0.4rem;">
+                    <div style="margin-bottom:0.5rem;">
                         <strong>Prestador(es):</strong> ${nombrePrestador}
                     </div>
-                    <div style="margin-bottom:0.4rem;">
-                        <strong>Monto pagado:</strong>
-                        <span style="color:var(--success); font-weight:700; font-size:1.1rem;">
-                            ${formatMoney(montoFinal)}
-                        </span>
-                    </div>
-                    <div style="margin-bottom:0.4rem;">
+                    <div style="margin-bottom:0.5rem;">
                         <strong>Método:</strong> ${metodo.charAt(0).toUpperCase() + metodo.slice(1)}
+                        ${ref ? ` · <strong>Ref:</strong> ${ref}` : ''}
                     </div>
-                    ${ref ? `<div style="margin-bottom:0.4rem;"><strong>Referencia:</strong> ${ref}</div>` : ''}
-                    ${nota ? `<div style="margin-bottom:0.4rem;"><strong>Nota:</strong> ${nota}</div>` : ''}
-                    <div style="margin-top:0.5rem; font-size:0.8rem; color:var(--gray-500);">
+                    ${nota ? `<div style="margin-bottom:0.5rem;"><strong>Nota:</strong> ${nota}</div>` : ''}
+
+                    <!-- Equipos pagados -->
+                    <div style="margin:0.5rem 0 0.25rem; font-weight:600; font-size:0.82rem; color:var(--gray-600);">
+                        Equipos (${todosEquipos.length}):
+                    </div>
+                    <div style="display:flex; justify-content:space-between; font-size:0.72rem;
+                                color:var(--gray-500); padding-bottom:0.25rem;
+                                border-bottom:2px solid var(--gray-300); margin-bottom:0.1rem;">
+                        <span>Descripción</span><span>IMEI</span><span>Costo</span>
+                    </div>
+                    ${filasEquipos}
+
+                    <!-- Total -->
+                    <div style="display:flex; justify-content:space-between; margin-top:0.5rem;
+                                padding-top:0.4rem; border-top:2px solid var(--primary);
+                                font-weight:700;">
+                        <span>Total pagado</span>
+                        <span style="color:var(--success); font-size:1.05rem;">${formatMoney(montoFinal)}</span>
+                    </div>
+                    <div style="margin-top:0.4rem; font-size:0.78rem; color:var(--gray-500);">
                         📅 ${new Date().toLocaleString('es-CO')}
                     </div>
                 `;
