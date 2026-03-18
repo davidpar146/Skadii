@@ -362,6 +362,11 @@
             color: white;
         }
 
+        .btn-icon.edit {
+            background: #f59e0b;
+            color: white;
+        }
+
         .summary {
             background: linear-gradient(135deg, #f0f9ff 0%, #e0f2fe 100%);
             padding: 1rem;
@@ -606,10 +611,14 @@
             <span id="status-text">Desconectado</span>
         </div>
         <div class="menu-gestion">
-            <button class="btn-menu" onclick="toggleMenu()">⚙️ Gestión ▼</button>
+            <button class="btn-menu" onclick="toggleMenu()">⚙️ Módulos ▼</button>
             <div id="dropdown-menu" class="dropdown-menu">
-                <button class="menu-item active" onclick="mostrarCrear()">📝 Crear Remisión</button>
-                <button class="menu-item" onclick="mostrarAnular()">❌ Anular Remisión</button>
+                <button class="menu-item active" id="menu-remisiones" onclick="mostrarModulo('remisiones')">📝 Remisiones</button>
+                <button class="menu-item" id="menu-mantenimientos" onclick="mostrarModulo('mantenimientos')">🔧 Mantenimientos</button>
+                <button class="menu-item" id="menu-garantias" onclick="mostrarModulo('garantias')">🔄 Garantías</button>
+                <button class="menu-item" id="menu-prestadores" onclick="mostrarModulo('prestadores')">💰 Pagar Prestadores</button>
+                <hr style="margin: 0.25rem 0; border-color: var(--gray-200);">
+                <button class="menu-item" id="menu-anular" onclick="mostrarAnular()">❌ Anular Remisión</button>
             </div>
         </div>
     </div>
@@ -969,8 +978,40 @@
         </div>
     </div>
 
-    <!-- Modal Anulación -->
-    <div id="anulacion-modal" class="modal">
+    <!-- ===== MÓDULO MANTENIMIENTOS ===== -->
+    <div class="container" id="modulo-mantenimientos" style="display: none;">
+        <div class="card">
+            <div class="card-title">🔧 Mantenimientos</div>
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem 0;">
+                🚧 Módulo en construcción...<br>
+                <small>Próxima versión</small>
+            </p>
+        </div>
+    </div>
+
+    <!-- ===== MÓDULO GARANTÍAS ===== -->
+    <div class="container" id="modulo-garantias" style="display: none;">
+        <div class="card">
+            <div class="card-title">🔄 Garantías y Cambios</div>
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem 0;">
+                🚧 Módulo en construcción...<br>
+                <small>Próxima versión</small>
+            </p>
+        </div>
+    </div>
+
+    <!-- ===== MÓDULO PAGAR PRESTADORES ===== -->
+    <div class="container" id="modulo-prestadores" style="display: none;">
+        <div class="card">
+            <div class="card-title">💰 Pagar Prestadores</div>
+            <p style="color: var(--gray-600); text-align: center; padding: 2rem 0;">
+                🚧 Módulo en construcción...<br>
+                <small>Próxima versión</small>
+            </p>
+        </div>
+    </div>
+
+    <!-- Modal Anulación -->    <div id="anulacion-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
                 <h3>❌ Anulación de Remisión</h3>
@@ -1031,30 +1072,27 @@
         ];
 
         // IDs de carpetas en Drive
-        // IDs de carpetas en Drive - ACTUALIZADOS
         const FOLDER_IDS = {
             // Carpetas existentes
-            remisiones: '1w_mmsQptxY7HvRPl_VAMqDvhnWJ1gkZi',
-            facturas: '1575dZwl8cflxjkF4S2uLBCxGLS8sLK7A',
-            cedulas: '1EAoWUxU7Q6XbuzCiFqkwxyHhuTs7gR6x',
-            contratos: '1HO7KvyvZlsqbeHRMvAwhKuT7d2Hg6TP6',
-            soportes: '10TJWBBiW3ePFw62Coh4IA7-OdTQVYoDs',
-            // Carpetas nuevas - Mantenimientos
-            mantenimientos: '1FbIXY5zFSJAh603h1wrN2XFX4VCgxXI7',
-            fotosMantenimientos: '16mJm89X2zZm8q5MtMGu4AYglhxtxJ1l5',
-            // Carpetas nuevas - Garantías
-            garantias: '1gF45uq_Q7gwyf7x2UA8ckIaw1Td-boEv',
-            fotosGarantias: '1_uZUN-Q9xbTKTIpZE_kfhOrlc8A5KnON',
-            // Carpetas nuevas - Préstamos/Pagos
-            prestamosPagos: '1gxBD48FLVZqJe4n5qWBoNxEnuvRAeZpK',
-            recibosCaja: '1iAEaDJ2JSosvbK6rgdE3biVTelAXgn5o',
-            soportesTransferencia: '18Qt70YEpX0WnIUaifLE3yzeQPABziGEq'
+            principal:    '1fnl_8z0737DmVPcMupFwyjalOxATwZmw',
+            facturas:     '1575dZwl8cflxjkF4S2uLBCxGLS8sLK7A',
+            remisiones:   '1w_mmsQptxY7HvRPl_VAMqDvhnWJ1gkZi',
+            cedulas:      '1EAoWUxU7Q6XbuzCiFqkwxyHhuTs7gR6x',
+            contratos:    '1HO7KvyvZlsqbeHRMvAwhKuT7d2Hg6TP6',
+            soportes:     '10TJWBBiW3ePFw62Coh4IA7-OdTQVYoDs',
+            // Carpetas nuevas
+            mantenimientos:       '1FbIXY5zFSJAh603h1wrN2XFX4VCgxXI7',
+            fotosMantenimientos:  '16mJm89X2zZm8q5MtMGu4AYglhxtxJ1l5',
+            garantias:            '1gF45uq_Q7gwyf7x2UA8ckIaw1Td-boEv',
+            fotosGarantias:       '1_uZUN-Q9xbTKTIpZE_kfhOrlc8A5KnON',
+            prestamosPagos:       '1gxBD48FLVZqJe4n5qWBoNxEnuvRAeZpK',
+            recibosCaja:          '1iAEaDJ2JSosvbK6rgdE3biVTelAXgn5o',
+            soportesTransferencia:'18Qt70YEpX0WnIUaifLE3yzeQPAaBziGEq'
         };
-        
-        // IDs de archivos de configuración
+
         const CONFIG_FILES = {
-            clavesAsesores: '1VhvZUKI0gZ7ZnV3u6N8m7OOIyyetTZks',
-            prestadosPendientes: '1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'
+            clavesAsesores:    '1VhvZUKI0gZ7ZnV3u6N8m7OOIyyetTZks',  // CLAVES-ASESORES-V2.json
+            prestadosPendientes:'1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'  // PRESTADOS-PENDIENTES.json
         };
 
         // ID de Google Sheet (lo crearemos automáticamente la primera vez)
@@ -1078,7 +1116,9 @@
         let capturedPhotos = {};
 
         let consecutivo = 1; // Un solo consecutivo
-        let clavesAsesores = {}; // Claves por asesor cargadas de Drive
+        let clavesAsesores = {};      // { nombre: clave }
+        let asesoresPermisos = {};    // { nombre: [permisos] } — formato V2
+        let itemEditandoId = null;    // ID del ítem en edición
 
         // Formatear números con puntos de mil
         function formatearInput(input) {
@@ -1506,22 +1546,73 @@
             
             console.log('🔍 COSTO DEBUG:', { costoRaw, costoValNum, costoFinal: costo });
 
-            currentItems.push({
-                id: Date.now(),
-                descripcion,
-                cantidad,
-                valor,
-                costo,
-                imei,
-                estado: currentEstado,
-                prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
-                notas,
-                total: cantidad * valor
-            });
+            if (itemEditandoId !== null) {
+                // MODO EDICIÓN: actualizar el ítem existente
+                const idx = currentItems.findIndex(i => i.id === itemEditandoId);
+                if (idx !== -1) {
+                    currentItems[idx] = {
+                        ...currentItems[idx],
+                        descripcion,
+                        cantidad,
+                        valor,
+                        costo,
+                        imei,
+                        estado: currentEstado,
+                        prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
+                        notas,
+                        total: cantidad * valor
+                    };
+                }
+                itemEditandoId = null;
+                // Restaurar botón
+                document.querySelector('button[onclick="agregarItem()"]').innerHTML = '➕ Agregar Ítem';
+                mostrarToast(`✅ Ítem actualizado`);
+            } else {
+                // MODO AGREGAR: crear nuevo ítem
+                currentItems.push({
+                    id: Date.now(),
+                    descripcion,
+                    cantidad,
+                    valor,
+                    costo,
+                    imei,
+                    estado: currentEstado,
+                    prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
+                    notas,
+                    total: cantidad * valor
+                });
+                mostrarToast(`✅ Ítem agregado${costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''}`);
+            }
 
             actualizarListaItems();
             limpiarFormularioItem();
-            mostrarToast(`✅ Ítem agregado${costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''}`);
+        }
+
+        function editarItem(id) {
+            const item = currentItems.find(i => i.id === id);
+            if (!item) return;
+
+            // Rellenar formulario con datos del ítem
+            document.getElementById('item-descripcion').value = item.descripcion;
+            document.getElementById('item-cantidad').value = item.cantidad;
+            document.getElementById('item-valor').value = new Intl.NumberFormat('es-CO').format(item.valor);
+            document.getElementById('item-imei').value = item.imei;
+            document.getElementById('item-notas').value = item.notas || '';
+            document.getElementById('item-costo').value = item.costo || '';
+
+            // Estado del equipo
+            setEstado(item.estado);
+            if (item.estado === 'prestado') {
+                document.getElementById('item-prestado-por').value = item.prestadoPor || '';
+            }
+
+            // Marcar el ítem en edición y cambiar botón
+            itemEditandoId = id;
+            document.querySelector('button[onclick="agregarItem()"]').innerHTML = '✅ Actualizar Ítem';
+
+            // Scroll al formulario
+            document.getElementById('item-descripcion').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            mostrarToast('✏️ Editando ítem — modifica y presiona Actualizar');
         }
 
         function actualizarListaItems() {
@@ -1550,6 +1641,7 @@
                             <span class="badge badge-${item.estado}">${item.estado === 'propio' ? '🏢 Propio' : '🤝 Prestado'}</span>
                         </div>
                         <div class="item-actions">
+                            <button class="btn-icon edit" onclick="editarItem(${item.id})" title="Editar ítem">✏️</button>
                             <button class="btn-icon delete" onclick="eliminarItem(${item.id})">×</button>
                         </div>
                     </div>
@@ -1576,9 +1668,13 @@
             document.getElementById('item-prestado-por').value = '';
             document.getElementById('prestado-por-group').style.display = 'none';
             currentEstado = null;
+            itemEditandoId = null;
             document.getElementById('estado-propio').classList.remove('active');
             document.getElementById('estado-prestado').classList.remove('active');
             document.getElementById('estado-warning').style.display = 'none';
+            // Restaurar texto del botón por si acaso
+            const btnAgregar = document.querySelector('button[onclick="agregarItem()"]');
+            if (btnAgregar) btnAgregar.innerHTML = '➕ Agregar Ítem';
         }
 
         // Manejo de métodos de pago
@@ -2232,58 +2328,55 @@
             try {
                 mostrarToast('🔄 Cargando asesores...');
                 
-                // ID directo del archivo CLAVES-ASESORES-V2.json
                 const fileId = CONFIG_FILES.clavesAsesores;
+                console.log('Cargando CLAVES-ASESORES-V2 con ID:', fileId);
                 
-                console.log('Buscando archivo con ID:', fileId);
+                const fileResponse = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
                 
-                try {
-                    // Leer el archivo directamente por ID
-                    const fileResponse = await fetch(
-                        `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-                        {
-                            headers: {
-                                'Authorization': 'Bearer ' + accessToken
-                            }
-                        }
-                    );
-                    
-                    if (!fileResponse.ok) {
-                        throw new Error(`HTTP error! status: ${fileResponse.status}`);
-                    }
-                    
-                    const contenido = await fileResponse.text();
-                    console.log('Contenido del archivo:', contenido);
-                    
-                    const datosClaves = JSON.parse(contenido);
-                    
-                    // Convertir formato V2 a formato simple
-                    clavesAsesores = {};
-                    if (datosClaves.asesores && Array.isArray(datosClaves.asesores)) {
-                        datosClaves.asesores.forEach(asesor => {
-                            clavesAsesores[asesor.nombre] = asesor.clave;
-                        });
-                    }
-                    
-                    console.log('Claves cargadas:', Object.keys(clavesAsesores));
-                    console.log('Total asesores:', Object.keys(clavesAsesores).length);
-                    
-                    actualizarDropdownAsesores();
-                    mostrarToast('✅ Asesores cargados: ' + Object.keys(clavesAsesores).length);
-                    
-                } catch (error) {
-                    console.error('Error leyendo archivo por ID:', error);
-                    mostrarToast('❌ Error: Verifica que el archivo CLAVES-ASESORES-V2.json esté compartido');
-                    clavesAsesores = {};
-                    actualizarDropdownAsesores();
+                if (!fileResponse.ok) {
+                    throw new Error(`HTTP error! status: ${fileResponse.status}`);
                 }
+                
+                const contenido = await fileResponse.text();
+                console.log('Contenido CLAVES-V2:', contenido);
+                
+                const data = JSON.parse(contenido);
+                
+                // Soporte para formato V2 (array "asesores") y formato legacy (objeto plano)
+                if (data.asesores && Array.isArray(data.asesores)) {
+                    // Formato V2: { asesores: [{nombre, clave, permisos}] }
+                    clavesAsesores = {};
+                    asesoresPermisos = {}; // variable global para permisos
+                    data.asesores.forEach(a => {
+                        clavesAsesores[a.nombre] = a.clave;
+                        asesoresPermisos[a.nombre] = a.permisos || [];
+                    });
+                    console.log('Formato V2 cargado. Asesores:', Object.keys(clavesAsesores));
+                } else {
+                    // Formato legacy: { nombre: clave }
+                    clavesAsesores = data;
+                    asesoresPermisos = {};
+                    console.log('Formato legacy cargado. Asesores:', Object.keys(clavesAsesores));
+                }
+                
+                actualizarDropdownAsesores();
+                mostrarToast('✅ Asesores cargados: ' + Object.keys(clavesAsesores).length);
 
             } catch (error) {
-                console.error('Error detallado al cargar claves:', error);
+                console.error('Error cargando claves de asesores:', error);
                 mostrarToast('❌ Error cargando asesores. Ver consola.');
                 clavesAsesores = {};
+                asesoresPermisos = {};
                 actualizarDropdownAsesores();
             }
+        }
+
+        function tienePermiso(nombreAsesor, permiso) {
+            const perms = asesoresPermisos[nombreAsesor] || [];
+            return perms.includes(permiso) || perms.includes('admin');
         }
 
         function actualizarDropdownAsesores() {
@@ -2322,26 +2415,42 @@
             menu.classList.toggle('show');
         }
 
-        function mostrarCrear() {
-            document.getElementById('main-content').style.display = 'block';
-            document.getElementById('dropdown-menu').classList.remove('show');
-            
-            // Actualizar botones activos
-            document.querySelectorAll('.menu-item').forEach(item => {
-                item.classList.remove('active');
+        // Todos los módulos disponibles
+        const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores'];
+
+        function mostrarModulo(modulo) {
+            // Ocultar todos los módulos
+            document.getElementById('main-content').style.display = 'none';
+            MODULOS.forEach(m => {
+                const el = document.getElementById(`modulo-${m}`);
+                if (el) el.style.display = 'none';
             });
-            document.querySelectorAll('.menu-item')[0].classList.add('active');
+
+            // Mostrar el módulo seleccionado
+            if (modulo === 'remisiones') {
+                document.getElementById('main-content').style.display = 'block';
+            } else {
+                const el = document.getElementById(`modulo-${modulo}`);
+                if (el) el.style.display = 'block';
+            }
+
+            // Actualizar ítem activo del menú
+            document.querySelectorAll('.menu-item').forEach(item => item.classList.remove('active'));
+            const btnActivo = document.getElementById(`menu-${modulo}`);
+            if (btnActivo) btnActivo.classList.add('active');
+
+            // Cerrar menú
+            document.getElementById('dropdown-menu').classList.remove('show');
+            window.scrollTo(0, 0);
+        }
+
+        function mostrarCrear() {
+            mostrarModulo('remisiones');
         }
 
         function mostrarAnular() {
             document.getElementById('anulacion-modal').classList.add('active');
             document.getElementById('dropdown-menu').classList.remove('show');
-            
-            // Actualizar botones activos
-            document.querySelectorAll('.menu-item').forEach(item => {
-                item.classList.remove('active');
-            });
-            document.querySelectorAll('.menu-item')[1].classList.add('active');
         }
 
         async function recargarAsesores() {
