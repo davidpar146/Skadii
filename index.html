@@ -5,6 +5,35 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema de Remisiones Skaoll</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+    
+    <!-- Definir callbacks ANTES de cargar las librerías de Google -->
+    <script>
+        let gapiLoadedFlag = false;
+        let gisLoadedFlag = false;
+        
+        function gapiLoadedCallback() {
+            console.log('✅ Google API JS cargado');
+            gapiLoadedFlag = true;
+            checkBothApisLoaded();
+        }
+        
+        function gisLoadedCallback() {
+            console.log('✅ Google Identity Services cargado');
+            gisLoadedFlag = true;
+            checkBothApisLoaded();
+        }
+        
+        function checkBothApisLoaded() {
+            if (gapiLoadedFlag && gisLoadedFlag) {
+                console.log('✅ Ambas APIs cargadas, inicializando...');
+                if (typeof initializeGoogleAPIs === 'function') {
+                    initializeGoogleAPIs();
+                }
+            }
+        }
+    </script>
+    
+    <!-- Ahora sí cargar las librerías -->
     <script src="https://apis.google.com/js/api.js" onload="gapiLoadedCallback()"></script>
     <script src="https://accounts.google.com/gsi/client" onload="gisLoadedCallback()"></script>
     <style>
@@ -1587,29 +1616,6 @@
     <div id="toast" class="toast"></div>
 
     <script>
-        // Callbacks globales para la carga de Google APIs
-        let gapiLoadedFlag = false;
-        let gisLoadedFlag = false;
-        
-        function gapiLoadedCallback() {
-            console.log('✅ Google API JS cargado');
-            gapiLoadedFlag = true;
-            checkBothApisLoaded();
-        }
-        
-        function gisLoadedCallback() {
-            console.log('✅ Google Identity Services cargado');
-            gisLoadedFlag = true;
-            checkBothApisLoaded();
-        }
-        
-        function checkBothApisLoaded() {
-            if (gapiLoadedFlag && gisLoadedFlag) {
-                console.log('✅ Ambas APIs cargadas, inicializando...');
-                initializeGoogleAPIs();
-            }
-        }
-        
         // Configuración Google Drive API + Sheets API
         const GOOGLE_CLIENT_ID = '727063973750-lobp0j5c3pheqhl9ihk1se1ka05lf53s.apps.googleusercontent.com';
         const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
@@ -3794,7 +3800,7 @@ async function cargarListaMantenimientos() {
 
 let remisionOriginalData = null;
 let tieneDaniosFisicos = false;
-let esM ismoModelo = true;
+let esMismoModelo = true;
 let firmaGarantiaCanvas = null;
 let firmaGarantiaCtx = null;
 
