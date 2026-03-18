@@ -5086,61 +5086,69 @@
 
             lista.innerHTML = Object.entries(grupos).map(([nombre, equipos]) => {
                 const subtotal = equipos.reduce((s, eq) => s + Number(eq.costo || 0), 0);
+                const nombreEncoded = encodeURIComponent(nombre);
+                const DIAS_ALERTA = 15;
 
-                const DIAS_ALERTA = 15; // días sin pagar para mostrar alerta
-                const filas = equipos.map(eq => {
+                const filas = equipos.map((eq, idx) => {
                     const imei  = eq.imei || eq.IMEI || '-';
                     const costo = Number(eq.costo || 0);
                     const desc  = eq.descripcion || eq.equipo || eq.nombre || eq.producto || 'Sin descripción';
-                    const rem   = eq._remision || eq.remision || null;
+                    const rem   = eq._remision || null;
                     const dias  = eq._docCompleto?.fecha_remision
                         ? Math.floor((Date.now() - new Date(eq._docCompleto.fecha_remision)) / 86400000)
                         : null;
-                    const alerta = dias !== null && dias >= DIAS_ALERTA;
+                    const alerta  = dias !== null && dias >= DIAS_ALERTA;
+                    const eqId    = `eq-${nombreEncoded}-${idx}`;
 
                     return `
-                        <div class="equipo-prestado-row" ${alerta ? 'style="background:#fff7ed;"' : ''}>
+                        <div class="equipo-prestado-row" id="${eqId}-row"
+                             style="${alerta ? 'background:#fff7ed;' : ''} cursor:pointer;"
+                             onclick="prestToggleEquipo('${eqId}', ${costo}, '${nombreEncoded}')">
+                            <input type="checkbox" class="equipo-checkbox" id="${eqId}-cb"
+                                   style="width:18px; height:18px; margin-right:0.5rem; flex-shrink:0; accent-color:var(--primary); cursor:pointer;"
+                                   onclick="event.stopPropagation(); prestToggleEquipo('${eqId}', ${costo}, '${nombreEncoded}')">
                             <div class="equipo-info">
                                 <div class="equipo-nombre">${alerta ? '⚠️ ' : ''}${desc}</div>
                                 ${imei !== '-' ? `<div class="equipo-imei">IMEI: ${imei}</div>` : ''}
-                                ${rem ? `<div class="equipo-imei">📄 Remisión: ${rem}</div>` : ''}
-                                ${dias !== null ? `<div class="equipo-imei">🕐 ${dias} día${dias !== 1 ? 's' : ''} pendiente</div>` : ''}
+                                ${rem ? `<div class="equipo-imei">📄 ${rem}</div>` : ''}
+                                ${dias !== null ? `<div class="equipo-imei">🕐 ${dias} día${dias !== 1 ? 's' : ''}</div>` : ''}
                             </div>
                             <div class="equipo-costo">${formatMoney(costo)}</div>
                         </div>`;
                 }).join('');
 
-                const nombreEncoded = encodeURIComponent(nombre);
                 return `
                     <div class="prestador-card" id="pcard-${nombreEncoded}" data-prestador="${nombre}" data-subtotal="${subtotal}">
-                        <div class="prestador-header">
-                            <input type="checkbox" class="prestador-checkbox"
-                                   id="pcheck-${nombreEncoded}"
-                                   onchange="prestToggleSeleccion('${nombreEncoded}', ${subtotal})"
-                                   onclick="event.stopPropagation()">
-                            <div style="flex:1; cursor:pointer;" onclick="prestToggleBody('${nombreEncoded}')">
+                        <div class="prestador-header" style="cursor:pointer;" onclick="prestToggleBody('${nombreEncoded}')">
+                            <div style="flex:1;">
                                 <div class="prestador-nombre">👤 ${nombre}</div>
                                 <div style="font-size:0.75rem; color:var(--gray-500);">
                                     ${equipos.length} equipo${equipos.length !== 1 ? 's' : ''}
                                 </div>
                             </div>
-                            <div style="text-align:right; cursor:pointer;" onclick="prestToggleBody('${nombreEncoded}')">
+                            <div style="text-align:right;">
                                 <div class="prestador-total">${formatMoney(subtotal)}</div>
-                                <div style="font-size:0.75rem; color:var(--gray-500);">▼</div>
+                                <div style="font-size:0.75rem; color:var(--gray-500);" id="parrow-${nombreEncoded}">▼</div>
                             </div>
                         </div>
                         <div class="prestador-body" id="pbody-${nombreEncoded}">
+                            <div style="display:flex; gap:0.4rem; margin-bottom:0.5rem;">
+                                <button class="btn btn-secondary" onclick="prestSeleccionarEquiposTodos('${nombreEncoded}')"
+                                        style="flex:1; padding:0.4rem; font-size:0.78rem;">☑️ Todos</button>
+                                <button class="btn btn-secondary" onclick="prestDeseleccionarEquiposTodos('${nombreEncoded}')"
+                                        style="flex:1; padding:0.4rem; font-size:0.78rem;">🔲 Ninguno</button>
+                            </div>
                             ${filas}
                             <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
                                 <button class="btn btn-primary"
-                                        onclick="prestAbrirPago('${nombre}', 'masivo')"
+                                        onclick="prestPagarTodoPrestador('${nombreEncoded}')"
                                         style="flex:1; padding:0.65rem; font-size:0.85rem;">
-                                    💰 Pagar (${formatMoney(subtotal)})
+                                    💰 Pagar Todo (${formatMoney(subtotal)})
                                 </button>
                                 <button class="btn btn-secondary"
-                                        onclick="prestAbrirPago('${nombre}', 'personalizado')"
-                                        style="flex:0.6; padding:0.65rem; font-size:0.85rem;">
-                                    ✏️ Custom
+                                        onclick="prestPagarSeleccionados('${nombreEncoded}')"
+                                        style="flex:1; padding:0.65rem; font-size:0.85rem;">
+                                    ✅ Pagar Selección
                                 </button>
                             </div>
                         </div>
@@ -5150,42 +5158,66 @@
 
         function prestToggleBody(nombreEncoded) {
             const body   = document.getElementById(`pbody-${nombreEncoded}`);
-            const header = document.getElementById(`pcard-${nombreEncoded}`)
-                              .querySelector('.prestador-header div[style*="right"] div:last-child');
+            const flecha = document.getElementById(`parrow-${nombreEncoded}`);
             const abierto = body.classList.contains('open');
             body.classList.toggle('open', !abierto);
-            if (header) header.textContent = abierto ? '▼' : '▲';
+            if (flecha) flecha.textContent = abierto ? '▼' : '▲';
         }
 
-        // --- SELECCIÓN MÚLTIPLE ---
-        let prestSeleccionados = {}; // { nombreEncoded: { nombre, subtotal, equipos } }
+        // --- SELECCIÓN GRANULAR POR EQUIPO ---
+        // prestEquiposSeleccionados: { eqId: { costo, nombreEncoded, eq } }
+        let prestEquiposSeleccionados = {};
 
-        function prestToggleSeleccion(nombreEncoded, subtotal) {
-            const checkbox = document.getElementById(`pcheck-${nombreEncoded}`);
-            const card     = document.getElementById(`pcard-${nombreEncoded}`);
-            const nombre   = card.dataset.prestador;
+        function prestToggleEquipo(eqId, costo, nombreEncoded) {
+            const cb  = document.getElementById(`${eqId}-cb`);
+            const row = document.getElementById(`${eqId}-row`);
+            if (!cb) return;
 
-            if (checkbox.checked) {
-                prestSeleccionados[nombreEncoded] = {
-                    nombre, subtotal, equipos: prestGrupos[nombre] || []
-                };
-                card.classList.add('seleccionada');
+            // Sincronizar checkbox
+            cb.checked = !cb.checked;
+
+            if (cb.checked) {
+                prestEquiposSeleccionados[eqId] = { costo, nombreEncoded };
+                if (row) row.style.outline = '2px solid var(--primary)';
             } else {
-                delete prestSeleccionados[nombreEncoded];
-                card.classList.remove('seleccionada');
+                delete prestEquiposSeleccionados[eqId];
+                if (row) row.style.outline = '';
             }
+            prestActualizarBarraSeleccion();
+        }
+
+        function prestSeleccionarEquiposTodos(nombreEncoded) {
+            document.querySelectorAll(`[id^="eq-${nombreEncoded}-"][id$="-cb"]`).forEach(cb => {
+                const eqId = cb.id.replace('-cb', '');
+                const row  = document.getElementById(`${eqId}-row`);
+                const costo = Number(row?.querySelector('.equipo-costo')?.textContent?.replace(/[^\d]/g,'') || 0);
+                cb.checked = true;
+                prestEquiposSeleccionados[eqId] = { costo, nombreEncoded };
+                if (row) row.style.outline = '2px solid var(--primary)';
+            });
+            prestActualizarBarraSeleccion();
+        }
+
+        function prestDeseleccionarEquiposTodos(nombreEncoded) {
+            document.querySelectorAll(`[id^="eq-${nombreEncoded}-"][id$="-cb"]`).forEach(cb => {
+                const eqId = cb.id.replace('-cb', '');
+                cb.checked = false;
+                delete prestEquiposSeleccionados[eqId];
+                const row = document.getElementById(`${eqId}-row`);
+                if (row) row.style.outline = '';
+            });
             prestActualizarBarraSeleccion();
         }
 
         function prestActualizarBarraSeleccion() {
             const barra = document.getElementById('prest-seleccion-bar');
-            const count = Object.keys(prestSeleccionados).length;
-            const total = Object.values(prestSeleccionados).reduce((s, p) => s + p.subtotal, 0);
+            const count = Object.keys(prestEquiposSeleccionados).length;
+            const total = Object.values(prestEquiposSeleccionados).reduce((s, e) => s + e.costo, 0);
 
             if (count > 0) {
                 barra.classList.add('visible');
                 document.getElementById('prest-sel-count').textContent =
-                    `${count} prestador${count !== 1 ? 'es' : ''} seleccionado${count !== 1 ? 's' : ''}`;
+                    `${count} equipo${count !== 1 ? 's' : ''} seleccionado${count !== 1 ? 's' : ''}`;
                 document.getElementById('prest-sel-monto').textContent =
                     `Total: ${formatMoney(total)}`;
             } else {
@@ -5194,71 +5226,139 @@
         }
 
         function prestSeleccionarTodos() {
-            document.querySelectorAll('.prestador-checkbox').forEach(cb => {
-                if (!cb.checked) {
-                    cb.checked = true;
-                    const nombreEncoded = cb.id.replace('pcheck-', '');
-                    const card = document.getElementById(`pcard-${nombreEncoded}`);
-                    const subtotal = Number(card.dataset.subtotal || 0);
-                    const nombre = card.dataset.prestador;
-                    prestSeleccionados[nombreEncoded] = {
-                        nombre, subtotal, equipos: prestGrupos[nombre] || []
-                    };
-                    card.classList.add('seleccionada');
+            Object.keys(prestGrupos).forEach(nombre => {
+                const nombreEncoded = encodeURIComponent(nombre);
+                // Abrir la tarjeta primero para que los checkboxes existan en el DOM
+                const body = document.getElementById(`pbody-${nombreEncoded}`);
+                if (body && !body.classList.contains('open')) {
+                    body.classList.add('open');
+                    const flecha = document.getElementById(`parrow-${nombreEncoded}`);
+                    if (flecha) flecha.textContent = '▲';
                 }
+                prestSeleccionarEquiposTodos(nombreEncoded);
             });
-            prestActualizarBarraSeleccion();
         }
 
         function prestDeseleccionarTodos() {
-            document.querySelectorAll('.prestador-checkbox').forEach(cb => {
-                cb.checked = false;
-                const nombreEncoded = cb.id.replace('pcheck-', '');
-                const card = document.getElementById(`pcard-${nombreEncoded}`);
-                if (card) card.classList.remove('seleccionada');
+            Object.keys(prestGrupos).forEach(nombre => {
+                prestDeseleccionarEquiposTodos(encodeURIComponent(nombre));
             });
-            prestSeleccionados = {};
-            prestActualizarBarraSeleccion();
         }
 
+        // Pagar TODOS los equipos de un prestador (botón "Pagar Todo")
+        function prestPagarTodoPrestador(nombreEncoded) {
+            const card   = document.getElementById(`pcard-${nombreEncoded}`);
+            const nombre = card?.dataset.prestador || '';
+            const equipos = prestGrupos[nombre] || [];
+            const total   = equipos.reduce((s, eq) => s + Number(eq.costo || 0), 0);
+            _prestAbrirModal(nombre, equipos, total);
+        }
+
+        // Pagar solo los equipos marcados de un prestador
+        function prestPagarSeleccionados(nombreEncoded) {
+            const card   = document.getElementById(`pcard-${nombreEncoded}`);
+            const nombre = card?.dataset.prestador || '';
+            const todosEquipos = prestGrupos[nombre] || [];
+
+            // Filtrar solo los seleccionados de este prestador
+            const selIds = Object.entries(prestEquiposSeleccionados)
+                .filter(([id, v]) => v.nombreEncoded === nombreEncoded)
+                .map(([id]) => id);
+
+            if (selIds.length === 0) {
+                mostrarToast('⚠️ Selecciona al menos un equipo');
+                return;
+            }
+
+            // Mapear eqId → índice del equipo en el array
+            const equiposSel = selIds.map(eqId => {
+                const idx = parseInt(eqId.replace(`eq-${nombreEncoded}-`, ''));
+                return todosEquipos[idx];
+            }).filter(Boolean);
+
+            const total = equiposSel.reduce((s, eq) => s + Number(eq.costo || 0), 0);
+            _prestAbrirModal(nombre, equiposSel, total);
+        }
+
+        // Pagar la selección global (multi-prestador, barra inferior)
         function prestAbrirPagoMasivo() {
-            const seleccionados = Object.values(prestSeleccionados);
-            if (seleccionados.length === 0) return;
+            if (Object.keys(prestEquiposSeleccionados).length === 0) return;
 
-            // Aplanar todos los equipos de todos los prestadores seleccionados
-            const todosEquipos = seleccionados.flatMap(p => p.equipos);
-            const totalGlobal  = seleccionados.reduce((s, p) => s + p.subtotal, 0);
-            const nombresCombinados = seleccionados.map(p => p.nombre).join(', ');
+            // Agrupar por prestador para el resumen
+            const porPrestador = {};
+            Object.entries(prestEquiposSeleccionados).forEach(([eqId, { costo, nombreEncoded }]) => {
+                const card   = document.getElementById(`pcard-${nombreEncoded}`);
+                const nombre = card?.dataset.prestador || nombreEncoded;
+                const todosEq = prestGrupos[nombre] || [];
+                const idx     = parseInt(eqId.replace(`eq-${nombreEncoded}-`, ''));
+                const eq      = todosEq[idx];
+                if (!eq) return;
+                if (!porPrestador[nombre]) porPrestador[nombre] = [];
+                porPrestador[nombre].push(eq);
+            });
 
-            // Reusar prestAbrirPago con datos combinados
-            prestGrupos['__MASIVO__'] = todosEquipos;
-            prestAbrirPago('__MASIVO__', 'masivo');
+            const todosEquipos = Object.values(porPrestador).flat();
+            const total        = todosEquipos.reduce((s, eq) => s + Number(eq.costo || 0), 0);
+            const nombres      = Object.keys(porPrestador).join(', ');
 
-            // Actualizar el resumen del modal para reflejar múltiples prestadores
-            const filas = seleccionados.map(p => `
-                <div class="gar-resumen-row">
-                    <span>👤 ${p.nombre} (${p.equipos.length} equipo${p.equipos.length !== 1 ? 's' : ''})</span>
-                    <span>${formatMoney(p.subtotal)}</span>
-                </div>`).join('');
+            _prestAbrirModal(nombres, todosEquipos, total, porPrestador);
+        }
+
+        // Modal unificado de pago
+        function _prestAbrirModal(nombrePrestador, equipos, total, porPrestador = null) {
+            prestPagoActual = { prestador: nombrePrestador, equipos, total };
+
+            // Resumen
+            let resumenHTML;
+            if (porPrestador && Object.keys(porPrestador).length > 1) {
+                resumenHTML = Object.entries(porPrestador).map(([nom, eqs]) => {
+                    const sub = eqs.reduce((s, eq) => s + Number(eq.costo || 0), 0);
+                    return `<div class="gar-resumen-row">
+                        <span>👤 ${nom} (${eqs.length} eq.)</span>
+                        <span>${formatMoney(sub)}</span>
+                    </div>`;
+                }).join('');
+            } else {
+                resumenHTML = equipos.map(eq => {
+                    const desc  = eq.descripcion || eq.equipo || 'Sin descripción';
+                    const imei  = eq.imei || '';
+                    return `<div class="gar-resumen-row">
+                        <span>${desc}${imei ? `<br><small style="color:var(--gray-500);">IMEI: ${imei}</small>` : ''}</span>
+                        <span>${formatMoney(eq.costo || 0)}</span>
+                    </div>`;
+                }).join('');
+            }
 
             document.getElementById('prest-pago-resumen').innerHTML = `
                 <div class="gar-resumen-row">
-                    <span><strong>Prestadores</strong></span>
-                    <span><strong>${seleccionados.length} seleccionados</strong></span>
+                    <span><strong>Prestador(es)</strong></span>
+                    <span><strong>${nombrePrestador}</strong></span>
                 </div>
-                ${filas}
+                ${resumenHTML}
                 <div class="gar-resumen-row">
-                    <span><strong>Total combinado</strong></span>
-                    <span><strong>${formatMoney(totalGlobal)}</strong></span>
+                    <span><strong>Total</strong></span>
+                    <span><strong>${formatMoney(total)}</strong></span>
                 </div>`;
 
-            document.getElementById('prest-pago-monto').value =
-                new Intl.NumberFormat('es-CO').format(totalGlobal);
+            // Métodos de pago
+            const selectMetodo = document.getElementById('prest-pago-metodo');
+            selectMetodo.innerHTML = '<option value="">Seleccione...</option>';
+            ['efectivo','transferencia','tarjeta','nequi','daviplata','otro'].forEach(m => {
+                const opt = document.createElement('option');
+                opt.value = m;
+                opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
+                selectMetodo.appendChild(opt);
+            });
 
-            // Guardar lista de prestadores seleccionados para el pago
-            prestPagoActual.prestador = nombresCombinados;
-            prestPagoActual.total = totalGlobal;
-            prestPagoActual.seleccionMultiple = seleccionados;
+            document.getElementById('prest-pago-monto').value =
+                new Intl.NumberFormat('es-CO').format(total);
+            document.getElementById('prest-pago-referencia').value = '';
+            document.getElementById('prest-pago-nota').value = '';
+            delete capturedPhotos['prestSoporte'];
+            const btnS = document.getElementById('btn-prest-soporte');
+            if (btnS) { btnS.classList.remove('captured'); btnS.innerHTML = '📸 Foto del Comprobante'; }
+
+            document.getElementById('prest-pago-modal').classList.add('active');
         }
 
         function prestFiltrar() {
@@ -5271,66 +5371,8 @@
             prestRenderizar(filtrado);
         }
 
-        function prestAbrirPago(nombrePrestador, modo) {
-            const equipos  = prestGrupos[nombrePrestador] || [];
-            const subtotal = equipos.reduce((s, eq) => s + Number(eq.costo || 0), 0);
-
-            prestPagoActual = { prestador: nombrePrestador, equipos, total: subtotal, modo };
-
-            // Resumen en modal
-            const filas = equipos.map(eq => {
-                const costo = Number(eq.costo || 0);
-                const desc  = eq.descripcion || eq.equipo || eq.nombre || 'Sin descripción';
-                const imei  = eq.imei || null;
-                const rem   = eq._remision || null;
-                return `
-                    <div class="gar-resumen-row">
-                        <span>
-                            ${desc}
-                            ${imei ? `<br><small style="color:var(--gray-500);">IMEI: ${imei}</small>` : ''}
-                            ${rem  ? `<br><small style="color:var(--gray-500);">📄 ${rem}</small>` : ''}
-                        </span>
-                        <span>${formatMoney(costo)}</span>
-                    </div>`;
-            }).join('');
-
-            document.getElementById('prest-pago-resumen').innerHTML = `
-                <div class="gar-resumen-row">
-                    <span><strong>Prestador</strong></span>
-                    <span><strong>${nombrePrestador}</strong></span>
-                </div>
-                ${filas}
-                <div class="gar-resumen-row">
-                    <span><strong>Total deuda</strong></span>
-                    <span><strong>${formatMoney(subtotal)}</strong></span>
-                </div>
-            `;
-
-            // Métodos desde config o default
-            const metodosPerm = ['efectivo','transferencia','tarjeta','nequi','daviplata','otro'];
-            const selectMetodo = document.getElementById('prest-pago-metodo');
-            selectMetodo.innerHTML = '<option value="">Seleccione...</option>';
-            metodosPerm.forEach(m => {
-                const opt = document.createElement('option');
-                opt.value = m;
-                opt.textContent = m.charAt(0).toUpperCase() + m.slice(1);
-                selectMetodo.appendChild(opt);
-            });
-
-            document.getElementById('prest-pago-monto').value =
-                modo === 'masivo' ? new Intl.NumberFormat('es-CO').format(subtotal) : '';
-            document.getElementById('prest-pago-referencia').value = '';
-            document.getElementById('prest-pago-nota').value = '';
-            delete capturedPhotos['prestSoporte'];
-            const btnS = document.getElementById('btn-prest-soporte');
-            if (btnS) { btnS.classList.remove('captured'); btnS.innerHTML = '📸 Foto del Comprobante'; }
-
-            document.getElementById('prest-pago-modal').classList.add('active');
-        }
-
         function prestCerrarPago() {
             document.getElementById('prest-pago-modal').classList.remove('active');
-            if (prestPagoActual?.seleccionMultiple) delete prestGrupos['__MASIVO__'];
             prestPagoActual = null;
         }
 
@@ -5369,16 +5411,12 @@
                     soporte_foto: capturedPhotos['prestSoporte'] ? true : false
                 };
 
-                // Guardar datos necesarios antes de cualquier operación async
-                // (prestPagoActual puede volverse null si algo falla en el camino)
-                const nombrePrestador = prestPagoActual.prestador || 'Prestador';
+                // Guardar datos antes de operaciones async
+                const nombrePrestador = prestPagoActual?.prestador || 'Prestador';
                 const montoFinal = monto;
 
-                // Obtener equipos — puede ser pago individual o masivo multi-prestador
-                const todosEquipos = prestPagoActual.seleccionMultiple
-                    ? prestPagoActual.seleccionMultiple.flatMap(p => p.equipos)
-                    : (prestPagoActual.equipos || []);
-
+                // Equipos vienen directamente de prestPagoActual.equipos
+                const todosEquipos = prestPagoActual?.equipos || [];
                 const fileIdsUnicos = [...new Set(todosEquipos.map(eq => eq._fileId).filter(Boolean))];
 
                 // Actualizar cada archivo Prestado-*.json en Drive → estado: 'pagado'
@@ -5431,17 +5469,15 @@
                 }
 
                 prestCerrarPago();
-                prestSeleccionados = {};
-                delete prestGrupos['__MASIVO__'];
+                prestEquiposSeleccionados = {};
+                document.getElementById('prest-seleccion-bar').classList.remove('visible');
                 mostrarToast(`✅ Pago de ${formatMoney(montoFinal)} registrado correctamente`);
                 setTimeout(() => prestCargar(), 800);
 
             } catch (err) {
                 console.error('Error registrando pago:', err);
-                // Limpiar estado aunque haya error
                 try { prestCerrarPago(); } catch(e) {}
-                prestSeleccionados = {};
-                delete prestGrupos['__MASIVO__'];
+                prestEquiposSeleccionados = {};
                 mostrarToast('❌ Error al registrar pago. Revisa consola.');
             }
         }
