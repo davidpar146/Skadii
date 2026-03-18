@@ -1238,7 +1238,7 @@
             </div>
             <div class="form-group">
                 <label>Costo del Equipo <span style="font-size:0.75rem; color:var(--gray-500);">(Opcional - Solo contabilidad)</span></label>
-                <input type="text" id="item-costo" placeholder="0" oninput="formatearInput(this)" inputmode="numeric">
+                <input type="text" id="item-costo" placeholder="0" oninput="formatearInput(this)" onblur="formatearInput(this)" inputmode="numeric">
                 <div style="font-size: 0.75rem; color: var(--gray-600); margin-top: 0.25rem;">
                     💡 Campo interno. No visible para el cliente.
                 </div>
@@ -2280,16 +2280,27 @@
 
         // Formatear números con puntos de mil
         function formatearInput(input) {
-            let valor = input.value.replace(/\./g, '');
-            if (!valor || isNaN(valor)) return;
-            
-            const formateado = new Intl.NumberFormat('es-CO').format(valor);
-            input.value = formateado;
+            // Extraer solo dígitos (eliminar puntos, comas, espacios, $)
+            const soloDigitos = input.value.replace(/[^\d]/g, '');
+            if (!soloDigitos) {
+                input.value = '';
+                return;
+            }
+            // Guardar posición del cursor para no perderla
+            const posicion = input.selectionStart;
+            const longitudAntes = input.value.length;
+            // Formatear con puntos de miles (es-CO)
+            input.value = new Intl.NumberFormat('es-CO').format(parseInt(soloDigitos, 10));
+            // Restaurar cursor aproximado
+            const longitudDespues = input.value.length;
+            const nuevaPosicion = posicion + (longitudDespues - longitudAntes);
+            try { input.setSelectionRange(nuevaPosicion, nuevaPosicion); } catch(e) {}
         }
 
         function parsearValor(texto) {
             if (!texto) return 0;
-            return parseFloat(texto.toString().replace(/\./g, '')) || 0;
+            const soloDigitos = texto.toString().replace(/[^\d]/g, '');
+            return parseInt(soloDigitos, 10) || 0;
         }
 
         function formatMoney(valor) {
@@ -5427,6 +5438,10 @@
 
             } catch (err) {
                 console.error('Error registrando pago:', err);
+                // Limpiar estado aunque haya error
+                try { prestCerrarPago(); } catch(e) {}
+                prestSeleccionados = {};
+                delete prestGrupos['__MASIVO__'];
                 mostrarToast('❌ Error al registrar pago. Revisa consola.');
             }
         }
