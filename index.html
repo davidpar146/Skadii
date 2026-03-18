@@ -5,37 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema de Remisiones Skaoll</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-    
-    <!-- Definir callbacks ANTES de cargar las librerías de Google -->
-    <script>
-        let gapiLoadedFlag = false;
-        let gisLoadedFlag = false;
-        
-        function gapiLoadedCallback() {
-            console.log('✅ Google API JS cargado');
-            gapiLoadedFlag = true;
-            checkBothApisLoaded();
-        }
-        
-        function gisLoadedCallback() {
-            console.log('✅ Google Identity Services cargado');
-            gisLoadedFlag = true;
-            checkBothApisLoaded();
-        }
-        
-        function checkBothApisLoaded() {
-            if (gapiLoadedFlag && gisLoadedFlag) {
-                console.log('✅ Ambas APIs cargadas, inicializando...');
-                if (typeof initializeGoogleAPIs === 'function') {
-                    initializeGoogleAPIs();
-                }
-            }
-        }
-    </script>
-    
-    <!-- Ahora sí cargar las librerías -->
-    <script src="https://apis.google.com/js/api.js" onload="gapiLoadedCallback()"></script>
-    <script src="https://accounts.google.com/gsi/client" onload="gisLoadedCallback()"></script>
+    <script src="https://apis.google.com/js/api.js"></script>
+    <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
         * {
             margin: 0;
@@ -384,27 +355,11 @@
             border-radius: 6px;
             cursor: pointer;
             font-size: 1rem;
-            transition: all 0.2s;
-        }
-        
-        .btn-icon.edit {
-            background: #3b82f6;
-            color: white;
-        }
-        
-        .btn-icon.edit:hover {
-            background: #2563eb;
-            transform: scale(1.05);
         }
 
         .btn-icon.delete {
             background: var(--danger);
             color: white;
-        }
-        
-        .btn-icon.delete:hover {
-            background: #b91c1c;
-            transform: scale(1.05);
         }
 
         .summary {
@@ -644,31 +599,22 @@
     </div>
 
     <div class="header">
-        <h1>📱 Sistema Skadii Cell</h1>
-        <div class="subtitle">Remisiones • Mantenimientos • Garantías</div>
+        <h1>📱 Sistema de Remisiones Skaoll</h1>
+        <div class="subtitle">Gestión móvil con Google Drive + Sheets</div>
         <div id="drive-status" class="drive-status">
             <span id="status-icon">⚪</span>
             <span id="status-text">Desconectado</span>
         </div>
         <div class="menu-gestion">
-            <button class="btn-menu" onclick="toggleMenu()">⚙️ Módulos ▼</button>
+            <button class="btn-menu" onclick="toggleMenu()">⚙️ Gestión ▼</button>
             <div id="dropdown-menu" class="dropdown-menu">
-                <button class="menu-item active" onclick="mostrarModulo('remisiones')">📝 Remisiones</button>
-                <button class="menu-item" onclick="mostrarModulo('mantenimientos')">🔧 Mantenimientos</button>
-                <button class="menu-item" onclick="mostrarModulo('garantias')">🔄 Garantías</button>
-                <button class="menu-item" onclick="mostrarModulo('prestadores')">💰 Pagar Prestadores</button>
-                <div style="border-top: 1px solid var(--gray-200); margin: 0.5rem 0;"></div>
+                <button class="menu-item active" onclick="mostrarCrear()">📝 Crear Remisión</button>
                 <button class="menu-item" onclick="mostrarAnular()">❌ Anular Remisión</button>
             </div>
         </div>
     </div>
 
     <div class="container" id="main-content" style="display: none;">
-        
-        <!-- ===================================== -->
-        <!-- MÓDULO: REMISIONES -->
-        <!-- ===================================== -->
-        <div id="modulo-remisiones" class="modulo-content">
         <!-- Equipo de Venta -->
         <div class="card">
             <div class="card-title">👥 Equipo de Venta</div>
@@ -941,547 +887,7 @@
         <button class="btn btn-success" onclick="guardarDocumento()">
             ☁️ Guardar y Subir a Drive + Sheets
         </button>
-        </div>
-        <!-- FIN MÓDULO REMISIONES -->
-        
-        
-        <!-- ===================================== -->
-        <!-- MÓDULO: MANTENIMIENTOS -->
-        <!-- ===================================== -->
-<!-- MÓDULO MANTENIMIENTOS COMPLETO -->
-<div id="modulo-mantenimientos" class="modulo-content" style="display: none;">
-    
-    <!-- Navegación interna del módulo -->
-    <div style="display: flex; gap: 1rem; margin-bottom: 1rem;">
-        <button class="btn btn-primary" onclick="mostrarVistaMantenimiento('nuevo')" id="btn-nuevo-mant">
-            ➕ Nuevo Mantenimiento
-        </button>
-        <button class="btn btn-secondary" onclick="mostrarVistaMantenimiento('lista')" id="btn-lista-mant">
-            📋 Ver Todos
-        </button>
     </div>
-    
-    <!-- Vista: Nuevo Mantenimiento -->
-    <div id="vista-nuevo-mantenimiento">
-        
-        <!-- Datos del Cliente -->
-        <div class="card">
-            <div class="card-title">👤 Datos del Cliente</div>
-            
-            <div class="form-group">
-                <label>Nombre Completo *</label>
-                <input type="text" id="mant-cliente-nombre" placeholder="Juan Pérez">
-            </div>
-            
-            <div class="form-group">
-                <label>Teléfono *</label>
-                <input type="tel" id="mant-cliente-telefono" placeholder="3001234567">
-            </div>
-            
-            <div class="form-group">
-                <label>Identificación *</label>
-                <input type="text" id="mant-cliente-id" placeholder="1234567890">
-            </div>
-        </div>
-        
-        <!-- Datos del Equipo -->
-        <div class="card">
-            <div class="card-title">📱 Datos del Equipo</div>
-            
-            <div class="form-group">
-                <label>Descripción del Equipo *</label>
-                <input type="text" id="mant-equipo-desc" placeholder="iPhone 15 Pro Max 256GB">
-            </div>
-            
-            <div class="form-group">
-                <label>IMEI/Serie</label>
-                <input type="text" id="mant-equipo-imei" placeholder="123456789012345">
-            </div>
-            
-            <div class="form-group">
-                <label>Marca</label>
-                <select id="mant-equipo-marca">
-                    <option value="">Seleccionar...</option>
-                    <option value="Apple">Apple</option>
-                    <option value="Samsung">Samsung</option>
-                    <option value="Xiaomi">Xiaomi</option>
-                    <option value="Motorola">Motorola</option>
-                    <option value="Huawei">Huawei</option>
-                    <option value="Otro">Otro</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>Modelo</label>
-                <input type="text" id="mant-equipo-modelo" placeholder="iPhone 15 Pro Max">
-            </div>
-        </div>
-        
-        <!-- Falla Reportada -->
-        <div class="card">
-            <div class="card-title">🔍 Falla Reportada por el Cliente</div>
-            
-            <div class="form-group">
-                <label>Descripción de la Falla *</label>
-                <textarea id="mant-falla" placeholder="No enciende, pantalla rota, no carga..." rows="3"></textarea>
-            </div>
-        </div>
-        
-        <!-- Inspección Visual Interactiva -->
-        <div class="card">
-            <div class="card-title">📸 Inspección Visual del Equipo</div>
-            <p style="color: var(--gray-600); font-size: 0.875rem; margin-bottom: 1rem;">
-                Click en las zonas del teléfono para marcar daños
-            </p>
-            
-            <div style="text-align: center; margin-bottom: 1rem;">
-                <button class="btn" onclick="cambiarVistaIphone('frente')" id="btn-vista-frente" style="background: var(--primary); color: white;">
-                    Vista Frontal
-                </button>
-                <button class="btn" onclick="cambiarVistaIphone('posterior')" id="btn-vista-posterior">
-                    Vista Posterior
-                </button>
-            </div>
-            
-            <!-- SVG del iPhone (Frontal) -->
-            <div id="iphone-frente" style="display: block;">
-                <svg viewBox="0 0 200 400" style="max-width: 300px; margin: 0 auto; display: block; cursor: pointer;" id="svg-iphone-frente">
-                    <!-- Marco del iPhone -->
-                    <rect x="10" y="10" width="180" height="380" rx="20" fill="#1a1a1a" stroke="#666" stroke-width="2"/>
-                    
-                    <!-- Pantalla -->
-                    <rect x="15" y="50" width="170" height="300" rx="5" fill="#000" stroke="#444" stroke-width="1" 
-                          onclick="marcarDanio(event, 'pantalla', 'frente')" style="cursor: pointer;"/>
-                    
-                    <!-- Cámara frontal -->
-                    <circle cx="100" cy="30" r="5" fill="#222" stroke="#666" stroke-width="1"
-                            onclick="marcarDanio(event, 'camara-frontal', 'frente')" style="cursor: pointer;"/>
-                    
-                    <!-- Altavoz -->
-                    <rect x="80" y="25" width="40" height="3" rx="1.5" fill="#333"
-                          onclick="marcarDanio(event, 'altavoz', 'frente')" style="cursor: pointer;"/>
-                    
-                    <!-- Botón home / Touch ID -->
-                    <circle cx="100" cy="370" r="15" fill="#222" stroke="#666" stroke-width="2"
-                            onclick="marcarDanio(event, 'boton-home', 'frente')" style="cursor: pointer;"/>
-                    
-                    <!-- Esquinas clickeables -->
-                    <rect x="10" y="10" width="40" height="40" fill="transparent" 
-                          onclick="marcarDanio(event, 'esquina-sup-izq', 'frente')" style="cursor: pointer;"/>
-                    <rect x="150" y="10" width="40" height="40" fill="transparent"
-                          onclick="marcarDanio(event, 'esquina-sup-der', 'frente')" style="cursor: pointer;"/>
-                    <rect x="10" y="350" width="40" height="40" fill="transparent"
-                          onclick="marcarDanio(event, 'esquina-inf-izq', 'frente')" style="cursor: pointer;"/>
-                    <rect x="150" y="350" width="40" height="40" fill="transparent"
-                          onclick="marcarDanio(event, 'esquina-inf-der', 'frente')" style="cursor: pointer;"/>
-                    
-                    <!-- Marcadores de daños (se agregarán dinámicamente) -->
-                    <g id="marcadores-frente"></g>
-                </svg>
-            </div>
-            
-            <!-- SVG del iPhone (Posterior) -->
-            <div id="iphone-posterior" style="display: none;">
-                <svg viewBox="0 0 200 400" style="max-width: 300px; margin: 0 auto; display: block; cursor: pointer;" id="svg-iphone-posterior">
-                    <!-- Marco del iPhone -->
-                    <rect x="10" y="10" width="180" height="380" rx="20" fill="#2a2a2a" stroke="#666" stroke-width="2"/>
-                    
-                    <!-- Módulo de cámara -->
-                    <rect x="20" y="20" width="60" height="60" rx="15" fill="#1a1a1a" stroke="#666" stroke-width="2"
-                          onclick="marcarDanio(event, 'camara-trasera', 'posterior')" style="cursor: pointer;"/>
-                    <circle cx="40" cy="40" r="12" fill="#222" stroke="#888" stroke-width="1"/>
-                    <circle cx="60" cy="40" r="12" fill="#222" stroke="#888" stroke-width="1"/>
-                    <circle cx="65" cy="65" r="5" fill="#444"/>
-                    
-                    <!-- Logo Apple -->
-                    <circle cx="100" cy="200" r="15" fill="#3a3a3a" stroke="#666" stroke-width="1"
-                            onclick="marcarDanio(event, 'logo', 'posterior')" style="cursor: pointer;"/>
-                    
-                    <!-- Esquinas clickeables -->
-                    <rect x="10" y="10" width="40" height="40" fill="transparent"
-                          onclick="marcarDanio(event, 'esquina-sup-izq', 'posterior')" style="cursor: pointer;"/>
-                    <rect x="150" y="10" width="40" height="40" fill="transparent"
-                          onclick="marcarDanio(event, 'esquina-sup-der', 'posterior')" style="cursor: pointer;"/>
-                    <rect x="10" y="350" width="40" height="40" fill="transparent"
-                          onclick="marcarDanio(event, 'esquina-inf-izq', 'posterior')" style="cursor: pointer;"/>
-                    <rect x="150" y="350" width="40" height="40" fill="transparent"
-                          onclick="marcarDanio(event, 'esquina-inf-der', 'posterior')" style="cursor: pointer;"/>
-                    
-                    <!-- Marcadores de daños -->
-                    <g id="marcadores-posterior"></g>
-                </svg>
-            </div>
-            
-            <!-- Lista de daños marcados -->
-            <div id="lista-danios-marcados" style="margin-top: 1rem;">
-                <div style="font-weight: 600; margin-bottom: 0.5rem;">📍 Daños Marcados:</div>
-                <div id="danios-list" style="color: var(--gray-600);">
-                    Ninguno
-                </div>
-            </div>
-        </div>
-        
-        <!-- Fotos del Equipo -->
-        <div class="card">
-            <div class="card-title">📸 Fotos del Equipo</div>
-            
-            <div class="form-group">
-                <label>Foto General del Equipo</label>
-                <button class="btn btn-secondary" onclick="tomarFotoMantenimiento('general')">
-                    📷 Tomar Foto
-                </button>
-                <div id="preview-foto-general-mant"></div>
-            </div>
-            
-            <div class="form-group">
-                <label>Foto de la Falla (Opcional)</label>
-                <button class="btn btn-secondary" onclick="tomarFotoMantenimiento('falla')">
-                    📷 Tomar Foto
-                </button>
-                <div id="preview-foto-falla-mant"></div>
-            </div>
-        </div>
-        
-        <!-- Información del Servicio -->
-        <div class="card">
-            <div class="card-title">💰 Información del Servicio</div>
-            
-            <div class="form-group">
-                <label>Estado Inicial del Equipo</label>
-                <select id="mant-estado-inicial">
-                    <option value="funcional">Funcional (con falla específica)</option>
-                    <option value="no-funcional">No funcional</option>
-                    <option value="danado">Dañado físicamente</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>Costo Estimado del Servicio</label>
-                <input type="number" id="mant-costo-estimado" placeholder="0" min="0">
-            </div>
-            
-            <div class="form-group">
-                <label>Anticipo Recibido</label>
-                <input type="number" id="mant-anticipo" placeholder="0" min="0">
-            </div>
-            
-            <div class="form-group">
-                <label>Fecha Estimada de Entrega</label>
-                <input type="date" id="mant-fecha-estimada">
-            </div>
-            
-            <div class="form-group">
-                <label>Asesor Responsable *</label>
-                <input type="text" id="mant-asesor" placeholder="Tu nombre">
-            </div>
-        </div>
-        
-        <!-- Notas -->
-        <div class="card">
-            <div class="card-title">📝 Notas Adicionales</div>
-            <div class="form-group">
-                <textarea id="mant-notas" placeholder="Observaciones, recomendaciones..." rows="3"></textarea>
-            </div>
-        </div>
-        
-        <!-- Guardar -->
-        <button class="btn btn-success" onclick="guardarMantenimiento()">
-            💾 Registrar Mantenimiento
-        </button>
-    </div>
-    
-    <!-- Vista: Lista de Mantenimientos -->
-    <div id="vista-lista-mantenimientos" style="display: none;">
-        <div class="card">
-            <div class="card-title">📋 Todos los Mantenimientos</div>
-            <div id="lista-todos-mantenimientos">
-                <p style="color: var(--gray-600);">Cargando...</p>
-            </div>
-        </div>
-    </div>
-    
-</div>
-        
-        
-        <!-- ===================================== -->
-        <!-- MÓDULO: GARANTÍAS Y CAMBIOS -->
-        <!-- ===================================== -->
-<!-- MÓDULO GARANTÍAS COMPLETO -->
-<div id="modulo-garantias" class="modulo-content" style="display: none;">
-    
-    <!-- Paso 1: Buscar Remisión Original -->
-    <div class="card">
-        <div class="card-title">🔍 Buscar Remisión Original</div>
-        
-        <div class="form-group">
-            <label>Número de Remisión *</label>
-            <div style="display: flex; gap: 0.5rem;">
-                <input type="number" id="gar-num-remision" placeholder="42" min="1" style="flex: 1;">
-                <button class="btn btn-primary" onclick="buscarRemisionGarantia()">
-                    🔍 Buscar
-                </button>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Datos de la Remisión Original (aparece después de buscar) -->
-    <div id="datos-remision-original" style="display: none;">
-        <div class="card" style="background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border: 2px solid #3b82f6;">
-            <div class="card-title">📄 Remisión Original</div>
-            <div id="info-remision-original"></div>
-        </div>
-        
-        <!-- Motivo del Cambio -->
-        <div class="card">
-            <div class="card-title">🔍 Motivo del Cambio</div>
-            
-            <div class="form-group">
-                <label>Tipo de Cambio *</label>
-                <select id="gar-tipo-cambio" onchange="actualizarTipoCambio()">
-                    <option value="">Seleccionar...</option>
-                    <option value="falla_fabrica">Falla de fábrica (Garantía)</option>
-                    <option value="cambio_voluntario">Cambio voluntario del cliente</option>
-                    <option value="equipo_diferente">Cambio por equipo diferente</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>Descripción del Problema *</label>
-                <textarea id="gar-descripcion-problema" placeholder="No carga, batería agotada rápidamente..." rows="3"></textarea>
-            </div>
-        </div>
-        
-        <!-- Inspección del Equipo Devuelto (ENTRA) -->
-        <div class="card">
-            <div class="card-title">📥 EQUIPO QUE ENTRA (Devuelto por el Cliente)</div>
-            <p style="color: var(--gray-600); font-size: 0.875rem;">
-                Inspecciona el equipo que devuelve el cliente
-            </p>
-            
-            <div id="info-equipo-entra" style="background: #fef2f2; padding: 1rem; border-radius: 8px; margin: 1rem 0;">
-                <!-- Se llenará con JS -->
-            </div>
-            
-            <div class="form-group">
-                <label>Estado Físico del Equipo</label>
-                <select id="gar-estado-fisico">
-                    <option value="excelente">Excelente (sin daños visibles)</option>
-                    <option value="bueno">Bueno (uso normal)</option>
-                    <option value="regular">Regular (rayones, golpes leves)</option>
-                    <option value="malo">Malo (daños significativos)</option>
-                </select>
-            </div>
-            
-            <div class="form-group">
-                <label>¿Tiene daños físicos?</label>
-                <div class="toggle-group">
-                    <button class="toggle-btn active" id="gar-danios-no" onclick="setDaniosFisicos(false)">
-                        No
-                    </button>
-                    <button class="toggle-btn" id="gar-danios-si" onclick="setDaniosFisicos(true)">
-                        Sí, especificar
-                    </button>
-                </div>
-            </div>
-            
-            <div id="seccion-danios-garantia" style="display: none;">
-                <p style="color: var(--gray-600); font-size: 0.875rem; margin: 1rem 0;">
-                    Click en las zonas del teléfono para marcar daños
-                </p>
-                <!-- Mismo gráfico interactivo que en mantenimientos -->
-                <div style="text-align: center;">
-                    <p style="color: var(--gray-500);">Gráfico iPhone interactivo aquí (reutilizar código mantenimientos)</p>
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>📸 Foto del Equipo Devuelto</label>
-                <button class="btn btn-secondary" onclick="tomarFotoGarantia('equipo-devuelto')">
-                    📷 Tomar Foto
-                </button>
-                <div id="preview-foto-equipo-devuelto"></div>
-            </div>
-        </div>
-        
-        <!-- Equipo Nuevo a Entregar (SALE) -->
-        <div class="card">
-            <div class="card-title">📤 EQUIPO QUE SALE (Nuevo para el Cliente)</div>
-            
-            <div class="form-group">
-                <label>¿Es el mismo modelo?</label>
-                <div class="toggle-group">
-                    <button class="toggle-btn active" id="gar-mismo-si" onclick="setMismoModelo(true)">
-                        Sí, mismo modelo
-                    </button>
-                    <button class="toggle-btn" id="gar-mismo-no" onclick="setMismoModelo(false)">
-                        No, otro modelo
-                    </button>
-                </div>
-            </div>
-            
-            <div id="form-equipo-nuevo" style="display: none;">
-                <div class="form-group">
-                    <label>Descripción del Equipo Nuevo *</label>
-                    <input type="text" id="gar-equipo-nuevo-desc" placeholder="iPhone 15 (normal)">
-                </div>
-                
-                <div class="form-group">
-                    <label>Precio del Equipo Nuevo *</label>
-                    <input type="number" id="gar-equipo-nuevo-precio" placeholder="0" min="0">
-                </div>
-            </div>
-            
-            <div class="form-group">
-                <label>IMEI del Equipo Nuevo *</label>
-                <input type="text" id="gar-equipo-nuevo-imei" placeholder="987654321098765">
-            </div>
-        </div>
-        
-        <!-- Cálculo de Diferencia -->
-        <div class="card" id="card-diferencia" style="display: none;">
-            <div class="card-title">💰 Cálculo de Diferencia</div>
-            <div id="info-diferencia"></div>
-            
-            <div id="form-metodo-diferencia" style="display: none;">
-                <div class="form-group">
-                    <label>Método de Pago/Devolución *</label>
-                    <select id="gar-metodo-diferencia">
-                        <option value="">Seleccionar...</option>
-                        <option value="efectivo">Efectivo</option>
-                        <option value="transferencia">Transferencia</option>
-                        <option value="tarjeta">Tarjeta</option>
-                    </select>
-                </div>
-                
-                <div id="campos-metodo-diferencia"></div>
-            </div>
-        </div>
-        
-        <!-- Destino del Equipo Devuelto -->
-        <div class="card">
-            <div class="card-title">🗂️ ¿Qué harás con el Equipo que ENTRA?</div>
-            
-            <div class="form-group">
-                <label>Destino del Equipo Devuelto *</label>
-                <select id="gar-destino-equipo">
-                    <option value="">Seleccionar...</option>
-                    <option value="inventario_reparacion">Inventario para reparación</option>
-                    <option value="enviar_proveedor">Enviar a proveedor</option>
-                    <option value="perdida">Marcar como pérdida</option>
-                </select>
-            </div>
-        </div>
-        
-        <!-- Asesor y Notas -->
-        <div class="card">
-            <div class="card-title">👤 Asesor Responsable</div>
-            
-            <div class="form-group">
-                <label>Tu Nombre *</label>
-                <input type="text" id="gar-asesor" placeholder="Tu nombre">
-            </div>
-            
-            <div class="form-group">
-                <label>Notas Adicionales</label>
-                <textarea id="gar-notas" placeholder="Observaciones sobre el cambio..." rows="3"></textarea>
-            </div>
-        </div>
-        
-        <!-- Firma del Cliente -->
-        <div class="card">
-            <div class="card-title">✍️ Firma del Cliente</div>
-            <p style="color: var(--gray-600); font-size: 0.875rem; margin-bottom: 1rem;">
-                El cliente debe firmar para autorizar el cambio
-            </p>
-            
-            <div style="border: 2px solid var(--gray-300); border-radius: 8px; background: white;">
-                <canvas id="firma-canvas-garantia" width="400" height="200" style="width: 100%; max-width: 400px; cursor: crosshair;"></canvas>
-            </div>
-            
-            <div style="margin-top: 0.5rem;">
-                <button class="btn btn-secondary" onclick="limpiarFirmaGarantia()">
-                    🔄 Limpiar Firma
-                </button>
-            </div>
-        </div>
-        
-        <!-- Solicitar Autorización -->
-        <button class="btn btn-success" onclick="solicitarAutorizacionGarantia()">
-            🔐 Solicitar Autorización (Sirley/Camilo)
-        </button>
-    </div>
-</div>
-
-<!-- Modal de Autorización para Garantías -->
-<div id="modal-autorizacion-garantia" class="modal">
-    <div class="modal-content">
-        <div class="modal-header">
-            <h3>🔐 Autorización Requerida</h3>
-            <button class="modal-close" onclick="cerrarAutorizacionGarantia()">×</button>
-        </div>
-        
-        <div id="resumen-autorizacion-garantia"></div>
-        
-        <div class="form-group">
-            <label>Autorizador *</label>
-            <select id="gar-autorizador">
-                <option value="">Seleccionar...</option>
-                <option value="Sirley">Sirley</option>
-                <option value="Camilo">Camilo</option>
-            </select>
-        </div>
-        
-        <div class="form-group">
-            <label>Clave de Autorización *</label>
-            <input type="password" id="gar-clave-autorizacion" placeholder="••••">
-        </div>
-        
-        <div class="form-group">
-            <label>Nota de Autorización (Opcional)</label>
-            <textarea id="gar-nota-autorizacion" placeholder="Garantía válida, autorizado..." rows="2"></textarea>
-        </div>
-        
-        <div style="display: flex; gap: 1rem;">
-            <button class="btn btn-secondary" onclick="cerrarAutorizacionGarantia()">
-                ❌ Cancelar
-            </button>
-            <button class="btn btn-success" onclick="confirmarAutorizacionGarantia()">
-                ✅ Autorizar y Guardar
-            </button>
-        </div>
-    </div>
-</div>
-        
-        
-        <!-- ===================================== -->
-        <!-- MÓDULO: PAGAR PRESTADORES -->
-        <!-- ===================================== -->
-        <div id="modulo-prestadores" class="modulo-content" style="display: none;">
-            <div class="card">
-                <div class="card-title">💰 Pagar a Prestadores</div>
-                <p style="color: var(--gray-600); font-size: 0.9rem;">
-                    Gestiona los pagos de equipos prestados que fueron vendidos
-                </p>
-            </div>
-            
-            <div class="card">
-                <div class="card-title">📊 Resumen</div>
-                <div id="resumen-prestadores">
-                    <p style="color: var(--gray-600);">Cargando...</p>
-                </div>
-            </div>
-            
-            <div class="card">
-                <div class="card-title">⚠️ Pendientes de Pago</div>
-                <div id="lista-prestadores-pendientes">
-                    <p style="color: var(--gray-600);">No hay préstamos pendientes</p>
-                </div>
-            </div>
-        </div>
-        <!-- FIN MÓDULO PRESTADORES -->
-        
-    </div>
-    <!-- FIN MAIN CONTENT -->
 
     <!-- Modal Escáner -->
     <div id="scanner-modal" class="modal">
@@ -1624,30 +1030,14 @@
             'https://sheets.googleapis.com/$discovery/rest?version=v4'
         ];
 
-        // IDs de carpetas en Drive - ACTUALIZADOS 16/02/2026
+        // IDs de carpetas en Drive
         const FOLDER_IDS = {
-            // Carpetas existentes
-            remisiones: '1w_mmsQptxY7HvRPl_VAMqDvhnWJ1gkZi',
-            facturas: '1575dZwl8cflxjkF4S2uLBCxGLS8sLK7A',  // Para anulaciones
-            cedulas: '1EAoWUxU7Q6XbuzCiFqkwxyHhuTs7gR6x',
-            contratos: '1HO7KvyvZlsqbeHRMvAwhKuT7d2Hg6TP6',
-            soportes: '10TJWBBiW3ePFw62Coh4IA7-OdTQVYoDs',
-            // Carpetas nuevas - Mantenimientos
-            mantenimientos: '1FbIXY5zFSJAh603h1wrN2XFX4VCgxXI7',
-            fotosMantenimientos: '16mJm89X2zZm8q5MtMGu4AYglhxtxJ1l5',
-            // Carpetas nuevas - Garantías
-            garantias: '1gF45uq_Q7gwyf7x2UA8ckIaw1Td-boEv',
-            fotosGarantias: '1_uZUN-Q9xbTKTIpZE_kfhOrlc8A5KnON',
-            // Carpetas nuevas - Préstamos/Pagos
-            prestamosPagos: '1gxBD48FLVZqJe4n5qWBoNxEnuvRAeZpK',
-            recibosCaja: '1iAEaDJ2JSosvbK6rgdE3biVTelAXgn5o',
-            soportesTransferencia: '18Qt70YEpX0WnIUaifLE3yzeQPABziGEq'
-        };
-        
-        // IDs de archivos de configuración
-        const CONFIG_FILES = {
-            clavesAsesores: '1VhvZUKI0gZ7ZnV3u6N8m7OOIyyetTZks',  // CLAVES-ASESORES-V2.json
-            prestadosPendientes: '1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'  // PRESTADOS-PENDIENTES.json
+            principal: '1fnl_8z0737DmVPcMupFwyjalOxATwZmw',
+            facturas: '1VsBkQqMV6tAdPHDgGQm9kSdjwrsa_qZ4', // Para anulaciones
+            remisiones: '1RBcXVnRz_Z2WzeVau8CMLACzCFxLqBCO',
+            cedulas: '1nKhTxkNmxWBCEa1ecqD-EBc59Z90pOZj',
+            contratos: '1YX7YMk8m5XFYLO4fXWcoyHyUZKoYFA_7',
+            soportes: '1NA5iSnaI3wAUUvReA0rKi2yW8OdN2TFk'
         };
 
         // ID de Google Sheet (lo crearemos automáticamente la primera vez)
@@ -1693,13 +1083,6 @@
                 currency: 'COP',
                 minimumFractionDigits: 0
             }).format(valor);
-        }
-
-        // Función que se llama cuando ambas APIs están cargadas
-        function initializeGoogleAPIs() {
-            console.log('🚀 Inicializando APIs de Google...');
-            gapiLoaded();
-            gisLoaded();
         }
 
         // Inicializar Google API
@@ -1758,92 +1141,22 @@
         function handleAuthClick() {
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) {
-                    console.error('Error de autenticación:', resp);
-                    mostrarToast('❌ Error al conectar con Google. Intenta de nuevo.');
-                    return;
+                    throw (resp);
                 }
-                
                 accessToken = gapi.client.getToken().access_token;
-                
-                // Guardar token y tiempo de expiración en localStorage
-                const tokenData = {
-                    token: accessToken,
-                    timestamp: Date.now(),
-                    expiresIn: 3600000  // 1 hora en ms
-                };
-                localStorage.setItem('google_token_data', JSON.stringify(tokenData));
-                
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('main-content').style.display = 'block';
                 updateDriveStatus(true);
-                
                 await obtenerConsecutivos();
                 await verificarOCrearSpreadsheet();
                 await cargarClavesAsesores();
-                
                 mostrarToast('✅ Conectado a Google Drive + Sheets');
-                
-                // Configurar renovación automática del token antes de que expire
-                configurarRenovacionToken();
             };
 
             if (gapi.client.getToken() === null) {
                 tokenClient.requestAccessToken({prompt: 'consent'});
             } else {
                 tokenClient.requestAccessToken({prompt: ''});
-            }
-        }
-        
-        // NUEVO: Configurar renovación automática del token
-        function configurarRenovacionToken() {
-            // Renovar token cada 50 minutos (antes de que expire a los 60)
-            setInterval(async () => {
-                try {
-                    console.log('🔄 Renovando token de acceso...');
-                    tokenClient.requestAccessToken({prompt: ''});
-                } catch (error) {
-                    console.error('Error renovando token:', error);
-                    mostrarToast('⚠️ Sesión próxima a expirar. Guarda tu trabajo.');
-                }
-            }, 50 * 60 * 1000);  // 50 minutos
-        }
-        
-        // NUEVO: Verificar si el token está próximo a expirar
-        function verificarTokenValido() {
-            const tokenDataStr = localStorage.getItem('google_token_data');
-            if (!tokenDataStr) return false;
-            
-            try {
-                const tokenData = JSON.parse(tokenDataStr);
-                const tiempoTranscurrido = Date.now() - tokenData.timestamp;
-                const estaProximoExpirar = tiempoTranscurrido > (50 * 60 * 1000);  // 50 minutos
-                
-                if (estaProximoExpirar) {
-                    console.log('⚠️ Token próximo a expirar, solicitando renovación...');
-                    return false;
-                }
-                
-                return true;
-            } catch (error) {
-                return false;
-            }
-        }
-        
-        // NUEVO: Wrapper para llamadas a Drive con manejo de errores 401/403
-        async function llamadaDriveConRetry(funcionLlamada, reintentos = 2) {
-            for (let i = 0; i < reintentos; i++) {
-                try {
-                    return await funcionLlamada();
-                } catch (error) {
-                    if ((error.status === 401 || error.status === 403) && i < reintentos - 1) {
-                        console.log(`⚠️ Error ${error.status}, reintentando... (${i + 1}/${reintentos})`);
-                        // Intentar renovar token
-                        tokenClient.requestAccessToken({prompt: ''});
-                        await new Promise(resolve => setTimeout(resolve, 1000));  // Esperar 1 seg
-                    } else {
-                        throw error;
-                    }
-                }
             }
         }
 
@@ -2176,57 +1489,22 @@
             
             console.log('🔍 COSTO DEBUG:', { costoRaw, costoValNum, costoFinal: costo });
 
-            // NUEVO: Detectar si estamos editando o agregando
-            if (window.editandoItemId) {
-                // MODO EDICIÓN: Actualizar ítem existente
-                const index = currentItems.findIndex(item => item.id === window.editandoItemId);
-                if (index !== -1) {
-                    currentItems[index] = {
-                        id: window.editandoItemId,  // Mantener el mismo ID
-                        descripcion,
-                        cantidad,
-                        valor,
-                        costo,
-                        imei,
-                        estado: currentEstado,
-                        prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
-                        notas,
-                        total: cantidad * valor
-                    };
-                    
-                    mostrarToast(`✅ Ítem actualizado${costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''}`);
-                }
-                
-                // Limpiar modo edición
-                window.editandoItemId = null;
-                
-            } else {
-                // MODO AGREGAR: Crear nuevo ítem
-                currentItems.push({
-                    id: Date.now(),
-                    descripcion,
-                    cantidad,
-                    valor,
-                    costo,
-                    imei,
-                    estado: currentEstado,
-                    prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
-                    notas,
-                    total: cantidad * valor
-                });
-                
-                mostrarToast(`✅ Ítem agregado${costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''}`);
-            }
+            currentItems.push({
+                id: Date.now(),
+                descripcion,
+                cantidad,
+                valor,
+                costo,
+                imei,
+                estado: currentEstado,
+                prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
+                notas,
+                total: cantidad * valor
+            });
 
             actualizarListaItems();
             limpiarFormularioItem();
-            
-            // Restaurar el botón a su estado normal
-            const btnAgregar = document.querySelector('button[onclick="agregarItem()"]');
-            if (btnAgregar) {
-                btnAgregar.innerHTML = '➕ Agregar Ítem';
-                btnAgregar.style.background = '';
-            }
+            mostrarToast(`✅ Ítem agregado${costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''}`);
         }
 
         function actualizarListaItems() {
@@ -2255,8 +1533,7 @@
                             <span class="badge badge-${item.estado}">${item.estado === 'propio' ? '🏢 Propio' : '🤝 Prestado'}</span>
                         </div>
                         <div class="item-actions">
-                            <button class="btn-icon edit" onclick="editarItem(${item.id})" title="Editar ítem">✏️</button>
-                            <button class="btn-icon delete" onclick="eliminarItem(${item.id})" title="Eliminar ítem">×</button>
+                            <button class="btn-icon delete" onclick="eliminarItem(${item.id})">×</button>
                         </div>
                     </div>
                 </div>
@@ -2271,50 +1548,6 @@
             currentItems = currentItems.filter(item => item.id !== id);
             actualizarListaItems();
         }
-        
-        // NUEVA FUNCIÓN: Editar ítem existente
-        function editarItem(id) {
-            const item = currentItems.find(i => i.id === id);
-            if (!item) return;
-            
-            // Marcar que estamos editando
-            window.editandoItemId = id;
-            
-            // Rellenar el formulario con los datos del ítem
-            document.getElementById('item-descripcion').value = item.descripcion;
-            document.getElementById('item-cantidad').value = item.cantidad;
-            document.getElementById('item-imei').value = item.imei || '';
-            document.getElementById('item-precio').value = item.valor;
-            document.getElementById('item-costo').value = item.costo || '';
-            document.getElementById('item-notas').value = item.notas || '';
-            
-            // Establecer el estado
-            const estadoRadios = document.getElementsByName('item-estado');
-            estadoRadios.forEach(radio => {
-                if (radio.value === item.estado) {
-                    radio.checked = true;
-                }
-            });
-            
-            // Si es prestado, mostrar y llenar el campo
-            if (item.estado === 'prestado' && item.prestadoPor) {
-                document.getElementById('prestado-por-group').style.display = 'block';
-                document.getElementById('item-prestado-por').value = item.prestadoPor;
-            }
-            
-            // Cambiar el texto del botón
-            const btnAgregar = document.querySelector('button[onclick="agregarItem()"]');
-            if (btnAgregar) {
-                btnAgregar.innerHTML = '✅ Actualizar Ítem';
-                btnAgregar.style.background = 'linear-gradient(135deg, #16a34a 0%, #15803d 100%)';
-            }
-            
-            // Scroll al formulario
-            document.getElementById('items-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            mostrarToast('✏️ Editando ítem - Modifica los campos y presiona "Actualizar Ítem"');
-        }
-
 
         function limpiarFormularioItem() {
             document.getElementById('item-descripcion').value = '';
@@ -2975,137 +2208,6 @@
             toast.classList.add('show');
             setTimeout(() => toast.classList.remove('show'), 3000);
         }
-        
-        // ============================================
-        // FUNCIONES MÓDULO PAGAR PRESTADORES
-        // ============================================
-        
-        async function cargarPrestadoresPendientes() {
-            try {
-                mostrarToast('🔄 Cargando préstamos...');
-                
-                // Leer archivo PRESTADOS-PENDIENTES.json
-                const fileId = CONFIG_FILES.prestadosPendientes;
-                
-                const fileResponse = await fetch(
-                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-                    {
-                        headers: {
-                            'Authorization': 'Bearer ' + accessToken
-                        }
-                    }
-                );
-                
-                if (!fileResponse.ok) {
-                    throw new Error('Error al cargar archivo de préstamos');
-                }
-                
-                const contenido = await fileResponse.text();
-                const datosPrestamos = JSON.parse(contenido);
-                
-                // Mostrar resumen
-                const resumen = datosPrestamos.resumen || {
-                    total_pendientes: 0,
-                    monto_pendiente: 0
-                };
-                
-                document.getElementById('resumen-prestadores').innerHTML = `
-                    <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 1rem;">
-                        <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-radius: 8px;">
-                            <div style="font-size: 2rem; font-weight: 700; color: #dc2626;">
-                                ${resumen.total_pendientes}
-                            </div>
-                            <div style="font-size: 0.875rem; color: #991b1b;">
-                                Equipos pendientes
-                            </div>
-                        </div>
-                        <div style="text-align: center; padding: 1rem; background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%); border-radius: 8px;">
-                            <div style="font-size: 1.5rem; font-weight: 700; color: #dc2626;">
-                                ${formatMoney(resumen.monto_pendiente)}
-                            </div>
-                            <div style="font-size: 0.875rem; color: #991b1b;">
-                                Total por pagar
-                            </div>
-                        </div>
-                    </div>
-                `;
-                
-                // Mostrar lista de pendientes
-                const prestamos = datosPrestamos.prestamos || [];
-                const pendientes = prestamos.filter(p => !p.pagado);
-                
-                if (pendientes.length === 0) {
-                    document.getElementById('lista-prestadores-pendientes').innerHTML = `
-                        <div style="text-align: center; padding: 2rem; color: var(--gray-500);">
-                            <div style="font-size: 3rem;">✅</div>
-                            <div style="margin-top: 1rem;">No hay préstamos pendientes de pago</div>
-                        </div>
-                    `;
-                } else {
-                    const listaPorPrestador = {};
-                    pendientes.forEach(p => {
-                        if (!listaPorPrestador[p.prestador]) {
-                            listaPorPrestador[p.prestador] = [];
-                        }
-                        listaPorPrestador[p.prestador].push(p);
-                    });
-                    
-                    let html = '';
-                    for (const [prestador, items] of Object.entries(listaPorPrestador)) {
-                        const totalPrestador = items.reduce((sum, i) => sum + (i.equipo.costo || 0), 0);
-                        
-                        html += `
-                            <div style="margin-bottom: 1.5rem; border: 2px solid var(--gray-200); border-radius: 8px; padding: 1rem;">
-                                <div style="font-weight: 600; font-size: 1.1rem; margin-bottom: 0.5rem;">
-                                    👤 ${prestador}
-                                </div>
-                                <div style="color: var(--gray-600); font-size: 0.875rem; margin-bottom: 1rem;">
-                                    ${items.length} equipo${items.length > 1 ? 's' : ''} • Total: ${formatMoney(totalPrestador)}
-                                </div>
-                                ${items.map(item => `
-                                    <div style="background: var(--gray-50); padding: 0.75rem; border-radius: 6px; margin-bottom: 0.5rem;">
-                                        <div style="font-weight: 500;">${item.equipo.descripcion.substring(0, 30)}</div>
-                                        <div style="font-size: 0.875rem; color: var(--gray-600);">
-                                            IMEI: ${item.equipo.imei || 'N/A'} • Remisión #${item.remision}
-                                        </div>
-                                        <div style="font-weight: 600; color: var(--primary); margin-top: 0.25rem;">
-                                            ${formatMoney(item.equipo.costo)}
-                                        </div>
-                                    </div>
-                                `).join('')}
-                                <button class="btn btn-primary" style="margin-top: 0.5rem; width: 100%;" 
-                                        onclick="mostrarToast('🚧 Función de pago en desarrollo')">
-                                    💳 Pagar ${items.length > 1 ? 'Todos' : 'Este'} (${formatMoney(totalPrestador)})
-                                </button>
-                            </div>
-                        `;
-                    }
-                    
-                    document.getElementById('lista-prestadores-pendientes').innerHTML = html;
-                }
-                
-                mostrarToast('✅ Préstamos cargados');
-                
-            } catch (error) {
-                console.error('Error cargando prestadores:', error);
-                mostrarToast('❌ Error al cargar préstamos');
-                document.getElementById('resumen-prestadores').innerHTML = `
-                    <p style="color: var(--danger);">Error al cargar datos de préstamos</p>
-                `;
-            }
-        }
-        
-        // ============================================
-        // FUNCIONES MÓDULO MANTENIMIENTOS
-        // ============================================
-        
-        // Por desarrollar...
-        
-        // ============================================
-        // FUNCIONES MÓDULO GARANTÍAS
-        // ============================================
-        
-        // Por desarrollar...
 
         // ============= FUNCIONES DE ANULACIÓN =============
 
@@ -3113,8 +2215,8 @@
             try {
                 mostrarToast('🔄 Cargando asesores...');
                 
-                // ID directo del archivo CLAVES-ASESORES-V2.json (actualizado 16/02/2026)
-                const fileId = CONFIG_FILES.clavesAsesores;  // '1VhvZUKI0gZ7ZnV3u6N8m7OOIyyetTZks'
+                // ID directo del archivo CLAVES-ASESORES.json
+                const fileId = '1gXQdyaPAEncyP8vtnHahFP83ceeFDIFG';
                 
                 console.log('Buscando archivo con ID:', fileId);
                 
@@ -3136,16 +2238,7 @@
                     const contenido = await fileResponse.text();
                     console.log('Contenido del archivo:', contenido);
                     
-                    const datosClaves = JSON.parse(contenido);
-                    
-                    // Convertir formato V2 a formato simple para compatibilidad
-                    clavesAsesores = {};
-                    if (datosClaves.asesores && Array.isArray(datosClaves.asesores)) {
-                        datosClaves.asesores.forEach(asesor => {
-                            clavesAsesores[asesor.nombre] = asesor.clave;
-                        });
-                    }
-                    
+                    clavesAsesores = JSON.parse(contenido);
                     console.log('Claves cargadas:', Object.keys(clavesAsesores));
                     console.log('Total asesores:', Object.keys(clavesAsesores).length);
                     
@@ -3154,7 +2247,7 @@
                     
                 } catch (error) {
                     console.error('Error leyendo archivo por ID:', error);
-                    mostrarToast('❌ Error: Verifica que el archivo CLAVES-ASESORES-V2.json esté compartido');
+                    mostrarToast('❌ Error: Verifica que el archivo CLAVES-ASESORES.json esté compartido');
                     clavesAsesores = {};
                     actualizarDropdownAsesores();
                 }
@@ -3202,49 +2295,16 @@
             const menu = document.getElementById('dropdown-menu');
             menu.classList.toggle('show');
         }
-        
-        // NUEVA FUNCIÓN: Mostrar módulo seleccionado
-        function mostrarModulo(modulo) {
-            // Ocultar todos los módulos
-            document.querySelectorAll('.modulo-content').forEach(mod => {
-                mod.style.display = 'none';
-            });
-            
-            // Mostrar el módulo seleccionado
-            const moduloElement = document.getElementById(`modulo-${modulo}`);
-            if (moduloElement) {
-                moduloElement.style.display = 'block';
-            }
+
+        function mostrarCrear() {
+            document.getElementById('main-content').style.display = 'block';
+            document.getElementById('dropdown-menu').classList.remove('show');
             
             // Actualizar botones activos
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.classList.remove('active');
             });
-            
-            // Marcar como activo el botón clickeado
-            event.target.classList.add('active');
-            
-            // Cerrar menú
-            document.getElementById('dropdown-menu').classList.remove('show');
-            
-            // Mostrar toast según el módulo
-            const nombresMod = {
-                'remisiones': '📝 Módulo Remisiones',
-                'mantenimientos': '🔧 Módulo Mantenimientos',
-                'garantias': '🔄 Módulo Garantías',
-                'prestadores': '💰 Módulo Pagar Prestadores'
-            };
-            
-            mostrarToast(nombresMod[modulo] || 'Módulo cargado');
-            
-            // Si es prestadores, cargar datos
-            if (modulo === 'prestadores') {
-                cargarPrestadoresPendientes();
-            }
-        }
-
-        function mostrarCrear() {
-            mostrarModulo('remisiones');
+            document.querySelectorAll('.menu-item')[0].classList.add('active');
         }
 
         function mostrarAnular() {
@@ -3255,6 +2315,7 @@
             document.querySelectorAll('.menu-item').forEach(item => {
                 item.classList.remove('active');
             });
+            document.querySelectorAll('.menu-item')[1].classList.add('active');
         }
 
         async function recargarAsesores() {
@@ -3382,16 +2443,22 @@
 
         // Inicializar
         window.addEventListener('load', () => {
-            // Mostrar estado inicial
+            // Show initial state
             maybeEnableButtons();
             
-            // Las APIs se inicializarán automáticamente via callbacks
-            console.log('⏳ Esperando carga de Google APIs...');
+            // Wait for scripts to load with retries
+            let retries = 0;
+            const maxRetries = 10;
             
-            // Timeout de seguridad en caso de que no carguen
-            setTimeout(() => {
-                if (!gapiInited || !gisInited) {
-                    console.error('❌ Timeout: APIs no cargaron en 15 segundos');
+            const checkAndInit = setInterval(() => {
+                retries++;
+                
+                if (typeof gapi !== 'undefined' && typeof google !== 'undefined' && google.accounts) {
+                    clearInterval(checkAndInit);
+                    gapiLoaded();
+                    gisLoaded();
+                } else if (retries >= maxRetries) {
+                    clearInterval(checkAndInit);
                     document.getElementById('google-signin-button').innerHTML = `
                         <div style="padding: 1rem; color: var(--danger); text-align: center;">
                             ❌ No se pudo cargar Google API<br>
@@ -3402,768 +2469,9 @@
                         </div>
                     `;
                 }
-            }, 15000);
-
+            }, 500);
             
             actualizarFecha();
-
-        // ============================================
-        // FUNCIONES DE LOS NUEVOS MÓDULOS
-        // ============================================
-
-// ============================================
-// FUNCIONES MÓDULO MANTENIMIENTOS
-// ============================================
-
-let damosMantenimiento = [];
-let vistaIphoneCurrent = 'frente';
-let fotosMantenimiento = {};
-
-function mostrarVistaMantenimiento(vista) {
-    if (vista === 'nuevo') {
-        document.getElementById('vista-nuevo-mantenimiento').style.display = 'block';
-        document.getElementById('vista-lista-mantenimientos').style.display = 'none';
-        document.getElementById('btn-nuevo-mant').classList.add('btn-primary');
-        document.getElementById('btn-nuevo-mant').classList.remove('btn-secondary');
-        document.getElementById('btn-lista-mant').classList.remove('btn-primary');
-        document.getElementById('btn-lista-mant').classList.add('btn-secondary');
-    } else {
-        document.getElementById('vista-nuevo-mantenimiento').style.display = 'none';
-        document.getElementById('vista-lista-mantenimientos').style.display = 'block';
-        document.getElementById('btn-nuevo-mant').classList.remove('btn-primary');
-        document.getElementById('btn-nuevo-mant').classList.add('btn-secondary');
-        document.getElementById('btn-lista-mant').classList.add('btn-primary');
-        document.getElementById('btn-lista-mant').classList.remove('btn-secondary');
-        cargarListaMantenimientos();
-    }
-}
-
-function cambiarVistaIphone(vista) {
-    vistaIphoneCurrent = vista;
-    if (vista === 'frente') {
-        document.getElementById('iphone-frente').style.display = 'block';
-        document.getElementById('iphone-posterior').style.display = 'none';
-        document.getElementById('btn-vista-frente').style.background = 'var(--primary)';
-        document.getElementById('btn-vista-frente').style.color = 'white';
-        document.getElementById('btn-vista-posterior').style.background = '';
-        document.getElementById('btn-vista-posterior').style.color = '';
-    } else {
-        document.getElementById('iphone-frente').style.display = 'none';
-        document.getElementById('iphone-posterior').style.display = 'block';
-        document.getElementById('btn-vista-frente').style.background = '';
-        document.getElementById('btn-vista-frente').style.color = '';
-        document.getElementById('btn-vista-posterior').style.background = 'var(--primary)';
-        document.getElementById('btn-vista-posterior').style.color = 'white';
-    }
-}
-
-function marcarDanio(event, zona, cara) {
-    event.stopPropagation();
-    
-    const tipos = [
-        {valor: 'fisura', nombre: 'Fisura/Grieta', color: '#dc2626'},
-        {valor: 'rayon', nombre: 'Rayón', color: '#ea580c'},
-        {valor: 'golpe', nombre: 'Golpe/Abolladura', color: '#ca8a04'},
-        {valor: 'mancha', nombre: 'Mancha', color: '#16a34a'},
-        {valor: 'no_funciona', nombre: 'No funciona', color: '#2563eb'},
-        {valor: 'otro', nombre: 'Otro', color: '#7c3aed'}
-    ];
-    
-    const tipoSeleccionado = prompt('Tipo de daño:\n' + tipos.map((t, i) => `${i+1}. ${t.nombre}`).join('\n') + '\n\nIngresa el número:');
-    
-    if (!tipoSeleccionado || tipoSeleccionado < 1 || tipoSeleccionado > tipos.length) {
-        return;
-    }
-    
-    const tipo = tipos[parseInt(tipoSeleccionado) - 1];
-    const descripcion = prompt('Descripción del daño:') || '';
-    
-    const danio = {
-        zona: zona,
-        cara: cara,
-        tipo: tipo.valor,
-        tipoNombre: tipo.nombre,
-        color: tipo.color,
-        descripcion: descripcion,
-        id: Date.now()
-    };
-    
-    damosMantenimiento.push(danio);
-    
-    // Agregar marcador visual en el SVG
-    const svg = document.getElementById(`svg-iphone-${cara}`);
-    const marcadores = document.getElementById(`marcadores-${cara}`);
-    
-    const rect = event.target.getBoundingClientRect();
-    const svgRect = svg.getBoundingClientRect();
-    const x = ((event.clientX - svgRect.left) / svgRect.width) * 200;
-    const y = ((event.clientY - svgRect.top) / svgRect.height) * 400;
-    
-    const circle = document.createElementNS('http://www.w3.org/2000/svg', 'circle');
-    circle.setAttribute('cx', x);
-    circle.setAttribute('cy', y);
-    circle.setAttribute('r', '8');
-    circle.setAttribute('fill', tipo.color);
-    circle.setAttribute('stroke', 'white');
-    circle.setAttribute('stroke-width', '2');
-    circle.setAttribute('data-id', danio.id);
-    marcadores.appendChild(circle);
-    
-    actualizarListaDanios();
-    mostrarToast(`✅ Daño marcado: ${tipo.nombre}`);
-}
-
-function actualizarListaDanios() {
-    const lista = document.getElementById('danios-list');
-    if (danosMantenimiento.length === 0) {
-        lista.innerHTML = '<span style="color: var(--gray-500);">Ninguno</span>';
-        return;
-    }
-    
-    lista.innerHTML = danosMantenimiento.map(d => `
-        <div style="padding: 0.5rem; background: var(--gray-100); border-radius: 6px; margin-bottom: 0.5rem; border-left: 4px solid ${d.color};">
-            <div style="font-weight: 600;">${d.tipoNombre} - ${d.zona.replace(/-/g, ' ')}</div>
-            <div style="font-size: 0.875rem; color: var(--gray-600);">${d.descripcion}</div>
-            <div style="font-size: 0.75rem; color: var(--gray-500);">Vista: ${d.cara}</div>
-        </div>
-    `).join('');
-}
-
-function tomarFotoMantenimiento(tipo) {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-    
-    input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                fotosMantenimiento[tipo] = {
-                    data: event.target.result,
-                    file: file
-                };
-                
-                const preview = document.getElementById(`preview-foto-${tipo}-mant`);
-                preview.innerHTML = `
-                    <div style="margin-top: 0.5rem;">
-                        <img src="${event.target.result}" style="max-width: 200px; border-radius: 8px;">
-                        <button class="btn btn-secondary" onclick="eliminarFotoMantenimiento('${tipo}')" style="margin-top: 0.5rem;">
-                            🗑️ Eliminar
-                        </button>
-                    </div>
-                `;
-                
-                mostrarToast(`✅ Foto capturada: ${tipo}`);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    
-    input.click();
-}
-
-function eliminarFotoMantenimiento(tipo) {
-    delete fotosMantenimiento[tipo];
-    document.getElementById(`preview-foto-${tipo}-mant`).innerHTML = '';
-    mostrarToast('🗑️ Foto eliminada');
-}
-
-async function guardarMantenimiento() {
-    // Validaciones
-    const clienteNombre = document.getElementById('mant-cliente-nombre').value.trim();
-    const clienteTelefono = document.getElementById('mant-cliente-telefono').value.trim();
-    const clienteId = document.getElementById('mant-cliente-id').value.trim();
-    const equipoDesc = document.getElementById('mant-equipo-desc').value.trim();
-    const falla = document.getElementById('mant-falla').value.trim();
-    const asesor = document.getElementById('mant-asesor').value.trim();
-    
-    if (!clienteNombre || !clienteTelefono || !clienteId) {
-        mostrarToast('⚠️ Completa los datos del cliente');
-        return;
-    }
-    
-    if (!equipoDesc || !falla) {
-        mostrarToast('⚠️ Completa los datos del equipo y la falla');
-        return;
-    }
-    
-    if (!asesor) {
-        mostrarToast('⚠️ Ingresa el nombre del asesor');
-        return;
-    }
-    
-    mostrarToast('💾 Guardando mantenimiento...');
-    
-    try {
-        // Obtener consecutivo
-        const respuesta = await gapi.client.drive.files.list({
-            q: `'${FOLDER_IDS.mantenimientos}' in parents and trashed=false`,
-            fields: 'files(name)',
-            orderBy: 'name desc'
-        });
-        
-        const archivos = respuesta.result.files || [];
-        let nuevoNumero = 1;
-        
-        if (archivos.length > 0) {
-            const ultimoArchivo = archivos[0].name;
-            const match = ultimoArchivo.match(/Mantenimiento-(\d+)/);
-            if (match) {
-                nuevoNumero = parseInt(match[1]) + 1;
-            }
-        }
-        
-        const numeroFormateado = String(nuevoNumero).padStart(4, '0');
-        
-        // Crear objeto de mantenimiento
-        const mantenimiento = {
-            tipo: 'mantenimiento',
-            numero: nuevoNumero,
-            fecha_ingreso: new Date().toISOString(),
-            fecha_estimada: document.getElementById('mant-fecha-estimada').value || null,
-            
-            cliente: {
-                nombre: clienteNombre,
-                telefono: clienteTelefono,
-                identificacion: clienteId
-            },
-            
-            equipo: {
-                descripcion: equipoDesc,
-                imei: document.getElementById('mant-equipo-imei').value.trim() || '',
-                marca: document.getElementById('mant-equipo-marca').value || '',
-                modelo: document.getElementById('mant-equipo-modelo').value.trim() || '',
-                estado_inicial: document.getElementById('mant-estado-inicial').value
-            },
-            
-            falla_reportada: falla,
-            
-            inspeccion_visual: {
-                frente: danosMantenimiento.filter(d => d.cara === 'frente'),
-                posterior: danosMantenimiento.filter(d => d.cara === 'posterior')
-            },
-            
-            costos: {
-                estimado: parseInt(document.getElementById('mant-costo-estimado').value) || 0,
-                anticipo: parseInt(document.getElementById('mant-anticipo').value) || 0
-            },
-            
-            estado_actual: 'recibido',
-            
-            historial_estados: [{
-                fecha: new Date().toISOString(),
-                estado: 'recibido',
-                nota: 'Equipo ingresado',
-                usuario: asesor
-            }],
-            
-            asesor_responsable: asesor,
-            notas: document.getElementById('mant-notas').value.trim() || ''
-        };
-        
-        // Subir JSON
-        const blob = new Blob([JSON.stringify(mantenimiento, null, 2)], {type: 'application/json'});
-        const metadata = {
-            name: `Mantenimiento-${numeroFormateado}.json`,
-            mimeType: 'application/json',
-            parents: [FOLDER_IDS.mantenimientos]
-        };
-        
-        const form = new FormData();
-        form.append('metadata', new Blob([JSON.stringify(metadata)], {type: 'application/json'}));
-        form.append('file', blob);
-        
-        await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + accessToken
-            },
-            body: form
-        });
-        
-        // Subir fotos
-        for (const [tipo, foto] of Object.entries(fotosMantenimiento)) {
-            const fotoBlob = await fetch(foto.data).then(r => r.blob());
-            const fotoMetadata = {
-                name: `Mant-${numeroFormateado}-${tipo}.jpg`,
-                mimeType: 'image/jpeg',
-                parents: [FOLDER_IDS.fotosMantenimientos]
-            };
-            
-            const fotoForm = new FormData();
-            fotoForm.append('metadata', new Blob([JSON.stringify(fotoMetadata)], {type: 'application/json'}));
-            fotoForm.append('file', fotoBlob);
-            
-            await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart', {
-                method: 'POST',
-                headers: {
-                    'Authorization': 'Bearer ' + accessToken
-                },
-                body: fotoForm
-            });
-        }
-        
-        mostrarToast(`✅ Mantenimiento #${numeroFormateado} guardado`);
-        
-        // Limpiar formulario
-        limpiarFormularioMantenimiento();
-        
-        // Mostrar mensaje de éxito
-        alert(`✅ Mantenimiento registrado\n\nNúmero: ${numeroFormateado}\nCliente: ${clienteNombre}\nEquipo: ${equipoDesc}`);
-        
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarToast('❌ Error al guardar mantenimiento');
-    }
-}
-
-function limpiarFormularioMantenimiento() {
-    document.getElementById('mant-cliente-nombre').value = '';
-    document.getElementById('mant-cliente-telefono').value = '';
-    document.getElementById('mant-cliente-id').value = '';
-    document.getElementById('mant-equipo-desc').value = '';
-    document.getElementById('mant-equipo-imei').value = '';
-    document.getElementById('mant-equipo-marca').value = '';
-    document.getElementById('mant-equipo-modelo').value = '';
-    document.getElementById('mant-falla').value = '';
-    document.getElementById('mant-costo-estimado').value = '';
-    document.getElementById('mant-anticipo').value = '';
-    document.getElementById('mant-fecha-estimada').value = '';
-    document.getElementById('mant-asesor').value = '';
-    document.getElementById('mant-notas').value = '';
-    
-    danosMantenimiento = [];
-    fotosMantenimiento = {};
-    
-    document.getElementById('marcadores-frente').innerHTML = '';
-    document.getElementById('marcadores-posterior').innerHTML = '';
-    actualizarListaDanios();
-    
-    document.getElementById('preview-foto-general-mant').innerHTML = '';
-    document.getElementById('preview-foto-falla-mant').innerHTML = '';
-}
-
-async function cargarListaMantenimientos() {
-    document.getElementById('lista-todos-mantenimientos').innerHTML = '<p style="color: var(--gray-600);">Cargando...</p>';
-    
-    try {
-        const respuesta = await gapi.client.drive.files.list({
-            q: `'${FOLDER_IDS.mantenimientos}' in parents and trashed=false`,
-            fields: 'files(id, name, webViewLink)',
-            orderBy: 'name desc'
-        });
-        
-        const archivos = respuesta.result.files || [];
-        
-        if (archivos.length === 0) {
-            document.getElementById('lista-todos-mantenimientos').innerHTML = `
-                <p style="text-align: center; color: var(--gray-500); padding: 2rem;">
-                    No hay mantenimientos registrados
-                </p>
-            `;
-            return;
-        }
-        
-        let html = '<div style="display: grid; gap: 1rem;">';
-        
-        for (const archivo of archivos) {
-            const numero = archivo.name.match(/Mantenimiento-(\d+)/)?.[1] || '?';
-            
-            html += `
-                <div style="border: 1px solid var(--gray-300); border-radius: 8px; padding: 1rem;">
-                    <div style="font-weight: 600; font-size: 1.1rem;">Mantenimiento #${numero}</div>
-                    <div style="margin-top: 0.5rem;">
-                        <a href="${archivo.webViewLink}" target="_blank" class="btn btn-secondary">
-                            📄 Ver JSON
-                        </a>
-                    </div>
-                </div>
-            `;
-        }
-        
-        html += '</div>';
-        
-        document.getElementById('lista-todos-mantenimientos').innerHTML = html;
-        
-    } catch (error) {
-        console.error('Error:', error);
-        document.getElementById('lista-todos-mantenimientos').innerHTML = '<p style="color: var(--danger);">Error al cargar</p>';
-    }
-}
-
-
-// ============================================
-// FUNCIONES MÓDULO GARANTÍAS
-// ============================================
-
-let remisionOriginalData = null;
-let tieneDaniosFisicos = false;
-let esMismoModelo = true;
-let firmaGarantiaCanvas = null;
-let firmaGarantiaCtx = null;
-
-function setDaniosFisicos(tiene) {
-    tieneDaniosFisicos = tiene;
-    
-    if (tiene) {
-        document.getElementById('gar-danios-si').classList.add('active');
-        document.getElementById('gar-danios-no').classList.remove('active');
-        document.getElementById('seccion-danios-garantia').style.display = 'block';
-    } else {
-        document.getElementById('gar-danios-no').classList.add('active');
-        document.getElementById('gar-danios-si').classList.remove('active');
-        document.getElementById('seccion-danios-garantia').style.display = 'none';
-    }
-}
-
-function setMismoModelo(mismo) {
-    esMismoModelo = mismo;
-    
-    if (mismo) {
-        document.getElementById('gar-mismo-si').classList.add('active');
-        document.getElementById('gar-mismo-no').classList.remove('active');
-        document.getElementById('form-equipo-nuevo').style.display = 'none';
-    } else {
-        document.getElementById('gar-mismo-no').classList.add('active');
-        document.getElementById('gar-mismo-si').classList.remove('active');
-        document.getElementById('form-equipo-nuevo').style.display = 'block';
-    }
-    
-    calcularDiferencia();
-}
-
-async function buscarRemisionGarantia() {
-    const numero = document.getElementById('gar-num-remision').value;
-    
-    if (!numero) {
-        mostrarToast('⚠️ Ingresa el número de remisión');
-        return;
-    }
-    
-    mostrarToast('🔍 Buscando remisión...');
-    
-    try {
-        const numeroFormateado = String(numero).padStart(4, '0');
-        const nombreArchivo = `Remision-${numeroFormateado}.json`;
-        
-        const respuesta = await gapi.client.drive.files.list({
-            q: `name='${nombreArchivo}' and '${FOLDER_IDS.remisiones}' in parents and trashed=false`,
-            fields: 'files(id, name, webViewLink)'
-        });
-        
-        const archivos = respuesta.result.files || [];
-        
-        if (archivos.length === 0) {
-            mostrarToast('❌ Remisión no encontrada');
-            return;
-        }
-        
-        // Leer el archivo
-        const fileResponse = await fetch(
-            `https://www.googleapis.com/drive/v3/files/${archivos[0].id}?alt=media`,
-            {
-                headers: {
-                    'Authorization': 'Bearer ' + accessToken
-                }
-            }
-        );
-        
-        remisionOriginalData = await fileResponse.json();
-        
-        // Mostrar datos
-        const primerItem = remisionOriginalData.items[0] || {};
-        
-        document.getElementById('info-remision-original').innerHTML = `
-            <div style="display: grid; gap: 0.5rem;">
-                <div><strong>Número:</strong> #${numeroFormateado}</div>
-                <div><strong>Fecha:</strong> ${new Date(remisionOriginalData.fecha).toLocaleDateString()}</div>
-                <div><strong>Cliente:</strong> ${remisionOriginalData.cliente.nombre}</div>
-                <div><strong>Teléfono:</strong> ${remisionOriginalData.cliente.telefono}</div>
-                <div><strong>Total:</strong> ${formatMoney(remisionOriginalData.totalPagado)}</div>
-                <div style="margin-top: 0.5rem; padding-top: 0.5rem; border-top: 1px solid #3b82f6;">
-                    <strong>Equipo vendido:</strong><br>
-                    ${primerItem.descripcion}<br>
-                    <span style="font-size: 0.875rem;">IMEI: ${primerItem.imei}</span><br>
-                    <span style="font-weight: 600; color: var(--primary);">${formatMoney(primerItem.valor)}</span>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('info-equipo-entra').innerHTML = `
-            <div style="font-weight: 600; margin-bottom: 0.5rem;">📱 ${primerItem.descripcion}</div>
-            <div style="font-size: 0.875rem; color: #991b1b;">IMEI: ${primerItem.imei}</div>
-            <div style="font-size: 0.875rem; color: #991b1b;">Precio original: ${formatMoney(primerItem.valor)}</div>
-        `;
-        
-        document.getElementById('datos-remision-original').style.display = 'block';
-        
-        mostrarToast('✅ Remisión encontrada');
-        
-    } catch (error) {
-        console.error('Error:', error);
-        mostrarToast('❌ Error al buscar remisión');
-    }
-}
-
-function actualizarTipoCambio() {
-    const tipo = document.getElementById('gar-tipo-cambio').value;
-    // Aquí se pueden agregar lógicas específicas según el tipo
-}
-
-function calcularDiferencia() {
-    if (!remisionOriginalData) return;
-    
-    const precioOriginal = remisionOriginalData.items[0]?.valor || 0;
-    let precioNuevo = precioOriginal;
-    
-    if (!esMismoModelo) {
-        precioNuevo = parseInt(document.getElementById('gar-equipo-nuevo-precio').value) || 0;
-    }
-    
-    const diferencia = precioNuevo - precioOriginal;
-    
-    if (diferencia === 0) {
-        document.getElementById('card-diferencia').style.display = 'none';
-        return;
-    }
-    
-    document.getElementById('card-diferencia').style.display = 'block';
-    
-    let mensaje = '';
-    if (diferencia > 0) {
-        mensaje = `<div style="color: #dc2626; font-weight: 600; font-size: 1.2rem;">
-            Cliente debe pagar: ${formatMoney(diferencia)}
-        </div>`;
-    } else {
-        mensaje = `<div style="color: #16a34a; font-weight: 600; font-size: 1.2rem;">
-            Se devuelve al cliente: ${formatMoney(Math.abs(diferencia))}
-        </div>`;
-    }
-    
-    mensaje += `
-        <div style="margin-top: 1rem; padding: 0.75rem; background: var(--gray-100); border-radius: 6px;">
-            <div>Precio original: ${formatMoney(precioOriginal)}</div>
-            <div>Precio nuevo: ${formatMoney(precioNuevo)}</div>
-            <div style="border-top: 1px solid var(--gray-300); margin-top: 0.5rem; padding-top: 0.5rem; font-weight: 600;">
-                Diferencia: ${formatMoney(diferencia)}
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('info-diferencia').innerHTML = mensaje;
-    document.getElementById('form-metodo-diferencia').style.display = 'block';
-}
-
-function tomarFotoGarantia(tipo) {
-    const input = document.createElement('input');
-    input.type = 'file';
-    input.accept = 'image/*';
-    input.capture = 'environment';
-    
-    input.onchange = (e) => {
-        const file = e.target.files[0];
-        if (file) {
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const preview = document.getElementById(`preview-foto-${tipo.replace(/-/g, '-')}`);
-                if (preview) {
-                    preview.innerHTML = `
-                        <div style="margin-top: 0.5rem;">
-                            <img src="${event.target.result}" style="max-width: 200px; border-radius: 8px;">
-                        </div>
-                    `;
-                }
-                mostrarToast(`✅ Foto capturada`);
-            };
-            reader.readAsDataURL(file);
-        }
-    };
-    
-    input.click();
-}
-
-function inicializarFirmaGarantia() {
-    const canvas = document.getElementById('firma-canvas-garantia');
-    if (!canvas) return;
-    
-    firmaGarantiaCanvas = canvas;
-    firmaGarantiaCtx = canvas.getContext('2d');
-    
-    let dibujando = false;
-    
-    canvas.addEventListener('mousedown', (e) => {
-        dibujando = true;
-        const rect = canvas.getBoundingClientRect();
-        firmaGarantiaCtx.beginPath();
-        firmaGarantiaCtx.moveTo(e.clientX - rect.left, e.clientY - rect.top);
-    });
-    
-    canvas.addEventListener('mousemove', (e) => {
-        if (!dibujando) return;
-        const rect = canvas.getBoundingClientRect();
-        firmaGarantiaCtx.lineTo(e.clientX - rect.left, e.clientY - rect.top);
-        firmaGarantiaCtx.stroke();
-    });
-    
-    canvas.addEventListener('mouseup', () => {
-        dibujando = false;
-    });
-    
-    // Touch events para móviles
-    canvas.addEventListener('touchstart', (e) => {
-        e.preventDefault();
-        dibujando = true;
-        const rect = canvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        firmaGarantiaCtx.beginPath();
-        firmaGarantiaCtx.moveTo(touch.clientX - rect.left, touch.clientY - rect.top);
-    });
-    
-    canvas.addEventListener('touchmove', (e) => {
-        e.preventDefault();
-        if (!dibujando) return;
-        const rect = canvas.getBoundingClientRect();
-        const touch = e.touches[0];
-        firmaGarantiaCtx.lineTo(touch.clientX - rect.left, touch.clientY - rect.top);
-        firmaGarantiaCtx.stroke();
-    });
-    
-    canvas.addEventListener('touchend', () => {
-        dibujando = false;
-    });
-    
-    // Estilo del trazo
-    firmaGarantiaCtx.strokeStyle = '#000';
-    firmaGarantiaCtx.lineWidth = 2;
-    firmaGarantiaCtx.lineCap = 'round';
-}
-
-function limpiarFirmaGarantia() {
-    if (firmaGarantiaCtx && firmaGarantiaCanvas) {
-        firmaGarantiaCtx.clearRect(0, 0, firmaGarantiaCanvas.width, firmaGarantiaCanvas.height);
-    }
-}
-
-function solicitarAutorizacionGarantia() {
-    // Validaciones
-    if (!remisionOriginalData) {
-        mostrarToast('⚠️ Busca primero la remisión original');
-        return;
-    }
-    
-    const tipo = document.getElementById('gar-tipo-cambio').value;
-    const problema = document.getElementById('gar-descripcion-problema').value.trim();
-    const imeiNuevo = document.getElementById('gar-equipo-nuevo-imei').value.trim();
-    const destino = document.getElementById('gar-destino-equipo').value;
-    const asesor = document.getElementById('gar-asesor').value.trim();
-    
-    if (!tipo || !problema || !imeiNuevo || !destino || !asesor) {
-        mostrarToast('⚠️ Completa todos los campos obligatorios');
-        return;
-    }
-    
-    // Mostrar resumen en el modal
-    const equipoOriginal = remisionOriginalData.items[0];
-    let equipoNuevo = { ...equipoOriginal };
-    
-    if (!esMismoModelo) {
-        equipoNuevo.descripcion = document.getElementById('gar-equipo-nuevo-desc').value;
-        equipoNuevo.valor = parseInt(document.getElementById('gar-equipo-nuevo-precio').value) || 0;
-    }
-    equipoNuevo.imei = imeiNuevo;
-    
-    const diferencia = equipoNuevo.valor - equipoOriginal.valor;
-    
-    document.getElementById('resumen-autorizacion-garantia').innerHTML = `
-        <div style="padding: 1rem; background: var(--gray-50); border-radius: 8px; margin-bottom: 1rem;">
-            <h4 style="margin-bottom: 1rem;">Resumen del Cambio</h4>
-            
-            <div style="margin-bottom: 1rem;">
-                <div style="font-weight: 600; color: #dc2626;">📥 EQUIPO QUE ENTRA</div>
-                <div>${equipoOriginal.descripcion}</div>
-                <div style="font-size: 0.875rem;">IMEI: ${equipoOriginal.imei}</div>
-                <div style="font-weight: 600;">${formatMoney(equipoOriginal.valor)}</div>
-            </div>
-            
-            <div style="text-align: center; margin: 1rem 0;">🔄</div>
-            
-            <div style="margin-bottom: 1rem;">
-                <div style="font-weight: 600; color: #16a34a;">📤 EQUIPO QUE SALE</div>
-                <div>${equipoNuevo.descripcion}</div>
-                <div style="font-size: 0.875rem;">IMEI: ${equipoNuevo.imei}</div>
-                <div style="font-weight: 600;">${formatMoney(equipoNuevo.valor)}</div>
-            </div>
-            
-            ${diferencia !== 0 ? `
-                <div style="padding: 0.75rem; background: ${diferencia > 0 ? '#fee2e2' : '#dcfce7'}; border-radius: 6px;">
-                    <div style="font-weight: 600; color: ${diferencia > 0 ? '#dc2626' : '#16a34a'};">
-                        ${diferencia > 0 ? 'Cliente debe pagar' : 'Se devuelve al cliente'}: ${formatMoney(Math.abs(diferencia))}
-                    </div>
-                </div>
-            ` : ''}
-            
-            <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--gray-300);">
-                <div><strong>Motivo:</strong> ${tipo.replace(/_/g, ' ')}</div>
-                <div><strong>Destino equipo devuelto:</strong> ${destino.replace(/_/g, ' ')}</div>
-            </div>
-        </div>
-    `;
-    
-    document.getElementById('modal-autorizacion-garantia').classList.add('active');
-}
-
-function cerrarAutorizacionGarantia() {
-    document.getElementById('modal-autorizacion-garantia').classList.remove('active');
-}
-
-async function confirmarAutorizacionGarantia() {
-    const autorizador = document.getElementById('gar-autorizador').value;
-    const clave = document.getElementById('gar-clave-autorizacion').value;
-    
-    if (!autorizador) {
-        mostrarToast('⚠️ Selecciona quien autoriza');
-        return;
-    }
-    
-    if (!clave) {
-        mostrarToast('⚠️ Ingresa la clave');
-        return;
-    }
-    
-    // Validar que solo Sirley o Camilo pueden autorizar
-    if (autorizador !== 'Sirley' && autorizador !== 'Camilo') {
-        mostrarToast('❌ Solo Sirley o Camilo pueden autorizar');
-        return;
-    }
-    
-    // Validar clave
-    const claveCorrecta = clavesAsesores[autorizador];
-    if (clave !== claveCorrecta) {
-        mostrarToast('❌ Clave incorrecta');
-        return;
-    }
-    
-    mostrarToast('✅ Autorización válida. Guardando...');
-    cerrarAutorizacionGarantia();
-    
-    // Aquí iría el código para guardar la garantía en Drive
-    // Por ahora solo mostramos mensaje de éxito
-    
-    setTimeout(() => {
-        alert('✅ Garantía/Cambio Registrado\n\nAutorizado por: ' + autorizador);
-        // Limpiar formulario
-    }, 500);
-}
-
-// Inicializar firma al cargar el módulo de garantías
-setTimeout(() => {
-    if (document.getElementById('firma-canvas-garantia')) {
-        inicializarFirmaGarantia();
-    }
-}, 1000);
-
             setInterval(actualizarFecha, 1000);
         });
     </script>
