@@ -2169,6 +2169,18 @@
         </div>
     </div>
 
+    <!-- Modal Éxito Pago Prestador -->
+    <div id="prest-exito-modal" class="modal">
+        <div class="modal-content" style="max-width:400px; text-align:center;">
+            <div style="font-size:3rem; margin-bottom:0.75rem;">✅</div>
+            <h2 style="margin-bottom:0.75rem; color:var(--success);">¡Pago Registrado!</h2>
+            <div id="prest-exito-detalle" style="background:var(--gray-50); border-radius:8px; padding:1rem; margin-bottom:1rem; text-align:left; font-size:0.9rem;"></div>
+            <button class="btn btn-success" onclick="document.getElementById('prest-exito-modal').classList.remove('active')" style="margin-top:0.5rem;">
+                Aceptar
+            </button>
+        </div>
+    </div>
+
     <!-- Modal Anulación -->    <div id="anulacion-modal" class="modal">
         <div class="modal-content">
             <div class="modal-header">
@@ -2223,7 +2235,7 @@
     <script>
         // Configuración Google Drive API + Sheets API
         const GOOGLE_CLIENT_ID = '727063973750-lobp0j5c3pheqhl9ihk1se1ka05lf53s.apps.googleusercontent.com';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets';
+        const SCOPES = 'https://www.googleapis.com/auth/drive https://www.googleapis.com/auth/spreadsheets';
         const DISCOVERY_DOCS = [
             'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
             'https://sheets.googleapis.com/$discovery/rest?version=v4'
@@ -5485,7 +5497,28 @@
                 prestCerrarPago();
                 prestEquiposSeleccionados = {};
                 document.getElementById('prest-seleccion-bar').classList.remove('visible');
-                mostrarToast(`✅ Pago de ${formatMoney(montoFinal)} registrado correctamente`);
+
+                // Mostrar modal de éxito con detalle del pago
+                document.getElementById('prest-exito-detalle').innerHTML = `
+                    <div style="margin-bottom:0.4rem;">
+                        <strong>Prestador(es):</strong> ${nombrePrestador}
+                    </div>
+                    <div style="margin-bottom:0.4rem;">
+                        <strong>Monto pagado:</strong>
+                        <span style="color:var(--success); font-weight:700; font-size:1.1rem;">
+                            ${formatMoney(montoFinal)}
+                        </span>
+                    </div>
+                    <div style="margin-bottom:0.4rem;">
+                        <strong>Método:</strong> ${metodo.charAt(0).toUpperCase() + metodo.slice(1)}
+                    </div>
+                    ${ref ? `<div style="margin-bottom:0.4rem;"><strong>Referencia:</strong> ${ref}</div>` : ''}
+                    ${nota ? `<div style="margin-bottom:0.4rem;"><strong>Nota:</strong> ${nota}</div>` : ''}
+                    <div style="margin-top:0.5rem; font-size:0.8rem; color:var(--gray-500);">
+                        📅 ${new Date().toLocaleString('es-CO')}
+                    </div>
+                `;
+                document.getElementById('prest-exito-modal').classList.add('active');
                 setTimeout(() => prestCargar(), 800);
 
             } catch (err) {
