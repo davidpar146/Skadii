@@ -2157,7 +2157,7 @@
     <script>
         // Configuración Google Drive API + Sheets API
         const GOOGLE_CLIENT_ID = '727063973750-lobp0j5c3pheqhl9ihk1se1ka05lf53s.apps.googleusercontent.com';
-        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/spreadsheets';
+        const SCOPES = 'https://www.googleapis.com/auth/drive.file https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/spreadsheets';
         const DISCOVERY_DOCS = [
             'https://www.googleapis.com/discovery/v1/apis/drive/v3/rest',
             'https://sheets.googleapis.com/$discovery/rest?version=v4'
@@ -2183,8 +2183,8 @@
         };
 
         const CONFIG_FILES = {
-            clavesAsesores:    '1VhvZUKI0gZ7ZnV3u6N8m7OOIyyetTZks',  // CLAVES-ASESORES-V2.json
-            prestadosPendientes:'1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'  // PRESTADOS-PENDIENTES.json
+            clavesAsesores:    '1-Pp9CgF0iaL7q2NKwBAv5NMYNlqtt2lv',  // CLAVES-ASESORES-V2.json
+            prestadosPendientes:'1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'  // PRESTADOS-PENDIENTES.json (base legacy)
         };
 
         // ID de Google Sheet (lo crearemos automáticamente la primera vez)
@@ -3311,6 +3311,9 @@
                 // Agregar a Excel
                 await agregarFilaExcel(documento, docName, jsonResult.id);
 
+                // Registrar equipos prestados en Drive (uno por prestador)
+                await registrarPrestadosEnDrive(documento, docName);
+
                 // Eliminar archivo de bloqueo
                 if (lockFileId) {
                     try {
@@ -4190,25 +4193,90 @@
 
         function mantMostrarInspeccionCierre() {
             const inspeccion = mantNovedadDoc.inspeccion_visual;
-            const container = document.getElementById('mant-novedad-inspeccion-display');
+            const container  = document.getElementById('mant-novedad-inspeccion-display');
+
             if (!inspeccion) {
                 container.innerHTML = '<p style="font-size:0.8rem; color:var(--gray-500);">Sin inspección visual registrada</p>';
                 return;
             }
-            const todos = [...(inspeccion.frente || []), ...(inspeccion.posterior || [])];
+
+            const frente    = inspeccion.frente    || [];
+            const posterior = inspeccion.posterior || [];
+            const todos     = [...frente, ...posterior];
+
             if (todos.length === 0) {
                 container.innerHTML = '<p style="font-size:0.8rem; color:var(--gray-500);">Sin daños registrados en el ingreso</p>';
                 return;
             }
+
+            // Generar marcadores SVG para cada cara
+            function marcadoresSVG(danos) {
+                return danos.map(d => `
+                    <circle cx="${d.x}" cy="${d.y}" r="8" fill="${d.color}" fill-opacity="0.85"
+                            stroke="white" stroke-width="1.5"/>
+                    <text x="${d.x}" y="${d.y + 4}" text-anchor="middle"
+                          font-size="8" fill="white">×</text>
+                `).join('');
+            }
+
+            // SVG frente (solo lectura, sin onclick)
+            const svgFrente = `
+                <svg viewBox="0 0 200 400" width="130" height="260"
+                     style="border:2px solid var(--gray-200); border-radius:8px; display:block;">
+                    <rect x="10" y="10" width="180" height="380" rx="22" ry="22" fill="#1f2937"/>
+                    <rect x="16" y="16" width="168" height="368" rx="18" ry="18" fill="#111827"/>
+                    <rect x="18" y="45" width="164" height="295" rx="4" ry="4" fill="#374151"/>
+                    <rect x="70" y="50" width="60" height="16" rx="8" fill="#111827"/>
+                    <circle cx="100" cy="58" r="5" fill="#4b5563"/>
+                    <rect x="75" y="350" width="50" height="5" rx="2.5" fill="#4b5563"/>
+                    <rect x="190" y="120" width="6" height="40" rx="3" fill="#374151"/>
+                    <rect x="4" y="110" width="6" height="25" rx="3" fill="#374151"/>
+                    <rect x="4" y="145" width="6" height="25" rx="3" fill="#374151"/>
+                    <rect x="82" y="385" width="36" height="6" rx="3" fill="#374151"/>
+                    <g>${marcadoresSVG(frente)}</g>
+                </svg>`;
+
+            // SVG posterior (solo lectura)
+            const svgPosterior = `
+                <svg viewBox="0 0 200 400" width="130" height="260"
+                     style="border:2px solid var(--gray-200); border-radius:8px; display:block;">
+                    <rect x="10" y="10" width="180" height="380" rx="22" ry="22" fill="#1f2937"/>
+                    <rect x="16" y="16" width="168" height="368" rx="18" ry="18" fill="#374151"/>
+                    <rect x="20" y="25" width="70" height="70" rx="12" fill="#111827"/>
+                    <circle cx="45" cy="48" r="14" fill="#1f2937"/>
+                    <circle cx="45" cy="48" r="10" fill="#374151"/>
+                    <circle cx="75" cy="48" r="14" fill="#1f2937"/>
+                    <circle cx="75" cy="48" r="10" fill="#374151"/>
+                    <circle cx="45" cy="78" r="14" fill="#1f2937"/>
+                    <circle cx="45" cy="78" r="10" fill="#374151"/>
+                    <circle cx="75" cy="78" r="8"  fill="#1f2937"/>
+                    <circle cx="75" cy="78" r="5"  fill="#fef3c7"/>
+                    <circle cx="130" cy="200" r="20" fill="#2d3748"/>
+                    <g>${marcadoresSVG(posterior)}</g>
+                </svg>`;
+
+            // Lista de daños
+            const listaDanos = todos.map(d => `
+                <div class="damage-list-item">
+                    <div class="damage-dot" style="background:${d.color};"></div>
+                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
+                </div>`).join('');
+
             container.innerHTML = `
-                <div style="margin-bottom:0.5rem; font-size:0.8rem; color:var(--gray-600);">
-                    Daños registrados al ingreso:
+                <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.5rem; font-weight:600;">
+                    Estado del equipo al ingreso (el cliente avala con su firma que así ingresó):
+                </p>
+                <div style="display:flex; gap:1rem; justify-content:center; flex-wrap:wrap; margin-bottom:0.75rem;">
+                    <div style="text-align:center;">
+                        <p style="font-size:0.75rem; color:var(--gray-500); margin-bottom:0.25rem;">📱 Frente</p>
+                        ${svgFrente}
+                    </div>
+                    <div style="text-align:center;">
+                        <p style="font-size:0.75rem; color:var(--gray-500); margin-bottom:0.25rem;">🔄 Posterior</p>
+                        ${svgPosterior}
+                    </div>
                 </div>
-                ${todos.map(d => `
-                    <div class="damage-list-item">
-                        <div class="damage-dot" style="background:${d.color};"></div>
-                        <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
-                    </div>`).join('')}
+                <div style="margin-top:0.5rem;">${listaDanos}</div>
             `;
         }
 
@@ -4817,81 +4885,95 @@
             mostrarToast('⏳ Cargando prestados pendientes...');
 
             try {
-                const fileId = CONFIG_FILES.prestadosPendientes;
-                const resp = await fetch(
-                    `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
-                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
-                );
-                if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                // Buscar todos los archivos Prestado-*.json en la carpeta prestamosPagos
+                const response = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.prestamosPagos}' in parents and trashed=false and name contains 'Prestado-'`,
+                    fields: 'files(id, name, createdTime)',
+                    orderBy: 'name asc',
+                    pageSize: 200
+                });
 
-                const texto = await resp.text();
-                prestDatos = JSON.parse(texto);
+                const archivos = response.result.files || [];
 
-                // Leer desde la estructura real: { prestamos: [...], prestadores: [...] }
-                // Solo tomar los que tienen estado pendiente (o sin estado)
-                let lista = [];
-
-                if (Array.isArray(prestDatos.prestamos)) {
-                    lista = prestDatos.prestamos.filter(p =>
-                        !p.estado || p.estado === 'pendiente'
-                    );
-                } else if (Array.isArray(prestDatos)) {
-                    // Fallback: array directo
-                    lista = prestDatos;
-                }
-
-                // Leer resumen del archivo para mostrarlo
-                const resumenArchivo = prestDatos.resumen || null;
-
-                if (lista.length === 0) {
+                if (archivos.length === 0) {
                     document.getElementById('prest-vacio').style.display = 'block';
+                    mostrarToast('✅ No hay prestados registrados');
                     return;
                 }
 
-                // Agrupar por prestador
-                // Soporta: prestamo.prestador (string) o prestamo.prestador_id
-                // y busca el nombre en prestadores[] si existe
-                const mapaPrestadores = {};
-                if (Array.isArray(prestDatos.prestadores)) {
-                    prestDatos.prestadores.forEach(p => {
-                        mapaPrestadores[p.id] = p.nombre || p.id;
-                    });
+                // Cargar contenido de cada archivo
+                mostrarToast(`⏳ Leyendo ${archivos.length} registro(s)...`);
+                const registros = await Promise.all(archivos.map(async f => {
+                    try {
+                        const r = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        const doc = await r.json();
+                        return { fileId: f.id, fileName: f.name, doc };
+                    } catch {
+                        return null;
+                    }
+                }));
+
+                // Separar pendientes de pagados
+                const pendientes = registros.filter(r => r && r.doc && r.doc.estado === 'pendiente');
+                const pagados    = registros.filter(r => r && r.doc && r.doc.estado === 'pagado');
+
+                if (pendientes.length === 0) {
+                    document.getElementById('prest-vacio').style.display = 'block';
+                    mostrarToast('✅ Todos los préstamos están pagados');
+                    return;
                 }
 
+                // Agrupar pendientes por prestador
                 prestGrupos = {};
-                lista.forEach(prestamo => {
-                    // Resolver nombre del prestador
-                    let key = 'Sin nombre';
-                    if (typeof prestamo.prestador === 'string') {
-                        key = prestamo.prestador;
-                    } else if (prestamo.prestador_id && mapaPrestadores[prestamo.prestador_id]) {
-                        key = mapaPrestadores[prestamo.prestador_id];
-                    } else if (prestamo.prestado_por) {
-                        key = prestamo.prestado_por;
-                    } else if (prestamo.nombre_prestador) {
-                        key = prestamo.nombre_prestador;
-                    }
-
+                pendientes.forEach(({ fileId, fileName, doc }) => {
+                    const key = doc.prestador || 'Sin nombre';
                     if (!prestGrupos[key]) prestGrupos[key] = [];
-                    prestGrupos[key].push(prestamo);
+                    // Aplanar equipos con referencia al archivo
+                    (doc.equipos || []).forEach(eq => {
+                        prestGrupos[key].push({
+                            ...eq,
+                            _fileId:   fileId,
+                            _fileName: fileName,
+                            _remision: doc.remision,
+                            _prestador: key,
+                            _docCompleto: doc
+                        });
+                    });
                 });
 
-                prestRenderizar(prestGrupos, resumenArchivo);
+                // Resumen calculado
+                let totalMonto = 0, totalEquipos = 0;
+                Object.values(prestGrupos).forEach(eqs => {
+                    totalEquipos += eqs.length;
+                    eqs.forEach(eq => { totalMonto += Number(eq.costo || 0); });
+                });
+
+                const resumenCalc = {
+                    monto_pendiente: totalMonto,
+                    total_pendientes: totalEquipos,
+                    monto_pagado: pagados.reduce((s, r) =>
+                        s + (r.doc.pago?.monto || 0), 0)
+                };
+
+                prestRenderizar(prestGrupos, resumenCalc);
                 document.getElementById('prest-estado').style.display = 'block';
-                mostrarToast(`✅ ${lista.length} préstamo${lista.length !== 1 ? 's' : ''} pendiente${lista.length !== 1 ? 's' : ''}`);
+                mostrarToast(`✅ ${totalEquipos} equipo(s) pendiente(s) de ${Object.keys(prestGrupos).length} prestador(es)`);
 
             } catch (err) {
                 console.error('Error cargando prestados:', err);
                 document.getElementById('prest-error').style.display = 'block';
                 const msgEl = document.getElementById('prest-error-msg');
                 if (err.message.includes('403')) {
-                    msgEl.textContent = 'Acceso denegado. Verifica que PRESTADOS-PENDIENTES.json esté compartido con tu cuenta.';
+                    msgEl.textContent = 'Acceso denegado a la carpeta de prestados.';
                 } else if (err.message.includes('404')) {
-                    msgEl.textContent = 'Archivo no encontrado. Verifica el ID en CONFIG_FILES.';
+                    msgEl.textContent = 'Carpeta de prestados no encontrada. Verifica FOLDER_IDS.prestamosPagos.';
                 } else {
                     msgEl.textContent = err.message;
                 }
-                mostrarToast('❌ Error al cargar el archivo');
+                mostrarToast('❌ Error al cargar prestados');
             }
         }
 
@@ -4944,23 +5026,22 @@
                 const config = prestDatos.configuracion || {};
                 const filas = equipos.map(eq => {
                     const imei  = eq.imei || eq.IMEI || '-';
-                    const costo = Number(eq.costo || eq.valor || eq.precio || eq.monto || 0);
+                    const costo = Number(eq.costo || 0);
                     const desc  = eq.descripcion || eq.equipo || eq.nombre || eq.producto || 'Sin descripción';
-                    const rem   = eq.remision || eq.numero_remision || null;
-                    const dias  = eq.fecha_prestamo
-                        ? Math.floor((Date.now() - new Date(eq.fecha_prestamo)) / 86400000)
+                    const rem   = eq._remision || eq.remision || null;
+                    const dias  = eq._docCompleto?.fecha_remision
+                        ? Math.floor((Date.now() - new Date(eq._docCompleto.fecha_remision)) / 86400000)
                         : null;
-                    const alerta = config.alertar_dias_sin_pagar && dias !== null && dias >= config.alertar_dias_sin_pagar;
+                    const config2 = prestDatos?.configuracion || {};
+                    const alerta = config2.alertar_dias_sin_pagar && dias !== null && dias >= config2.alertar_dias_sin_pagar;
 
                     return `
                         <div class="equipo-prestado-row" ${alerta ? 'style="background:#fff7ed;"' : ''}>
                             <div class="equipo-info">
-                                <div class="equipo-nombre">
-                                    ${alerta ? '⚠️ ' : ''}${desc}
-                                </div>
+                                <div class="equipo-nombre">${alerta ? '⚠️ ' : ''}${desc}</div>
                                 ${imei !== '-' ? `<div class="equipo-imei">IMEI: ${imei}</div>` : ''}
-                                ${rem ? `<div class="equipo-imei">Remisión: ${rem}</div>` : ''}
-                                ${dias !== null ? `<div class="equipo-imei">${dias} día${dias !== 1 ? 's' : ''} pendiente</div>` : ''}
+                                ${rem ? `<div class="equipo-imei">📄 Remisión: ${rem}</div>` : ''}
+                                ${dias !== null ? `<div class="equipo-imei">🕐 ${dias} día${dias !== 1 ? 's' : ''} pendiente</div>` : ''}
                             </div>
                             <div class="equipo-costo">${formatMoney(costo)}</div>
                         </div>`;
@@ -5024,19 +5105,23 @@
 
         function prestAbrirPago(nombrePrestador, modo) {
             const equipos  = prestGrupos[nombrePrestador] || [];
-            const subtotal = equipos.reduce((s, eq) =>
-                s + Number(eq.costo || eq.valor || eq.precio || eq.monto || 0), 0);
+            const subtotal = equipos.reduce((s, eq) => s + Number(eq.costo || 0), 0);
 
             prestPagoActual = { prestador: nombrePrestador, equipos, total: subtotal, modo };
 
             // Resumen en modal
             const filas = equipos.map(eq => {
-                const costo = Number(eq.costo || eq.valor || eq.precio || eq.monto || 0);
-                const desc  = eq.descripcion || eq.equipo || eq.nombre || eq.producto || 'Sin descripción';
-                const imei  = eq.imei || eq.IMEI || null;
+                const costo = Number(eq.costo || 0);
+                const desc  = eq.descripcion || eq.equipo || eq.nombre || 'Sin descripción';
+                const imei  = eq.imei || null;
+                const rem   = eq._remision || null;
                 return `
                     <div class="gar-resumen-row">
-                        <span>${desc}${imei ? `<br><small style="color:var(--gray-500);">IMEI: ${imei}</small>` : ''}</span>
+                        <span>
+                            ${desc}
+                            ${imei ? `<br><small style="color:var(--gray-500);">IMEI: ${imei}</small>` : ''}
+                            ${rem  ? `<br><small style="color:var(--gray-500);">📄 ${rem}</small>` : ''}
+                        </span>
                         <span>${formatMoney(costo)}</span>
                     </div>`;
             }).join('');
@@ -5053,9 +5138,8 @@
                 </div>
             `;
 
-            // Poblar métodos de pago desde configuración
-            const metodosPerm = (prestDatos?.configuracion?.metodos_pago_permitidos) ||
-                ['efectivo','transferencia','tarjeta','nequi','daviplata','otro'];
+            // Métodos desde config o default
+            const metodosPerm = ['efectivo','transferencia','tarjeta','nequi','daviplata','otro'];
             const selectMetodo = document.getElementById('prest-pago-metodo');
             selectMetodo.innerHTML = '<option value="">Seleccione...</option>';
             metodosPerm.forEach(m => {
@@ -5065,7 +5149,6 @@
                 selectMetodo.appendChild(opt);
             });
 
-            // Modo masivo: precarga total; personalizado: vacío
             document.getElementById('prest-pago-monto').value =
                 modo === 'masivo' ? new Intl.NumberFormat('es-CO').format(subtotal) : '';
             document.getElementById('prest-pago-referencia').value = '';
@@ -5095,7 +5178,7 @@
                 return;
             }
 
-            // Validar soporte según configuración
+            // Validar soporte obligatorio según config del archivo base (si cargó)
             const config = prestDatos?.configuracion || {};
             const requiereFoto =
                 (metodo === 'efectivo'      && config.requiere_soporte_efectivo) ||
@@ -5110,42 +5193,73 @@
             mostrarToast('☁️ Registrando pago...');
 
             try {
-                const fechaStr = new Date().toISOString();
-                const docName  = `Pago-${prestPagoActual.prestador.replace(/\s+/g,'-')}-${Date.now()}`;
-
-                const doc = {
-                    tipo: 'pago_prestador',
-                    fecha: fechaStr,
-                    prestador: prestPagoActual.prestador,
-                    equipos: prestPagoActual.equipos,
-                    total_deuda: prestPagoActual.total,
-                    pago: {
-                        monto,
-                        metodo,
-                        referencia: ref || null,
-                        nota: nota || null,
-                        soporte_foto: capturedPhotos['prestSoporte'] ? true : false
-                    }
+                const fechaPago = new Date().toISOString();
+                const infoPago = {
+                    monto, metodo,
+                    referencia: ref || null,
+                    nota: nota || null,
+                    fecha: fechaPago,
+                    soporte_foto: capturedPhotos['prestSoporte'] ? true : false
                 };
 
-                // Subir JSON del pago
-                await subirArchivoDrive(
-                    JSON.stringify(doc, null, 2),
-                    `${docName}.json`,
-                    FOLDER_IDS.prestamosPagos
-                );
+                // Obtener los fileIds únicos de los equipos de este prestador
+                const equipos = prestPagoActual.equipos;
+                const fileIdsUnicos = [...new Set(equipos.map(eq => eq._fileId).filter(Boolean))];
 
-                // Subir foto soporte si existe
+                // Actualizar cada archivo Prestado-*.json en Drive → estado: 'pagado'
+                for (const fileId of fileIdsUnicos) {
+                    try {
+                        // Leer el doc actual
+                        const getResp = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        const docActual = await getResp.json();
+
+                        // Marcar como pagado
+                        docActual.estado = 'pagado';
+                        docActual.pago   = infoPago;
+
+                        // Sobreescribir en Drive con PATCH
+                        const patchForm = new FormData();
+                        patchForm.append('metadata', new Blob(
+                            [JSON.stringify({ name: docActual._fileName || equipos.find(e=>e._fileId===fileId)?._fileName })],
+                            { type: 'application/json' }
+                        ));
+                        patchForm.append('file', new Blob(
+                            [JSON.stringify(docActual, null, 2)],
+                            { type: 'application/json' }
+                        ));
+
+                        await fetch(
+                            `https://www.googleapis.com/upload/drive/v3/files/${fileId}?uploadType=multipart`,
+                            {
+                                method: 'PATCH',
+                                headers: { 'Authorization': 'Bearer ' + accessToken },
+                                body: patchForm
+                            }
+                        );
+                        console.log(`✅ Prestado ${fileId} marcado como pagado`);
+                    } catch (e) {
+                        console.error(`Error actualizando prestado ${fileId}:`, e);
+                    }
+                }
+
+                // Subir foto soporte si existe (en recibosCaja)
                 if (capturedPhotos['prestSoporte']) {
+                    const nombreFoto = `Pago-${prestPagoActual.prestador.replace(/\s+/g,'-')}-${Date.now()}-Soporte.jpg`;
                     await subirImagenDrive(
                         capturedPhotos['prestSoporte'],
-                        `${docName}-Soporte.jpg`,
+                        nombreFoto,
                         FOLDER_IDS.recibosCaja
                     );
                 }
 
                 prestCerrarPago();
                 mostrarToast(`✅ Pago de ${formatMoney(monto)} a ${prestPagoActual.prestador} registrado`);
+
+                // Recargar la lista para reflejar los pagados
+                setTimeout(() => prestCargar(), 800);
 
             } catch (err) {
                 console.error('Error registrando pago:', err);
@@ -5154,6 +5268,56 @@
         }
 
         // ============= FIN MÓDULO PAGAR PRESTADORES =============
+
+        // ============= LÓGICA PRESTADOS ↔ REMISIONES =============
+
+        // Al guardar una remisión con ítems prestados:
+        // crea un archivo Prestado-XXXX-NombrePrestador.json por cada prestador único
+        async function registrarPrestadosEnDrive(documento, docName) {
+            const itemsPrestados = documento.items.filter(i => i.estado === 'prestado' && i.prestadoPor);
+            if (itemsPrestados.length === 0) return;
+
+            // Agrupar ítems por prestador
+            const porPrestador = {};
+            itemsPrestados.forEach(item => {
+                const key = item.prestadoPor.trim();
+                if (!porPrestador[key]) porPrestador[key] = [];
+                porPrestador[key].push(item);
+            });
+
+            for (const [prestador, items] of Object.entries(porPrestador)) {
+                const nombreArchivo = `Prestado-${docName}-${prestador.replace(/\s+/g, '-')}.json`;
+                const registro = {
+                    tipo: 'prestado_pendiente',
+                    estado: 'pendiente',
+                    prestador,
+                    remision: docName,
+                    fecha_remision: documento.fecha,
+                    cliente: documento.cliente,
+                    asesor: documento.asesor,
+                    equipos: items.map(i => ({
+                        descripcion: i.descripcion,
+                        imei: i.imei,
+                        costo: i.costo || 0,
+                        valor_venta: i.valor,
+                        notas: i.notas || ''
+                    })),
+                    total_costo: items.reduce((s, i) => s + (i.costo || 0), 0),
+                    pago: null
+                };
+
+                try {
+                    await subirArchivoDrive(
+                        JSON.stringify(registro, null, 2),
+                        nombreArchivo,
+                        FOLDER_IDS.prestamosPagos
+                    );
+                    console.log(`✅ Prestado registrado: ${nombreArchivo}`);
+                } catch (e) {
+                    console.error(`Error registrando prestado ${nombreArchivo}:`, e);
+                }
+            }
+        }
 
         // Inicializar
         window.addEventListener('load', () => {
