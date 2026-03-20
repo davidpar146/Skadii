@@ -3058,15 +3058,14 @@
         }
 
         function mostrarOpcionesFoto() {
-            // Crear modal de opciones
             const modalHTML = `
                 <div id="foto-opciones-modal" style="position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 2000; padding: 1rem;">
                     <div style="background: white; border-radius: 12px; padding: 2rem; max-width: 400px; width: 100%;">
                         <h3 style="margin-bottom: 1.5rem; text-align: center;">📸 Seleccionar Foto</h3>
-                        <button onclick="abrirCamara(); cerrarOpcionesFoto();" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem; padding: 1rem;">
+                        <button onclick="elegirCamara();" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem; padding: 1rem;">
                             📷 Tomar con Cámara
                         </button>
-                        <button onclick="document.getElementById('file-input-gallery').click(); cerrarOpcionesFoto();" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem; padding: 1rem;">
+                        <button onclick="elegirGaleria();" class="btn btn-primary" style="width: 100%; margin-bottom: 1rem; padding: 1rem;">
                             🖼️ Seleccionar de Galería
                         </button>
                         <button onclick="cerrarOpcionesFoto();" class="btn" style="width: 100%; padding: 1rem; background: var(--gray-200);">
@@ -3075,8 +3074,7 @@
                     </div>
                 </div>
             `;
-            
-            // Agregar modal al body si no existe
+
             if (!document.getElementById('foto-opciones-modal')) {
                 document.body.insertAdjacentHTML('beforeend', modalHTML);
             } else {
@@ -3084,11 +3082,22 @@
             }
         }
 
+        function elegirCamara() {
+            cerrarOpcionesFoto();
+            // Pequeño delay para que el modal cierre antes de abrir la cámara
+            setTimeout(() => abrirCamara(), 100);
+        }
+
+        function elegirGaleria() {
+            // Primero abrir el selector de archivos, LUEGO cerrar el modal
+            // Así currentPhotoType sigue disponible cuando el input dispare onchange
+            document.getElementById('file-input-gallery').click();
+            setTimeout(() => cerrarOpcionesFoto(), 200);
+        }
+
         function cerrarOpcionesFoto() {
             const modal = document.getElementById('foto-opciones-modal');
-            if (modal) {
-                modal.style.display = 'none';
-            }
+            if (modal) modal.style.display = 'none';
         }
 
         function seleccionarDeGaleria(event) {
@@ -3105,10 +3114,21 @@
                 const dataUrl = e.target.result;
                 capturedPhotos[currentPhotoType] = dataUrl;
 
-                const btn = document.getElementById(`btn-${currentPhotoType}`);
+                // Mapa de tipos a IDs de botón (para tipos con IDs no estándar)
+                const btnIdMap = {
+                    'prestSoporte':      'btn-prest-soporte',
+                    'mantGeneral':       'btn-mant-foto-general',
+                    'mantFalla':         'btn-mant-foto-falla',
+                    'mantSoportePago':   'btn-mant-soporte-pago',
+                    'mantSoporteAnticipo':'btn-mant-soporte-anticipo',
+                    'garEntra':          'btn-gar-foto-entra',
+                };
+                const btnId = btnIdMap[currentPhotoType] || `btn-${currentPhotoType}`;
+                const btn = document.getElementById(btnId);
                 if (btn) {
                     btn.classList.add('captured');
-                    btn.textContent = btn.textContent.replace('📸', '✅');
+                    // Reemplazar emoji de cámara por check
+                    btn.innerHTML = btn.innerHTML.replace('📸', '✅');
                 }
 
                 mostrarToast('✅ Foto seleccionada');
@@ -3144,10 +3164,20 @@
             const dataUrl = canvas.toDataURL('image/jpeg', 0.8);
             capturedPhotos[currentPhotoType] = dataUrl;
 
-            const btn = document.getElementById(`btn-${currentPhotoType}`);
+            // Mapa de tipos a IDs de botón
+            const btnIdMap = {
+                'prestSoporte':       'btn-prest-soporte',
+                'mantGeneral':        'btn-mant-foto-general',
+                'mantFalla':          'btn-mant-foto-falla',
+                'mantSoportePago':    'btn-mant-soporte-pago',
+                'mantSoporteAnticipo':'btn-mant-soporte-anticipo',
+                'garEntra':           'btn-gar-foto-entra',
+            };
+            const btnId = btnIdMap[currentPhotoType] || `btn-${currentPhotoType}`;
+            const btn = document.getElementById(btnId);
             if (btn) {
                 btn.classList.add('captured');
-                btn.textContent = btn.textContent.replace('📸', '✅');
+                btn.innerHTML = btn.innerHTML.replace('📸', '✅');
             }
 
             cerrarCamara();
@@ -4795,17 +4825,22 @@
                 return;
             }
 
+            // Número de remisión original — soporta numero entero, string o nombre completo
+            const numRaw = garRemisionOriginal.numero
+                ?? garRemisionOriginal.remision
+                ?? '';
+            const numOriginal = numRaw ? String(numRaw).replace('Remision-','').padStart(4, '0') : '????';
+
             // Calcular diferencia para el resumen
             const precioEntra = parsearValor(document.getElementById('gar-entra-precio').value);
             const precioSale  = parsearValor(document.getElementById('gar-sale-precio').value);
             const diff = precioSale - precioEntra;
-            const numOriginal = String(garRemisionOriginal.numero).padStart(4, '0');
 
             // Mostrar resumen en el modal
             document.getElementById('gar-resumen-autorizacion').innerHTML = `
                 <div class="gar-resumen-row"><span>Remisión original:</span><span>Remision-${numOriginal}</span></div>
-                <div class="gar-resumen-row"><span>Cliente:</span><span>${garRemisionOriginal.cliente}</span></div>
-                <div class="gar-resumen-row"><span>Tipo:</span><span>${garTipoActual.replace('_',' ')}</span></div>
+                <div class="gar-resumen-row"><span>Cliente:</span><span>${garRemisionOriginal.cliente || '-'}</span></div>
+                <div class="gar-resumen-row"><span>Tipo:</span><span>${garTipoActual.replace(/_/g,' ')}</span></div>
                 <div class="gar-resumen-row"><span>Equipo entra:</span><span>${entraDesc}</span></div>
                 <div class="gar-resumen-row"><span>IMEI entra:</span><span>${entraImei}</span></div>
                 <div class="gar-resumen-row"><span>Equipo sale:</span><span>${saleDesc}</span></div>
@@ -4819,6 +4854,15 @@
             `;
 
             garPoblarAutorizadores();
+
+            // Si después de poblar sigue vacío, recargar asesores y avisar
+            const select = document.getElementById('gar-auth-asesor');
+            if (select.options.length <= 1 && Object.keys(clavesAsesores).length === 0) {
+                mostrarToast('⚠️ Cargando asesores, intenta de nuevo en un momento...');
+                cargarClavesAsesores();
+                return;
+            }
+
             document.getElementById('gar-auth-clave').value = '';
             document.getElementById('gar-auth-nota').value = '';
             document.getElementById('gar-autorizacion-modal').classList.add('active');
