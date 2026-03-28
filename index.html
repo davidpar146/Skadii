@@ -3902,25 +3902,49 @@
                 }
                 
                 const contenido = await fileResponse.text();
-                console.log('Contenido CLAVES-V2:', contenido);
-                
                 const data = JSON.parse(contenido);
                 
-                // Soporte para formato V2 (array "asesores") y formato legacy (objeto plano)
                 if (data.asesores && Array.isArray(data.asesores)) {
-                    // Formato V2: { asesores: [{nombre, clave, permisos}] }
-                    clavesAsesores = {};
-                    asesoresPermisos = {}; // variable global para permisos
+                    clavesAsesores  = {};
+                    asesoresPermisos = {};
+
                     data.asesores.forEach(a => {
+                        if (!a.activo && a.activo !== undefined) return; // omitir inactivos
                         clavesAsesores[a.nombre] = a.clave;
-                        asesoresPermisos[a.nombre] = a.permisos || [];
+
+                        // Soporta permisos como objeto {permiso: bool} O como array ["permiso"]
+                        if (Array.isArray(a.permisos)) {
+                            asesoresPermisos[a.nombre] = a.permisos;
+                        } else if (a.permisos && typeof a.permisos === 'object') {
+                            // Convertir objeto booleano a array de strings activos
+                            asesoresPermisos[a.nombre] = Object.entries(a.permisos)
+                                .filter(([, v]) => v === true)
+                                .map(([k]) => k);
+                            // Si es administrador, agregar 'admin' para compatibilidad
+                            if (a.permisos.administrador) {
+                                asesoresPermisos[a.nombre].push('admin');
+                            }
+                        } else {
+                            asesoresPermisos[a.nombre] = [];
+                        }
                     });
+
+                    // Leer autorizadores de garantías desde configuracion si existe
+                    if (data.configuracion?.autorizadores_garantias) {
+                        data.configuracion.autorizadores_garantias.forEach(nombre => {
+                            if (asesoresPermisos[nombre] && !asesoresPermisos[nombre].includes('autorizar_garantias')) {
+                                asesoresPermisos[nombre].push('autorizar_garantias');
+                            }
+                        });
+                    }
+
                     console.log('Formato V2 cargado. Asesores:', Object.keys(clavesAsesores));
+                    console.log('Permisos:', asesoresPermisos);
                 } else {
                     // Formato legacy: { nombre: clave }
-                    clavesAsesores = data;
+                    clavesAsesores  = data;
                     asesoresPermisos = {};
-                    console.log('Formato legacy cargado. Asesores:', Object.keys(clavesAsesores));
+                    console.log('Formato legacy cargado.');
                 }
                 
                 actualizarDropdownAsesores();
@@ -3929,12 +3953,12 @@
             } catch (error) {
                 console.error('Error cargando claves de asesores:', error);
                 const msg = error.message.includes('403')
-                    ? '❌ Acceso denegado al archivo de claves. Verifica que esté compartido.'
+                    ? '❌ Acceso denegado al archivo de claves.'
                     : error.message.includes('404')
-                    ? '❌ Archivo CLAVES-ASESORES-V2 no encontrado. Verifica el ID.'
+                    ? '❌ Archivo CLAVES-ASESORES-V2 no encontrado.'
                     : '❌ Error cargando asesores. Ver consola.';
                 mostrarToast(msg);
-                clavesAsesores = {};
+                clavesAsesores  = {};
                 asesoresPermisos = {};
                 actualizarDropdownAsesores();
             }
@@ -3942,7 +3966,17 @@
 
         function tienePermiso(nombreAsesor, permiso) {
             const perms = asesoresPermisos[nombreAsesor] || [];
-            return perms.includes(permiso) || perms.includes('admin');
+            // admin tiene todo
+            if (perms.includes('admin') || perms.includes('administrador')) return true;
+            // Mapa de compatibilidad entre nombres del sistema y nombres del archivo
+            const mapaPermisos = {
+                'autorizar_garantias':  ['autorizar_garantias', 'registrar_garantias'],
+                'anular':               ['anular_remisiones', 'anular'],
+                'registrar_gastos':     ['registrar_gastos', 'administrador'],
+                'pagar_prestadores':    ['pagar_prestadores'],
+            };
+            const equivalentes = mapaPermisos[permiso] || [permiso];
+            return equivalentes.some(p => perms.includes(p));
         }
 
         function actualizarDropdownAsesores() {
@@ -4015,6 +4049,8 @@
             }
             if (modulo === 'gastos') {
                 gasInicializar();
+                // Re-poblar select en caso de que los asesores ya estén cargados
+                setTimeout(() => gasPoblarSelectAsesor(), 300);
             }
 
             // Actualizar ítem activo del menú
@@ -6661,8 +6697,10 @@
 
         function gasPoblarSelectAsesor() {
             const sel = document.getElementById('gas-asesor');
+            if (!sel) return;
             sel.innerHTML = '<option value="">Seleccione...</option>';
-            // Solo asesores con permiso registrar_gastos
+
+            // Intentar con permiso específico primero
             let agregados = 0;
             Object.keys(asesoresPermisos).forEach(nombre => {
                 if (tienePermiso(nombre, 'registrar_gastos')) {
@@ -6672,13 +6710,20 @@
                     agregados++;
                 }
             });
-            // Fallback: todos si no hay permisos configurados
-            if (agregados === 0) {
-                Object.keys(clavesAsesores).forEach(nombre => {
+
+            // Fallback 1: si no hay permisos configurados, mostrar todos
+            if (agregados === 0 && Object.keys(clavesAsesores).length > 0) {
+                Object.keys(clavesAsesores).sort().forEach(nombre => {
                     const opt = document.createElement('option');
                     opt.value = nombre; opt.textContent = nombre;
                     sel.appendChild(opt);
+                    agregados++;
                 });
+            }
+
+            // Fallback 2: si aún no hay asesores cargados, reintentar en 1.5s
+            if (agregados === 0) {
+                setTimeout(() => gasPoblarSelectAsesor(), 1500);
             }
         }
 
