@@ -1079,6 +1079,73 @@
             max-height: 90vh;
             overflow-y: auto;
         }
+
+        /* ===== ESTILOS MÓDULOS INGRESOS Y GASTOS ===== */
+        .ingreso-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-left: 4px solid var(--success);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .gasto-card {
+            background: white;
+            border: 2px solid var(--gray-200);
+            border-left: 4px solid var(--danger);
+            border-radius: 10px;
+            padding: 0.85rem 1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .empresa-btn {
+            padding: 0.5rem 0.75rem;
+            border: 2px solid var(--gray-200);
+            background: white;
+            border-radius: 8px;
+            font-size: 0.82rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .empresa-btn.active {
+            border-color: var(--primary);
+            background: #dbeafe;
+            color: var(--primary);
+        }
+
+        .categoria-tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.3rem;
+            padding: 0.3rem 0.7rem;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: 2px solid transparent;
+            background: var(--gray-100);
+            color: var(--gray-700);
+            transition: all 0.2s;
+        }
+
+        .categoria-tag.active {
+            background: #fee2e2;
+            color: #991b1b;
+            border-color: #fca5a5;
+        }
+
+        .categoria-tag .del-btn {
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.9rem;
+            color: var(--danger);
+            padding: 0;
+            line-height: 1;
+        }
     </style>
 </head>
 <body>
@@ -1112,6 +1179,8 @@
                 <button class="menu-item" id="menu-mantenimientos" onclick="mostrarModulo('mantenimientos')">🔧 Mantenimientos</button>
                 <button class="menu-item" id="menu-garantias" onclick="mostrarModulo('garantias')">🔄 Garantías</button>
                 <button class="menu-item" id="menu-prestadores" onclick="mostrarModulo('prestadores')">💰 Pagar Prestadores</button>
+                <button class="menu-item" id="menu-ingresos" onclick="mostrarModulo('ingresos')">📥 Ingresos</button>
+                <button class="menu-item" id="menu-gastos" onclick="mostrarModulo('gastos')">📤 Gastos</button>
                 <hr style="margin: 0.25rem 0; border-color: var(--gray-200);">
                 <button class="menu-item" id="menu-anular" onclick="mostrarAnular()">❌ Anular Remisión</button>
             </div>
@@ -1271,6 +1340,7 @@
                     <option value="tarjeta">Tarjeta</option>
                     <option value="credito">Crédito</option>
                     <option value="addi">ADDI</option>
+                    <option value="gora">Gora</option>
                     <option value="coordinadora">Coordinadora</option>
                     <option value="retoma">Retoma (Parte de Pago)</option>
                     <option value="otro">Otro</option>
@@ -2169,6 +2239,274 @@
         </div>
     </div>
 
+    <!-- ===== MÓDULO INGRESOS ===== -->
+    <div class="container" id="modulo-ingresos" style="display:none;">
+
+        <!-- Tabs -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+            <button class="toggle-btn active" id="ing-tab-nuevo" onclick="ingMostrarTab('nuevo')" style="flex:1;">➕ Nuevo Ingreso</button>
+            <button class="toggle-btn" id="ing-tab-lista" onclick="ingMostrarTab('lista')" style="flex:1;">📋 Lista</button>
+        </div>
+
+        <!-- TAB NUEVO -->
+        <div id="ing-tab-content-nuevo">
+
+            <!-- Lista de cobros pendientes para seleccionar -->
+            <div class="card">
+                <div class="card-title">🔄 Cobros Pendientes</div>
+                <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                    Selecciona el cobro que llegó. Se cargan de las remisiones con ADDI, Gora o Coordinadora.
+                </p>
+                <button class="btn btn-secondary" onclick="ingCargarCobros()" style="margin-bottom:0.75rem; padding:0.65rem;">
+                    🔄 Cargar Cobros Pendientes
+                </button>
+                <div id="ing-cobros-container">
+                    <p style="color:var(--gray-500); font-size:0.85rem; text-align:center;">
+                        Presiona "Cargar Cobros Pendientes" para ver la lista
+                    </p>
+                </div>
+            </div>
+
+            <!-- Cobro seleccionado -->
+            <div class="card" id="ing-cobro-seleccionado-card" style="display:none; border-left:4px solid var(--success);">
+                <div class="card-title" style="color:var(--success);">✅ Cobro Seleccionado</div>
+                <div id="ing-cobro-seleccionado-info"></div>
+                <button class="btn btn-secondary" onclick="ingDeseleccionarCobro()" style="margin-top:0.5rem; padding:0.5rem; font-size:0.8rem;">
+                    ✖ Cambiar selección
+                </button>
+            </div>
+
+            <!-- Datos del ingreso recibido -->
+            <div class="card">
+                <div class="card-title">💰 Monto Recibido</div>
+                <div class="form-group">
+                    <label>Monto Real Recibido *</label>
+                    <input type="text" id="ing-monto" placeholder="0" oninput="formatearInput(this); ingCalcularDiferencia()">
+                </div>
+                <!-- Diferencia esperado vs real -->
+                <div id="ing-diferencia-display"></div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha *</label>
+                        <input type="date" id="ing-fecha">
+                    </div>
+                    <div class="form-group">
+                        <label>Hora</label>
+                        <input type="time" id="ing-hora">
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Cuenta Bancaria Receptora</label>
+                    <select id="ing-cuenta">
+                        <option value="Banco de Bogotá">Banco de Bogotá</option>
+                        <option value="Bancolombia">Bancolombia</option>
+                        <option value="Davivienda">Davivienda</option>
+                        <option value="Nequi">Nequi</option>
+                        <option value="Daviplata">Daviplata</option>
+                        <option value="otro">Otra cuenta</option>
+                    </select>
+                </div>
+                <div class="form-group" id="ing-cuenta-otro-group" style="display:none;">
+                    <input type="text" id="ing-cuenta-otro" placeholder="Nombre del banco / cuenta">
+                </div>
+            </div>
+
+            <!-- Foto del comprobante -->
+            <div class="card">
+                <div class="card-title">📸 Comprobante</div>
+                <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                    Foto de la notificación SMS o del comprobante de pago
+                </p>
+                <button class="btn btn-photo" id="btn-ingComprobante" onclick="tomarFoto('ingComprobante')">
+                    📸 Foto del Comprobante / SMS
+                </button>
+            </div>
+
+            <!-- Notas -->
+            <div class="card">
+                <div class="card-title">📝 Notas</div>
+                <div class="form-group">
+                    <textarea id="ing-notas" placeholder="Observaciones adicionales..." rows="2"></textarea>
+                </div>
+            </div>
+
+            <!-- Asesor -->
+            <div class="card">
+                <div class="card-title">👤 Registrado por</div>
+                <div class="form-group">
+                    <input type="text" id="ing-asesor" placeholder="Tu nombre">
+                </div>
+            </div>
+
+            <button class="btn btn-success" onclick="ingGuardar()">
+                ☁️ Registrar Ingreso
+            </button>
+        </div>
+
+        <!-- TAB LISTA -->
+        <div id="ing-tab-content-lista" style="display:none;">
+            <div class="card">
+                <div class="card-title">📋 Historial de Ingresos</div>
+                <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+                    <button class="btn btn-secondary" onclick="ingCargarLista('todos')"
+                            style="flex:1; padding:0.6rem; font-size:0.82rem;">📋 Todos</button>
+                    <button class="btn btn-secondary" onclick="ingCargarLista('pendiente')"
+                            style="flex:1; padding:0.6rem; font-size:0.82rem;">🟡 Pendientes</button>
+                    <button class="btn btn-secondary" onclick="ingCargarLista('recibido')"
+                            style="flex:1; padding:0.6rem; font-size:0.82rem;">🟢 Recibidos</button>
+                </div>
+                <div id="ing-lista-container">
+                    <p style="color:var(--gray-500); text-align:center; padding:1rem;">
+                        Selecciona un filtro para cargar
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ===== MÓDULO GASTOS ===== -->
+    <div class="container" id="modulo-gastos" style="display:none;">
+
+        <!-- Tabs -->
+        <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+            <button class="toggle-btn active" id="gas-tab-nuevo" onclick="gasMostrarTab('nuevo')" style="flex:1;">➕ Nuevo Gasto</button>
+            <button class="toggle-btn" id="gas-tab-lista" onclick="gasMostrarTab('lista')" style="flex:1;">📋 Lista</button>
+            <button class="toggle-btn" id="gas-tab-cat" onclick="gasMostrarTab('categorias')" style="flex:1;">🏷️ Categorías</button>
+        </div>
+
+        <!-- TAB NUEVO GASTO -->
+        <div id="gas-tab-content-nuevo">
+
+            <div class="card">
+                <div class="doc-number-display">
+                    <div class="doc-number-label">Consecutivo Gasto</div>
+                    <div class="doc-number-value" id="gas-numero-display">Gas-0001</div>
+                </div>
+            </div>
+
+            <!-- Categoría -->
+            <div class="card">
+                <div class="card-title">🏷️ Categoría *</div>
+                <div id="gas-categorias-selector" style="display:flex; flex-wrap:wrap; gap:0.5rem;">
+                    <p style="color:var(--gray-500); font-size:0.85rem;">Cargando categorías...</p>
+                </div>
+            </div>
+
+            <!-- Datos del gasto -->
+            <div class="card">
+                <div class="card-title">💸 Datos del Gasto</div>
+                <div class="form-group">
+                    <label>Proveedor / A quién se pagó *</label>
+                    <input type="text" id="gas-proveedor" placeholder="Nombre del proveedor o beneficiario">
+                </div>
+                <div class="form-group">
+                    <label>Descripción *</label>
+                    <textarea id="gas-descripcion" placeholder="¿Qué se compró o pagó?" rows="2"></textarea>
+                </div>
+                <div class="form-group">
+                    <label>Monto *</label>
+                    <input type="text" id="gas-monto" placeholder="0" oninput="formatearInput(this)">
+                </div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Fecha *</label>
+                        <input type="date" id="gas-fecha">
+                    </div>
+                    <div class="form-group">
+                        <label>Método de Pago</label>
+                        <select id="gas-metodo">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="nequi">Nequi</option>
+                            <option value="daviplata">Daviplata</option>
+                            <option value="otro">Otro</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <label>Referencia / Factura</label>
+                    <input type="text" id="gas-referencia" placeholder="Número de factura o referencia">
+                </div>
+            </div>
+
+            <!-- Foto soporte -->
+            <div class="card">
+                <div class="card-title">📸 Soporte</div>
+                <button class="btn btn-photo" id="btn-gasSoporte" onclick="tomarFoto('gasSoporte')" style="margin-bottom:0.5rem;">
+                    📸 Foto Factura / Recibo
+                </button>
+                <button class="btn btn-photo" id="btn-gasSoporte2" onclick="tomarFoto('gasSoporte2')">
+                    📸 Foto Adicional (Opcional)
+                </button>
+            </div>
+
+            <!-- Notas -->
+            <div class="card">
+                <div class="card-title">📝 Notas</div>
+                <div class="form-group">
+                    <textarea id="gas-notas" placeholder="Observaciones..." rows="2"></textarea>
+                </div>
+            </div>
+
+            <!-- Asesor (con validación de permiso) -->
+            <div class="card">
+                <div class="card-title">👤 Registrado por *</div>
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>Nombre</label>
+                        <select id="gas-asesor">
+                            <option value="">Seleccione...</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>Clave *</label>
+                        <input type="password" id="gas-clave" placeholder="••••" maxlength="4" inputmode="numeric">
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-success" onclick="gasGuardar()">
+                ☁️ Guardar Gasto en Drive
+            </button>
+        </div>
+
+        <!-- TAB LISTA -->
+        <div id="gas-tab-content-lista" style="display:none;">
+            <div class="card">
+                <div class="card-title">📋 Gastos Registrados</div>
+                <button class="btn btn-secondary" onclick="gasCargarLista()" style="margin-bottom:0.75rem; padding:0.75rem;">
+                    🔄 Actualizar Lista
+                </button>
+                <!-- Resumen rápido -->
+                <div id="gas-resumen-lista" style="margin-bottom:0.75rem;"></div>
+                <div id="gas-lista-container">
+                    <p style="color:var(--gray-500); text-align:center; padding:1rem;">
+                        Presiona "Actualizar Lista" para cargar
+                    </p>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB CATEGORÍAS -->
+        <div id="gas-tab-content-categorias" style="display:none;">
+            <div class="card">
+                <div class="card-title">🏷️ Gestionar Categorías</div>
+                <p style="font-size:0.85rem; color:var(--gray-600); margin-bottom:1rem;">
+                    Agrega o elimina categorías. Se guardan en Drive automáticamente.
+                </p>
+                <div class="form-group">
+                    <label>Nueva Categoría</label>
+                    <div class="input-with-button">
+                        <input type="text" id="gas-nueva-categoria" placeholder="Ej: Arriendo, Servicios...">
+                        <button onclick="gasAgregarCategoria()" style="background:var(--success);">➕</button>
+                    </div>
+                </div>
+                <div id="gas-categorias-lista" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;"></div>
+            </div>
+        </div>
+    </div>
+
     <!-- Modal Éxito Pago Prestador -->
     <div id="prest-exito-modal" class="modal">
         <div class="modal-content" style="max-width:400px; text-align:center;">
@@ -2257,12 +2595,14 @@
             fotosGarantias:       '1_uZUN-Q9xbTKTIpZE_kfhOrlc8A5KnON',
             prestamosPagos:       '1gxBD48FLVZqJe4n5qWBoNxEnuvRAeZpK',
             recibosCaja:          '1iAEaDJ2JSosvbK6rgdE3biVTelAXgn5o',
-            soportesTransferencia:'18Qt70YEpX0WnIUaifLE3yzeQPAaBziGEq'
+            soportesTransferencia:'18Qt70YEpX0WnIUaifLE3yzeQPAaBziGEq',
+            ingresos:             '1zqJ1wVBTXPC18TuA1bwQld6DP2TGftU1',
+            gastos:               '1FuD1SIc84ULej7cIWBas_fzvBiTNB9Wn'
         };
 
         const CONFIG_FILES = {
-            clavesAsesores:    '1-Pp9CgF0iaL7q2NKwBAv5NMYNlqtt2lv',  // CLAVES-ASESORES-V2.json
-            prestadosPendientes:'1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'  // PRESTADOS-PENDIENTES.json (base legacy)
+            clavesAsesores:     '1-Pp9CgF0iaL7q2NKwBAv5NMYNlqtt2lv',  // CLAVES-ASESORES-V2.json
+            prestadosPendientes:'1ujuRzMKbhgFzhWsiSJ7qLdLV-6UNyjF8'   // PRESTADOS-PENDIENTES.json
         };
 
         // ID de Google Sheet (lo crearemos automáticamente la primera vez)
@@ -2481,6 +2821,7 @@
                     tarjeta: 'Tarjeta',
                     credito: 'Crédito',
                     addi: 'ADDI',
+                    gora: 'Gora',
                     coordinadora: 'Coordinadora',
                     retoma: 'Retoma',
                     otro: 'Otro'
@@ -2875,10 +3216,10 @@
                 refGroup.style.display = 'block';
                 refLabel.textContent = 'Referencia/Comprobante';
                 refInput.placeholder = 'Número de referencia';
-            } else if (this.value === 'addi') {
+            } else if (this.value === 'addi' || this.value === 'gora') {
                 photoSection.style.display = 'block';
                 refGroup.style.display = 'block';
-                refLabel.textContent = 'Número de Aprobación *';
+                refLabel.textContent = this.value === 'gora' ? 'Número de Aprobación Gora *' : 'Número de Aprobación ADDI *';
                 refInput.placeholder = 'Código de aprobación';
             } else if (this.value === 'retoma') {
                 retomaSection.style.display = 'block';
@@ -2901,8 +3242,8 @@
                 return;
             }
 
-            // Validación de foto para transferencia, tarjeta, addi y coordinadora
-            if ((method === 'transferencia' || method === 'tarjeta' || method === 'addi' || method === 'coordinadora') && !capturedPhotos.soporte) {
+            // Validación de foto para transferencia, tarjeta, addi, gora y coordinadora
+            if ((method === 'transferencia' || method === 'tarjeta' || method === 'addi' || method === 'gora' || method === 'coordinadora') && !capturedPhotos.soporte) {
                 mostrarToast('⚠️ Debe capturar foto del comprobante');
                 return;
             }
@@ -2977,6 +3318,7 @@
                 tarjeta: '💳 Tarjeta',
                 credito: '📋 Crédito',
                 addi: '🔵 ADDI',
+                gora: '🟣 Gora',
                 coordinadora: '📦 Coordinadora',
                 retoma: '🔄 Retoma',
                 otro: '💰 Otro'
@@ -3116,12 +3458,15 @@
 
                 // Mapa de tipos a IDs de botón (para tipos con IDs no estándar)
                 const btnIdMap = {
-                    'prestSoporte':      'btn-prest-soporte',
-                    'mantGeneral':       'btn-mant-foto-general',
-                    'mantFalla':         'btn-mant-foto-falla',
-                    'mantSoportePago':   'btn-mant-soporte-pago',
+                    'prestSoporte':       'btn-prest-soporte',
+                    'mantGeneral':        'btn-mant-foto-general',
+                    'mantFalla':          'btn-mant-foto-falla',
+                    'mantSoportePago':    'btn-mant-soporte-pago',
                     'mantSoporteAnticipo':'btn-mant-soporte-anticipo',
-                    'garEntra':          'btn-gar-foto-entra',
+                    'garEntra':           'btn-gar-foto-entra',
+                    'ingComprobante':     'btn-ingComprobante',
+                    'gasSoporte':         'btn-gasSoporte',
+                    'gasSoporte2':        'btn-gasSoporte2',
                 };
                 const btnId = btnIdMap[currentPhotoType] || `btn-${currentPhotoType}`;
                 const btn = document.getElementById(btnId);
@@ -3172,6 +3517,9 @@
                 'mantSoportePago':    'btn-mant-soporte-pago',
                 'mantSoporteAnticipo':'btn-mant-soporte-anticipo',
                 'garEntra':           'btn-gar-foto-entra',
+                'ingComprobante':     'btn-ingComprobante',
+                'gasSoporte':         'btn-gasSoporte',
+                'gasSoporte2':        'btn-gasSoporte2',
             };
             const btnId = btnIdMap[currentPhotoType] || `btn-${currentPhotoType}`;
             const btn = document.getElementById(btnId);
@@ -3418,8 +3766,11 @@
                 // Agregar a Excel
                 await agregarFilaExcel(documento, docName, jsonResult.id);
 
-                // Registrar equipos prestados en Drive (uno por prestador)
+                // Registrar equipos prestados en Drive
                 await registrarPrestadosEnDrive(documento, docName);
+
+                // Registrar cobros pendientes ADDI/Gora/Coordinadora
+                await registrarCobrosPendientes(documento, docName);
 
                 // Eliminar archivo de bloqueo
                 if (lockFileId) {
@@ -3623,7 +3974,7 @@
         }
 
         // Todos los módulos disponibles
-        const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores'];
+        const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores', 'ingresos', 'gastos'];
 
         function mostrarModulo(modulo) {
             // Ocultar todos los módulos
@@ -3650,6 +4001,12 @@
             }
             if (modulo === 'garantias') {
                 setTimeout(() => garIniciarFirma(), 100);
+            }
+            if (modulo === 'ingresos') {
+                ingInicializar();
+            }
+            if (modulo === 'gastos') {
+                gasInicializar();
             }
 
             // Actualizar ítem activo del menú
@@ -5602,7 +5959,1022 @@
 
         // ============= FIN MÓDULO PAGAR PRESTADORES =============
 
-        // ============= LÓGICA PRESTADOS ↔ REMISIONES =============
+        // ============= MÓDULO INGRESOS =============
+
+        let ingCobroSeleccionado = null; // { fileId, fileName, doc }
+
+        function ingMostrarTab(tab) {
+            ['nuevo','lista'].forEach(t => {
+                document.getElementById(`ing-tab-content-${t}`).style.display = t === tab ? 'block' : 'none';
+                document.getElementById(`ing-tab-${t}`).classList.toggle('active', t === tab);
+            });
+            if (tab === 'lista') ingCargarLista('todos');
+        }
+
+        function ingInicializar() {
+            const ahora = new Date();
+            document.getElementById('ing-fecha').value = ahora.toISOString().slice(0,10);
+            document.getElementById('ing-hora').value  = ahora.toTimeString().slice(0,5);
+            const asesorEl = document.getElementById('asesor-principal');
+            if (asesorEl?.value) document.getElementById('ing-asesor').value = asesorEl.value;
+            document.getElementById('ing-cuenta').onchange = function() {
+                document.getElementById('ing-cuenta-otro-group').style.display =
+                    this.value === 'otro' ? 'block' : 'none';
+            };
+        }
+
+        // Cargar cobros pendientes desde Drive (archivos Cobro-*.json con estado pendiente)
+        async function ingCargarCobros() {
+            const container = document.getElementById('ing-cobros-container');
+            container.innerHTML = '<p style="font-size:0.85rem; color:var(--gray-500); text-align:center;">⏳ Buscando cobros pendientes...</p>';
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.ingresos}' in parents and trashed=false and name contains 'Cobro-'`,
+                    fields: 'files(id,name)', orderBy: 'name asc', pageSize: 200
+                });
+                const archivos = r.result.files || [];
+                if (!archivos.length) {
+                    container.innerHTML = '<p style="font-size:0.85rem; color:var(--gray-500); text-align:center;">No hay cobros registrados aún.<br><small>Se crean automáticamente al guardar remisiones con ADDI, Gora o Coordinadora.</small></p>';
+                    return;
+                }
+
+                // Leer todos
+                const registros = await Promise.all(archivos.map(async f => {
+                    try {
+                        const resp = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        const doc = await resp.json();
+                        return { fileId: f.id, fileName: f.name, doc };
+                    } catch { return null; }
+                }));
+
+                const pendientes = registros.filter(r => r && r.doc?.estado === 'pendiente');
+                const recibidos  = registros.filter(r => r && r.doc?.estado === 'recibido');
+
+                if (!pendientes.length) {
+                    container.innerHTML = `
+                        <div style="background:#f0fdf4; border-radius:8px; padding:1rem; text-align:center;">
+                            <div style="font-size:1.5rem;">✅</div>
+                            <p style="font-size:0.85rem; color:#15803d; font-weight:600; margin-top:0.25rem;">
+                                Todos los cobros están recibidos
+                            </p>
+                            <p style="font-size:0.75rem; color:var(--gray-500);">${recibidos.length} cobro(s) ya procesado(s)</p>
+                        </div>`;
+                    return;
+                }
+
+                // Agrupar por empresa
+                const porEmpresa = {};
+                pendientes.forEach(r => {
+                    const emp = r.doc.empresa || 'Otro';
+                    if (!porEmpresa[emp]) porEmpresa[emp] = [];
+                    porEmpresa[emp].push(r);
+                });
+
+                const totalPend = pendientes.reduce((s, r) => s + (r.doc.monto_esperado || 0), 0);
+
+                container.innerHTML = `
+                    <div style="background:linear-gradient(135deg,#d97706,#b45309); color:white;
+                                border-radius:8px; padding:0.65rem 1rem; margin-bottom:0.75rem;
+                                display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-size:0.82rem; opacity:0.9;">${pendientes.length} cobro(s) pendiente(s)</div>
+                        <div style="font-weight:700;">${formatMoney(totalPend)}</div>
+                    </div>
+                    ${Object.entries(porEmpresa).map(([empresa, lista]) => `
+                        <div style="margin-bottom:0.75rem;">
+                            <div style="font-size:0.8rem; font-weight:700; color:var(--gray-600);
+                                        margin-bottom:0.4rem; text-transform:uppercase;">${empresa}</div>
+                            ${lista.map(({ fileId, fileName, doc }) => `
+                                <div style="background:var(--gray-50); border:2px solid var(--gray-200);
+                                            border-radius:8px; padding:0.65rem 0.85rem; margin-bottom:0.4rem;
+                                            cursor:pointer; transition:all 0.2s;"
+                                     onclick="ingSeleccionarCobro('${fileId}', '${fileName.replace(/'/g,"\\'")}',
+                                             ${doc.monto_esperado||0}, '${doc.empresa||''}',
+                                             '${doc.remision||''}', '${doc.cliente||''}',
+                                             '${doc.fecha_remision?.slice(0,10)||''}')"
+                                     onmouseover="this.style.borderColor='var(--primary)'"
+                                     onmouseout="this.style.borderColor='var(--gray-200)'">
+                                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                                        <div>
+                                            <div style="font-weight:600; font-size:0.85rem;">${doc.remision || fileName.replace('.json','')}</div>
+                                            <div style="font-size:0.75rem; color:var(--gray-500);">
+                                                👤 ${doc.cliente||'-'} · 📅 ${doc.fecha_remision?.slice(0,10)||'-'}
+                                            </div>
+                                        </div>
+                                        <div style="text-align:right;">
+                                            <div style="font-weight:700; color:var(--warning);">${formatMoney(doc.monto_esperado||0)}</div>
+                                            <div style="font-size:0.72rem; background:#fef3c7; color:#92400e;
+                                                        padding:0.1rem 0.4rem; border-radius:4px;">🟡 Pendiente</div>
+                                        </div>
+                                    </div>
+                                </div>`).join('')}
+                        </div>`).join('')}
+                `;
+
+            } catch(e) {
+                container.innerHTML = '<p style="font-size:0.85rem; color:var(--danger); text-align:center;">❌ Error al cargar cobros</p>';
+                console.error(e);
+            }
+        }
+
+        function ingSeleccionarCobro(fileId, fileName, montoEsperado, empresa, remision, cliente, fecha) {
+            ingCobroSeleccionado = { fileId, fileName, montoEsperado, empresa, remision, cliente, fecha };
+
+            // Mostrar resumen del cobro seleccionado
+            document.getElementById('ing-cobro-seleccionado-info').innerHTML = `
+                <div style="font-size:0.85rem;">
+                    <div><strong>Remisión:</strong> ${remision}</div>
+                    <div><strong>Empresa:</strong> ${empresa}</div>
+                    <div><strong>Cliente:</strong> ${cliente}</div>
+                    <div><strong>Monto esperado:</strong>
+                        <span style="font-weight:700; color:var(--warning);">${formatMoney(montoEsperado)}</span>
+                    </div>
+                </div>`;
+            document.getElementById('ing-cobro-seleccionado-card').style.display = 'block';
+
+            // Precargar monto si está vacío
+            const montoEl = document.getElementById('ing-monto');
+            if (!parsearValor(montoEl.value)) {
+                montoEl.value = new Intl.NumberFormat('es-CO').format(montoEsperado);
+            }
+            ingCalcularDiferencia();
+
+            // Scroll al formulario de monto
+            document.getElementById('ing-monto').scrollIntoView({ behavior:'smooth', block:'center' });
+            mostrarToast(`✅ Cobro seleccionado: ${remision}`);
+        }
+
+        function ingDeseleccionarCobro() {
+            ingCobroSeleccionado = null;
+            document.getElementById('ing-cobro-seleccionado-card').style.display = 'none';
+            document.getElementById('ing-diferencia-display').innerHTML = '';
+        }
+
+        function ingCalcularDiferencia() {
+            if (!ingCobroSeleccionado) return;
+            const montoReal = parsearValor(document.getElementById('ing-monto').value);
+            const esperado  = ingCobroSeleccionado.montoEsperado;
+            const diff      = montoReal - esperado;
+            const display   = document.getElementById('ing-diferencia-display');
+
+            if (!montoReal) { display.innerHTML = ''; return; }
+
+            if (Math.abs(diff) < 1) {
+                display.innerHTML = `
+                    <div style="background:#f0fdf4; border:2px solid #16a34a; border-radius:8px;
+                                padding:0.6rem 0.85rem; font-size:0.85rem; color:#15803d; font-weight:600; margin-top:0.5rem;">
+                        🟢 Monto exacto — coincide con lo esperado
+                    </div>`;
+            } else if (diff > 0) {
+                display.innerHTML = `
+                    <div style="background:#eff6ff; border:2px solid var(--primary); border-radius:8px;
+                                padding:0.6rem 0.85rem; font-size:0.85rem; color:var(--primary); margin-top:0.5rem;">
+                        🔵 Ingresaron <strong>${formatMoney(diff)} más</strong> de lo esperado
+                    </div>`;
+            } else {
+                display.innerHTML = `
+                    <div style="background:#fff7ed; border:2px solid #f59e0b; border-radius:8px;
+                                padding:0.6rem 0.85rem; font-size:0.85rem; color:#92400e; margin-top:0.5rem;">
+                        🟠 Faltan <strong>${formatMoney(Math.abs(diff))}</strong> — ingresaron menos de lo esperado
+                    </div>`;
+            }
+        }
+
+        async function ingGuardar() {
+            if (!ingCobroSeleccionado) {
+                mostrarToast('⚠️ Selecciona un cobro pendiente primero');
+                return;
+            }
+            const montoReal = parsearValor(document.getElementById('ing-monto').value);
+            const fecha     = document.getElementById('ing-fecha').value;
+            const hora      = document.getElementById('ing-hora').value;
+            const cuentaEl  = document.getElementById('ing-cuenta');
+            const cuenta    = cuentaEl.value === 'otro'
+                ? document.getElementById('ing-cuenta-otro').value.trim()
+                : cuentaEl.options[cuentaEl.selectedIndex].text;
+            const notas     = document.getElementById('ing-notas').value.trim();
+            const asesor    = document.getElementById('ing-asesor').value.trim();
+
+            if (!montoReal || !fecha || !asesor) {
+                mostrarToast('⚠️ Complete monto, fecha y asesor');
+                return;
+            }
+
+            mostrarToast('☁️ Registrando ingreso...');
+            try {
+                const diff = montoReal - ingCobroSeleccionado.montoEsperado;
+
+                // 1. Actualizar el archivo Cobro-*.json → estado recibido
+                const getResp = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${ingCobroSeleccionado.fileId}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
+                const cobroDoc = await getResp.json();
+                cobroDoc.estado = 'recibido';
+                cobroDoc.ingreso_registrado = {
+                    monto_real: montoReal,
+                    monto_esperado: ingCobroSeleccionado.montoEsperado,
+                    diferencia: diff,
+                    fecha_pago: fecha,
+                    hora_pago: hora || null,
+                    cuenta_bancaria: cuenta,
+                    asesor,
+                    notas: notas || null,
+                    fecha_registro: new Date().toISOString(),
+                    comprobante_foto: capturedPhotos['ingComprobante'] ? true : false
+                };
+
+                const patchForm = new FormData();
+                patchForm.append('metadata', new Blob(
+                    [JSON.stringify({ name: ingCobroSeleccionado.fileName })],
+                    { type: 'application/json' }
+                ));
+                patchForm.append('file', new Blob(
+                    [JSON.stringify(cobroDoc, null, 2)],
+                    { type: 'application/json' }
+                ));
+                await fetch(
+                    `https://www.googleapis.com/upload/drive/v3/files/${ingCobroSeleccionado.fileId}?uploadType=multipart`,
+                    { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: patchForm }
+                );
+
+                // 2. Subir foto del comprobante si existe
+                if (capturedPhotos['ingComprobante']) {
+                    const nombreFoto = `${ingCobroSeleccionado.fileName.replace('.json','')}-Comprobante.jpg`;
+                    await subirImagenDrive(capturedPhotos['ingComprobante'], nombreFoto, FOLDER_IDS.ingresos);
+                }
+
+                ingLimpiarFormulario();
+                // Mostrar resultado con semáforo
+                const estadoMsg = Math.abs(diff) < 1
+                    ? '🟢 Monto exacto'
+                    : diff > 0 ? `🔵 Ingresaron ${formatMoney(diff)} de más`
+                    : `🟠 Faltan ${formatMoney(Math.abs(diff))}`;
+                mostrarToast(`✅ Ingreso registrado — ${formatMoney(montoReal)} de ${ingCobroSeleccionado.empresa} — ${estadoMsg}`);
+
+            } catch(e) {
+                console.error('Error registrando ingreso:', e);
+                mostrarToast('❌ Error al registrar. Revisa consola.');
+            }
+        }
+
+        function ingLimpiarFormulario() {
+            ingCobroSeleccionado = null;
+            document.getElementById('ing-cobro-seleccionado-card').style.display = 'none';
+            document.getElementById('ing-cobros-container').innerHTML =
+                '<p style="color:var(--gray-500); font-size:0.85rem; text-align:center;">Presiona "Cargar Cobros Pendientes" para ver la lista</p>';
+            document.getElementById('ing-monto').value = '';
+            document.getElementById('ing-notas').value = '';
+            document.getElementById('ing-diferencia-display').innerHTML = '';
+            delete capturedPhotos['ingComprobante'];
+            const btn = document.getElementById('btn-ingComprobante');
+            if (btn) { btn.classList.remove('captured'); btn.innerHTML = '📸 Foto del Comprobante / SMS'; }
+            const ahora = new Date();
+            document.getElementById('ing-fecha').value = ahora.toISOString().slice(0,10);
+            document.getElementById('ing-hora').value  = ahora.toTimeString().slice(0,5);
+            window.scrollTo(0,0);
+        }
+
+        async function ingCargarLista(filtro = 'todos') {
+            const container = document.getElementById('ing-lista-container');
+            container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando...</p>';
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.ingresos}' in parents and trashed=false and name contains 'Cobro-'`,
+                    fields: 'files(id,name)', orderBy: 'name desc', pageSize: 200
+                });
+                const archivos = r.result.files || [];
+                if (!archivos.length) {
+                    container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No hay cobros registrados</p>';
+                    return;
+                }
+
+                const registros = await Promise.all(archivos.map(async f => {
+                    try {
+                        const resp = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        return { fileId: f.id, doc: await resp.json() };
+                    } catch { return null; }
+                }));
+
+                let validos = registros.filter(Boolean);
+                if (filtro === 'pendiente') validos = validos.filter(r => r.doc.estado === 'pendiente');
+                if (filtro === 'recibido')  validos = validos.filter(r => r.doc.estado === 'recibido');
+
+                const totalEsperado = validos.reduce((s,{doc}) => s + (doc.monto_esperado||0), 0);
+                const totalReal     = validos
+                    .filter(r => r.doc.estado === 'recibido')
+                    .reduce((s,{doc}) => s + (doc.ingreso_registrado?.monto_real||0), 0);
+
+                container.innerHTML = `
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:0.75rem;">
+                        <div style="background:#fef3c7; border-radius:8px; padding:0.6rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.72rem; color:#92400e;">🟡 Pendiente</div>
+                            <div style="font-weight:700; color:#92400e; font-size:0.9rem;">
+                                ${formatMoney(validos.filter(r=>r.doc.estado==='pendiente').reduce((s,{doc})=>s+(doc.monto_esperado||0),0))}
+                            </div>
+                        </div>
+                        <div style="background:#dcfce7; border-radius:8px; padding:0.6rem 0.75rem; text-align:center;">
+                            <div style="font-size:0.72rem; color:#15803d;">🟢 Recibido</div>
+                            <div style="font-weight:700; color:#15803d; font-size:0.9rem;">${formatMoney(totalReal)}</div>
+                        </div>
+                    </div>
+                    ${validos.map(({fileId, doc}) => {
+                        const estado     = doc.estado === 'recibido' ? 'recibido' : 'pendiente';
+                        const montoReal  = doc.ingreso_registrado?.monto_real || 0;
+                        const esperado   = doc.monto_esperado || 0;
+                        const diff       = montoReal - esperado;
+                        let semaforo, bgColor;
+                        if (estado === 'pendiente') {
+                            semaforo = '🟡 Pendiente'; bgColor = '#fef3c7';
+                        } else if (Math.abs(diff) < 1) {
+                            semaforo = '🟢 Exacto'; bgColor = '#f0fdf4';
+                        } else if (diff > 0) {
+                            semaforo = `🔵 +${formatMoney(diff)}`; bgColor = '#eff6ff';
+                        } else {
+                            semaforo = `🟠 -${formatMoney(Math.abs(diff))}`; bgColor = '#fff7ed';
+                        }
+                        return `
+                            <div class="ingreso-card" style="background:${bgColor};">
+                                <div style="display:flex; justify-content:space-between; align-items:start; gap:0.5rem;">
+                                    <div style="flex:1;">
+                                        <div style="font-weight:700; font-size:0.88rem;">${doc.remision || '-'}</div>
+                                        <div style="font-size:0.78rem; color:var(--gray-600);">
+                                            🏢 ${doc.empresa||'-'} · 👤 ${doc.cliente||'-'}
+                                        </div>
+                                        ${estado === 'recibido' ? `
+                                            <div style="font-size:0.75rem; color:var(--gray-500);">
+                                                📅 ${doc.ingreso_registrado?.fecha_pago||'-'}
+                                                · 🏦 ${doc.ingreso_registrado?.cuenta_bancaria||'-'}
+                                            </div>` : `
+                                            <div style="font-size:0.75rem; color:var(--gray-500);">
+                                                📅 Venta: ${doc.fecha_remision?.slice(0,10)||'-'}
+                                            </div>`}
+                                    </div>
+                                    <div style="text-align:right; flex-shrink:0;">
+                                        <div style="font-size:0.72rem; color:var(--gray-500);">Esperado</div>
+                                        <div style="font-weight:600; font-size:0.88rem;">${formatMoney(esperado)}</div>
+                                        ${estado === 'recibido' ? `
+                                            <div style="font-size:0.72rem; color:var(--gray-500); margin-top:0.2rem;">Real</div>
+                                            <div style="font-weight:700; color:var(--success);">${formatMoney(montoReal)}</div>` : ''}
+                                        <div style="font-size:0.75rem; font-weight:600; margin-top:0.25rem;">${semaforo}</div>
+                                        <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank"
+                                           style="font-size:0.72rem; color:var(--primary);">Ver →</a>
+                                    </div>
+                                </div>
+                            </div>`;
+                    }).join('')}
+                `;
+            } catch(e) {
+                container.innerHTML = '<p style="text-align:center; color:var(--danger);">❌ Error cargando lista</p>';
+                console.error(e);
+            }
+        }
+
+        // ============= FIN MÓDULO INGRESOS =============
+
+        // ============= MÓDULO GASTOS =============
+
+        function ingInicializar() {
+            const ahora = new Date();
+            document.getElementById('ing-fecha').value = ahora.toISOString().slice(0,10);
+            document.getElementById('ing-hora').value  = ahora.toTimeString().slice(0,5);
+            const asesorEl = document.getElementById('asesor-principal');
+            if (asesorEl?.value) document.getElementById('ing-asesor').value = asesorEl.value;
+            if (accessToken) ingObtenerConsecutivo();
+            document.getElementById('ing-cuenta').onchange = function() {
+                document.getElementById('ing-cuenta-otro-group').style.display =
+                    this.value === 'otro' ? 'block' : 'none';
+            };
+        }
+
+        function ingSetEmpresa(btn) {
+            document.querySelectorAll('.empresa-btn').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            ingEmpresaActual = btn.dataset.empresa;
+            document.getElementById('ing-empresa-otro-group').style.display =
+                ingEmpresaActual === 'Otro' ? 'block' : 'none';
+        }
+
+        async function ingBuscarRemision() {
+            const num = document.getElementById('ing-remision').value;
+            if (!num) return;
+            const numF = String(num).padStart(4, '0');
+            const info = document.getElementById('ing-remision-info');
+            info.innerHTML = '<p style="font-size:0.8rem; color:var(--gray-500);">⏳ Buscando...</p>';
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `name='Remision-${numF}.json' and '${FOLDER_IDS.remisiones}' in parents and trashed=false`,
+                    fields: 'files(id)'
+                });
+                if (!r.result.files.length) {
+                    info.innerHTML = `<p style="color:var(--danger); font-size:0.85rem;">❌ Remisión-${numF} no encontrada</p>`;
+                    return;
+                }
+                const resp = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${r.result.files[0].id}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
+                const doc = await resp.json();
+                const pagosRel = (doc.payments || [])
+                    .filter(p => ['addi','gora','coordinadora'].includes(p.method));
+                const totalRel = pagosRel.reduce((s,p) => s + p.amount, 0);
+
+                // Precargar monto si hay pagos relacionados
+                if (totalRel > 0 && !parsearValor(document.getElementById('ing-monto').value)) {
+                    document.getElementById('ing-monto').value =
+                        new Intl.NumberFormat('es-CO').format(totalRel);
+                }
+
+                info.innerHTML = `
+                    <div style="background:#f0fdf4; border:2px solid #16a34a; border-radius:8px;
+                                padding:0.75rem; font-size:0.85rem; margin-top:0.5rem;">
+                        <strong style="color:#15803d;">✅ Remision-${numF}</strong><br>
+                        Cliente: ${doc.cliente || '-'} · Asesor: ${doc.asesor || '-'}<br>
+                        ${pagosRel.length
+                            ? `<span style="color:#15803d;">💰 Pago financiado: ${formatMoney(totalRel)}
+                               (${pagosRel.map(p=>p.method.toUpperCase()).join(', ')})</span>`
+                            : '<span style="color:var(--gray-500);">Sin pagos ADDI/Gora/Coordinadora</span>'}
+                    </div>`;
+            } catch(e) {
+                info.innerHTML = '<p style="color:var(--danger); font-size:0.85rem;">❌ Error al buscar</p>';
+            }
+        }
+
+        async function ingObtenerConsecutivo() {
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.ingresos}' in parents and trashed=false and name contains 'Ingreso-'`,
+                    fields: 'files(name)', orderBy: 'name desc', pageSize: 1
+                });
+                if (r.result.files.length) {
+                    const m = r.result.files[0].name.match(/Ingreso-(\d+)/);
+                    if (m) ingConsecutivo = parseInt(m[1]) + 1;
+                }
+                document.getElementById('ing-numero-display').textContent =
+                    `Ing-${String(ingConsecutivo).padStart(4,'0')}`;
+            } catch(e) { console.error('Error consecutivo ingresos:', e); }
+        }
+
+        async function ingGuardar() {
+            const empresa = ingEmpresaActual === 'Otro'
+                ? document.getElementById('ing-empresa-otro').value.trim()
+                : ingEmpresaActual;
+            const monto   = parsearValor(document.getElementById('ing-monto').value);
+            const fecha   = document.getElementById('ing-fecha').value;
+            const hora    = document.getElementById('ing-hora').value;
+            const cuentaSel = document.getElementById('ing-cuenta');
+            const cuenta  = cuentaSel.value === 'otro'
+                ? document.getElementById('ing-cuenta-otro').value.trim()
+                : cuentaSel.options[cuentaSel.selectedIndex].text;
+            const remision = document.getElementById('ing-remision').value;
+            const notas   = document.getElementById('ing-notas').value.trim();
+            const asesor  = document.getElementById('ing-asesor').value.trim();
+
+            if (!empresa || !monto || !fecha || !asesor) {
+                mostrarToast('⚠️ Complete empresa, monto, fecha y asesor');
+                return;
+            }
+
+            mostrarToast('☁️ Guardando ingreso...');
+            try {
+                const numF    = String(ingConsecutivo).padStart(4,'0');
+                const docName = `Ingreso-${numF}`;
+                const remisionVinculada = remision
+                    ? `Remision-${String(remision).padStart(4,'0')}`
+                    : null;
+
+                const doc = {
+                    tipo: 'ingreso',
+                    numero: ingConsecutivo,
+                    fecha_registro: new Date().toISOString(),
+                    empresa,
+                    monto,
+                    fecha_pago: fecha,
+                    hora_pago: hora || null,
+                    cuenta_bancaria: cuenta,
+                    remision_relacionada: remisionVinculada,
+                    notas: notas || null,
+                    asesor,
+                    comprobante_foto: capturedPhotos['ingComprobante'] ? true : false,
+                    estado: 'pendiente_contabilizar'
+                };
+
+                await subirArchivoDrive(
+                    JSON.stringify(doc, null, 2),
+                    `${docName}.json`,
+                    FOLDER_IDS.ingresos
+                );
+
+                if (capturedPhotos['ingComprobante']) {
+                    await subirImagenDrive(
+                        capturedPhotos['ingComprobante'],
+                        `${docName}-Comprobante.jpg`,
+                        FOLDER_IDS.ingresos
+                    );
+                }
+
+                // Si hay remisión vinculada, crear archivo de control visual
+                if (remisionVinculada) {
+                    await ingRegistrarEnRemision(remisionVinculada, docName, empresa, monto, fecha);
+                }
+
+                ingConsecutivo++;
+                ingLimpiarFormulario();
+                mostrarToast(`✅ ${docName} — ${formatMoney(monto)} de ${empresa} registrado`);
+
+            } catch(e) {
+                console.error('Error guardando ingreso:', e);
+                mostrarToast('❌ Error al guardar. Revisa consola.');
+            }
+        }
+
+        // Crea un archivo de vínculo en la carpeta de remisiones para control visual
+        async function ingRegistrarEnRemision(remisionVinculada, docIngreso, empresa, monto, fecha) {
+            try {
+                const nombreVinculo = `${remisionVinculada}-Ingreso-${empresa}.json`;
+                const vinculo = {
+                    tipo: 'ingreso_vinculado',
+                    remision: remisionVinculada,
+                    ingreso: docIngreso,
+                    empresa,
+                    monto,
+                    fecha_pago: fecha,
+                    fecha_registro: new Date().toISOString(),
+                    estado: 'pendiente_contabilizar'
+                };
+                await subirArchivoDrive(
+                    JSON.stringify(vinculo, null, 2),
+                    nombreVinculo,
+                    FOLDER_IDS.ingresos
+                );
+            } catch(e) {
+                console.error('Error registrando vínculo de ingreso:', e);
+            }
+        }
+
+        function ingLimpiarFormulario() {
+            document.getElementById('ing-monto').value = '';
+            document.getElementById('ing-remision').value = '';
+            document.getElementById('ing-notas').value = '';
+            document.getElementById('ing-remision-info').innerHTML = '';
+            document.getElementById('ing-empresa-otro').value = '';
+            document.getElementById('ing-empresa-otro-group').style.display = 'none';
+            ingEmpresaActual = 'ADDI';
+            document.querySelectorAll('#ing-empresas-btns .empresa-btn')
+                .forEach((b,i) => b.classList.toggle('active', i===0));
+            delete capturedPhotos['ingComprobante'];
+            const btn = document.getElementById('btn-ingComprobante');
+            if (btn) { btn.classList.remove('captured'); btn.innerHTML = '📸 Foto del Comprobante / SMS'; }
+            document.getElementById('ing-numero-display').textContent =
+                `Ing-${String(ingConsecutivo).padStart(4,'0')}`;
+            const ahora = new Date();
+            document.getElementById('ing-fecha').value = ahora.toISOString().slice(0,10);
+            document.getElementById('ing-hora').value  = ahora.toTimeString().slice(0,5);
+            window.scrollTo(0,0);
+        }
+
+        async function ingCargarLista() {
+            const container = document.getElementById('ing-lista-container');
+            container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando...</p>';
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.ingresos}' in parents and trashed=false and name contains 'Ingreso-' and not name contains '-Ingreso-'`,
+                    fields: 'files(id,name)', orderBy: 'name desc', pageSize: 100
+                });
+                const files = r.result.files;
+                if (!files.length) {
+                    container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No hay ingresos registrados</p>';
+                    return;
+                }
+                const docs = await Promise.all(files.map(async f => {
+                    try {
+                        const resp = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        return { fileId: f.id, doc: await resp.json() };
+                    } catch { return null; }
+                }));
+                const validos = docs.filter(Boolean);
+                const totalGlobal = validos.reduce((s,{doc}) => s + (doc.monto||0), 0);
+
+                // Agrupar por empresa
+                const porEmpresa = {};
+                validos.forEach(({doc}) => {
+                    const emp = doc.empresa || 'Otro';
+                    porEmpresa[emp] = (porEmpresa[emp]||0) + (doc.monto||0);
+                });
+
+                container.innerHTML = `
+                    <div style="background:linear-gradient(135deg,#15803d,#16a34a); color:white;
+                                border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.5rem;
+                                display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-size:0.85rem; opacity:0.9;">${validos.length} ingresos</div>
+                        <div style="font-weight:700; font-size:1.1rem;">${formatMoney(totalGlobal)}</div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.75rem;">
+                        ${Object.entries(porEmpresa).map(([emp, tot]) => `
+                            <span style="background:#dcfce7; border-radius:6px; padding:0.25rem 0.6rem;
+                                         font-size:0.75rem; color:#15803d; font-weight:600;">
+                                ${emp}: ${formatMoney(tot)}
+                            </span>`).join('')}
+                    </div>
+                    ${validos.map(({fileId, doc}) => {
+                        const nombre = doc.numero
+                            ? `Ingreso-${String(doc.numero).padStart(4,'0')}` : fileId;
+                        return `
+                        <div class="ingreso-card">
+                            <div style="display:flex; justify-content:space-between; align-items:start; gap:0.5rem;">
+                                <div style="flex:1;">
+                                    <div style="font-weight:700; font-size:0.9rem;">${nombre}</div>
+                                    <div style="font-size:0.78rem; color:var(--gray-600);">
+                                        🏢 ${doc.empresa||'-'} · 📅 ${doc.fecha_pago||'-'}
+                                    </div>
+                                    ${doc.cuenta_bancaria ? `<div style="font-size:0.75rem; color:var(--gray-500);">🏦 ${doc.cuenta_bancaria}</div>` : ''}
+                                    ${doc.remision_relacionada ? `
+                                        <div style="font-size:0.75rem; background:#dbeafe; color:#1e40af;
+                                                    padding:0.2rem 0.5rem; border-radius:4px; display:inline-block; margin-top:0.25rem;">
+                                            📄 ${doc.remision_relacionada}
+                                        </div>` : ''}
+                                </div>
+                                <div style="text-align:right; flex-shrink:0;">
+                                    <div style="font-weight:700; color:var(--success); font-size:1rem;">
+                                        ${formatMoney(doc.monto||0)}
+                                    </div>
+                                    <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank"
+                                       style="font-size:0.75rem; color:var(--primary);">Ver →</a>
+                                </div>
+                            </div>
+                        </div>`;
+                    }).join('')}
+                `;
+            } catch(e) {
+                container.innerHTML = '<p style="text-align:center; color:var(--danger);">❌ Error cargando lista</p>';
+                console.error(e);
+            }
+        }
+
+        // ============= FIN MÓDULO INGRESOS =============
+
+        // ============= MÓDULO GASTOS =============
+
+        let gasConsecutivo     = 1;
+        let gasCategorias      = [];
+        let gasCategoriaActual = null;
+        let gasCatFileId       = null;
+
+        const GAS_CATS_DEFAULT = [
+            'Arriendo','Servicios públicos','Nómina','Compra accesorios',
+            'Compra equipos','Transporte','Publicidad','Papelería',
+            'Alimentación','Mantenimiento local','Otro'
+        ];
+
+        function gasMostrarTab(tab) {
+            ['nuevo','lista','categorias'].forEach(t => {
+                document.getElementById(`gas-tab-content-${t}`).style.display = t === tab ? 'block' : 'none';
+                document.getElementById(`gas-tab-${t}`).classList.toggle('active', t === tab);
+            });
+            if (tab === 'lista') gasCargarLista();
+            if (tab === 'categorias') gasRenderizarCategorias();
+        }
+
+        async function gasInicializar() {
+            const ahora = new Date();
+            document.getElementById('gas-fecha').value = ahora.toISOString().slice(0,10);
+            gasPoblarSelectAsesor();
+            await gasCargarCategorias();
+            if (accessToken) gasObtenerConsecutivo();
+        }
+
+        function gasPoblarSelectAsesor() {
+            const sel = document.getElementById('gas-asesor');
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            // Solo asesores con permiso registrar_gastos
+            let agregados = 0;
+            Object.keys(asesoresPermisos).forEach(nombre => {
+                if (tienePermiso(nombre, 'registrar_gastos')) {
+                    const opt = document.createElement('option');
+                    opt.value = nombre; opt.textContent = nombre;
+                    sel.appendChild(opt);
+                    agregados++;
+                }
+            });
+            // Fallback: todos si no hay permisos configurados
+            if (agregados === 0) {
+                Object.keys(clavesAsesores).forEach(nombre => {
+                    const opt = document.createElement('option');
+                    opt.value = nombre; opt.textContent = nombre;
+                    sel.appendChild(opt);
+                });
+            }
+        }
+
+        async function gasCargarCategorias() {
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `name='CATEGORIAS-GASTOS.json' and '${FOLDER_IDS.gastos}' in parents and trashed=false`,
+                    fields: 'files(id)'
+                });
+                if (r.result.files.length) {
+                    gasCatFileId = r.result.files[0].id;
+                    const resp = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${gasCatFileId}?alt=media`,
+                        { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                    );
+                    const data = await resp.json();
+                    gasCategorias = data.categorias || GAS_CATS_DEFAULT;
+                } else {
+                    gasCategorias = [...GAS_CATS_DEFAULT];
+                    await gasGuardarCategorias();
+                }
+            } catch(e) {
+                gasCategorias = [...GAS_CATS_DEFAULT];
+            }
+            gasRenderizarSelector();
+            gasRenderizarCategorias();
+        }
+
+        async function gasGuardarCategorias() {
+            const contenido = JSON.stringify({ categorias: gasCategorias }, null, 2);
+            try {
+                if (gasCatFileId) {
+                    const form = new FormData();
+                    form.append('metadata', new Blob([JSON.stringify({ name: 'CATEGORIAS-GASTOS.json' })], { type: 'application/json' }));
+                    form.append('file', new Blob([contenido], { type: 'application/json' }));
+                    await fetch(
+                        `https://www.googleapis.com/upload/drive/v3/files/${gasCatFileId}?uploadType=multipart`,
+                        { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
+                    );
+                } else {
+                    const result = await subirArchivoDrive(contenido, 'CATEGORIAS-GASTOS.json', FOLDER_IDS.gastos);
+                    gasCatFileId = result.id;
+                }
+            } catch(e) { console.error('Error guardando categorías:', e); }
+        }
+
+        function gasRenderizarSelector() {
+            const cont = document.getElementById('gas-categorias-selector');
+            if (!cont) return;
+            cont.innerHTML = gasCategorias.map(cat => `
+                <button class="empresa-btn ${gasCategoriaActual === cat ? 'active' : ''}"
+                        onclick="gasSeleccionarCategoria(this, '${cat.replace(/'/g,"\\'")}')">
+                    ${cat}
+                </button>`).join('') || '<p style="color:var(--gray-500);font-size:0.85rem;">Sin categorías. Agrégalas en la pestaña 🏷️</p>';
+        }
+
+        function gasSeleccionarCategoria(btn, cat) {
+            document.querySelectorAll('#gas-categorias-selector .empresa-btn')
+                .forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            gasCategoriaActual = cat;
+        }
+
+        function gasRenderizarCategorias() {
+            const cont = document.getElementById('gas-categorias-lista');
+            if (!cont) return;
+            cont.innerHTML = gasCategorias.length
+                ? gasCategorias.map((cat, idx) => `
+                    <span class="categoria-tag">
+                        ${cat}
+                        <button class="del-btn" onclick="gasEliminarCategoria(${idx})" title="Eliminar">×</button>
+                    </span>`).join('')
+                : '<p style="color:var(--gray-500); font-size:0.85rem;">No hay categorías</p>';
+        }
+
+        async function gasAgregarCategoria() {
+            const input = document.getElementById('gas-nueva-categoria');
+            const nueva = input.value.trim();
+            if (!nueva) { mostrarToast('⚠️ Escribe el nombre de la categoría'); return; }
+            if (gasCategorias.includes(nueva)) { mostrarToast('⚠️ Esa categoría ya existe'); return; }
+            gasCategorias.push(nueva);
+            input.value = '';
+            gasRenderizarSelector();
+            gasRenderizarCategorias();
+            await gasGuardarCategorias();
+            mostrarToast(`✅ Categoría "${nueva}" agregada`);
+        }
+
+        async function gasEliminarCategoria(idx) {
+            const cat = gasCategorias[idx];
+            gasCategorias.splice(idx, 1);
+            if (gasCategoriaActual === cat) gasCategoriaActual = null;
+            gasRenderizarSelector();
+            gasRenderizarCategorias();
+            await gasGuardarCategorias();
+            mostrarToast(`🗑️ "${cat}" eliminada`);
+        }
+
+        async function gasObtenerConsecutivo() {
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'Gasto-'`,
+                    fields: 'files(name)', orderBy: 'name desc', pageSize: 1
+                });
+                if (r.result.files.length) {
+                    const m = r.result.files[0].name.match(/Gasto-(\d+)/);
+                    if (m) gasConsecutivo = parseInt(m[1]) + 1;
+                }
+                document.getElementById('gas-numero-display').textContent =
+                    `Gas-${String(gasConsecutivo).padStart(4,'0')}`;
+            } catch(e) { console.error('Error consecutivo gastos:', e); }
+        }
+
+        async function gasGuardar() {
+            if (!gasCategoriaActual) { mostrarToast('⚠️ Selecciona una categoría'); return; }
+            const proveedor   = document.getElementById('gas-proveedor').value.trim();
+            const descripcion = document.getElementById('gas-descripcion').value.trim();
+            const monto       = parsearValor(document.getElementById('gas-monto').value);
+            const fecha       = document.getElementById('gas-fecha').value;
+            const metodo      = document.getElementById('gas-metodo').value;
+            const referencia  = document.getElementById('gas-referencia').value.trim();
+            const notas       = document.getElementById('gas-notas').value.trim();
+            const asesor      = document.getElementById('gas-asesor').value;
+            const clave       = document.getElementById('gas-clave').value;
+
+            if (!proveedor || !descripcion || !monto || !fecha || !asesor || !clave) {
+                mostrarToast('⚠️ Complete todos los campos obligatorios (*)');
+                return;
+            }
+            if (clavesAsesores[asesor] !== clave) {
+                mostrarToast('❌ Clave incorrecta');
+                return;
+            }
+
+            mostrarToast('☁️ Guardando gasto...');
+            try {
+                const numF    = String(gasConsecutivo).padStart(4,'0');
+                const docName = `Gasto-${numF}`;
+                const doc = {
+                    tipo: 'gasto', numero: gasConsecutivo,
+                    fecha_registro: new Date().toISOString(),
+                    categoria: gasCategoriaActual, proveedor, descripcion,
+                    monto, fecha_gasto: fecha, metodo_pago: metodo,
+                    referencia: referencia || null, notas: notas || null, asesor,
+                    soporte_foto:  capturedPhotos['gasSoporte']  ? true : false,
+                    soporte_foto2: capturedPhotos['gasSoporte2'] ? true : false,
+                    estado: 'pendiente_contabilizar'
+                };
+
+                await subirArchivoDrive(JSON.stringify(doc, null, 2), `${docName}.json`, FOLDER_IDS.gastos);
+                if (capturedPhotos['gasSoporte'])
+                    await subirImagenDrive(capturedPhotos['gasSoporte'], `${docName}-Soporte.jpg`, FOLDER_IDS.gastos);
+                if (capturedPhotos['gasSoporte2'])
+                    await subirImagenDrive(capturedPhotos['gasSoporte2'], `${docName}-Soporte2.jpg`, FOLDER_IDS.gastos);
+
+                gasConsecutivo++;
+                gasLimpiarFormulario();
+                mostrarToast(`✅ ${docName} — ${formatMoney(monto)} en ${gasCategoriaActual}`);
+
+            } catch(e) {
+                console.error('Error guardando gasto:', e);
+                mostrarToast('❌ Error al guardar. Revisa consola.');
+            }
+        }
+
+        function gasLimpiarFormulario() {
+            ['gas-proveedor','gas-descripcion','gas-monto','gas-referencia','gas-notas','gas-clave']
+                .forEach(id => { const el = document.getElementById(id); if(el) el.value=''; });
+            gasCategoriaActual = null;
+            gasRenderizarSelector();
+            ['gasSoporte','gasSoporte2'].forEach(k => delete capturedPhotos[k]);
+            ['btn-gasSoporte','btn-gasSoporte2'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) { btn.classList.remove('captured'); btn.innerHTML = btn.innerHTML.replace('✅','📸'); }
+            });
+            document.getElementById('gas-numero-display').textContent =
+                `Gas-${String(gasConsecutivo).padStart(4,'0')}`;
+            document.getElementById('gas-fecha').value = new Date().toISOString().slice(0,10);
+            window.scrollTo(0,0);
+        }
+
+        async function gasCargarLista() {
+            const container = document.getElementById('gas-lista-container');
+            const resumenEl = document.getElementById('gas-resumen-lista');
+            container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando...</p>';
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'Gasto-'`,
+                    fields: 'files(id,name)', orderBy: 'name desc', pageSize: 100
+                });
+                const files = r.result.files;
+                if (!files.length) {
+                    container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No hay gastos registrados</p>';
+                    if (resumenEl) resumenEl.innerHTML = '';
+                    return;
+                }
+                const docs = await Promise.all(files.map(async f => {
+                    try {
+                        const resp = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        return { fileId: f.id, doc: await resp.json() };
+                    } catch { return null; }
+                }));
+                const validos = docs.filter(Boolean);
+                const totalGlobal = validos.reduce((s,{doc}) => s + (doc.monto||0), 0);
+
+                // Resumen por categoría
+                const porCat = {};
+                validos.forEach(({doc}) => {
+                    const cat = doc.categoria || 'Sin categoría';
+                    porCat[cat] = (porCat[cat]||0) + (doc.monto||0);
+                });
+
+                if (resumenEl) resumenEl.innerHTML = `
+                    <div style="background:linear-gradient(135deg,#dc2626,#b91c1c); color:white;
+                                border-radius:8px; padding:0.75rem 1rem; margin-bottom:0.5rem;
+                                display:flex; justify-content:space-between; align-items:center;">
+                        <div style="font-size:0.85rem; opacity:0.9;">${validos.length} gastos</div>
+                        <div style="font-weight:700; font-size:1.1rem;">${formatMoney(totalGlobal)}</div>
+                    </div>
+                    <div style="display:flex; flex-wrap:wrap; gap:0.4rem; margin-bottom:0.75rem;">
+                        ${Object.entries(porCat).map(([cat, tot]) => `
+                            <span style="background:#fee2e2; border-radius:6px; padding:0.25rem 0.6rem;
+                                         font-size:0.75rem; color:#991b1b; font-weight:600;">
+                                ${cat}: ${formatMoney(tot)}
+                            </span>`).join('')}
+                    </div>`;
+
+                container.innerHTML = validos.map(({fileId, doc}) => {
+                    const nombre = doc.numero ? `Gasto-${String(doc.numero).padStart(4,'0')}` : fileId;
+                    return `
+                        <div class="gasto-card">
+                            <div style="display:flex; justify-content:space-between; align-items:start; gap:0.5rem;">
+                                <div style="flex:1;">
+                                    <div style="font-weight:700; font-size:0.9rem;">${nombre}</div>
+                                    <div style="font-size:0.78rem; color:var(--gray-600);">
+                                        🏷️ ${doc.categoria||'-'} · 📅 ${doc.fecha_gasto||'-'}
+                                    </div>
+                                    <div style="font-size:0.78rem; color:var(--gray-600);">
+                                        👤 ${doc.proveedor||'-'}
+                                    </div>
+                                    <div style="font-size:0.75rem; color:var(--gray-500);">${doc.descripcion||''}</div>
+                                </div>
+                                <div style="text-align:right; flex-shrink:0;">
+                                    <div style="font-weight:700; color:var(--danger); font-size:1rem;">
+                                        ${formatMoney(doc.monto||0)}
+                                    </div>
+                                    <div style="font-size:0.72rem; color:var(--gray-500);">${doc.metodo_pago||''}</div>
+                                    <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank"
+                                       style="font-size:0.75rem; color:var(--primary);">Ver →</a>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join('');
+
+            } catch(e) {
+                container.innerHTML = '<p style="text-align:center; color:var(--danger);">❌ Error cargando lista</p>';
+                console.error(e);
+            }
+        }
+
+        // ============= FIN MÓDULO GASTOS =============
+
+        // ============= LÓGICA COBROS PENDIENTES (ADDI / GORA / COORDINADORA) =============
+
+        const EMPRESAS_FINANCIERAS = ['addi', 'gora', 'coordinadora'];
+
+        async function registrarCobrosPendientes(documento, docName) {
+            const pagosFinancieros = (documento.payments || [])
+                .filter(p => EMPRESAS_FINANCIERAS.includes(p.method));
+            if (pagosFinancieros.length === 0) return;
+
+            // Un archivo de cobro por cada pago financiero
+            for (const pago of pagosFinancieros) {
+                const empresa     = pago.method.charAt(0).toUpperCase() + pago.method.slice(1);
+                const nombreArch  = `Cobro-${docName}-${empresa}.json`;
+                const registro    = {
+                    tipo:               'cobro_pendiente',
+                    estado:             'pendiente',
+                    empresa,
+                    remision:           docName,
+                    fecha_remision:     documento.fecha,
+                    cliente:            documento.cliente,
+                    asesor:             documento.asesor,
+                    monto_esperado:     pago.amount,
+                    referencia_venta:   pago.reference || null,
+                    ingreso_registrado: null   // Se llena cuando llega el pago
+                };
+                try {
+                    await subirArchivoDrive(
+                        JSON.stringify(registro, null, 2),
+                        nombreArch,
+                        FOLDER_IDS.ingresos
+                    );
+                    console.log(`✅ Cobro pendiente registrado: ${nombreArch}`);
+                } catch(e) {
+                    console.error(`Error registrando cobro ${nombreArch}:`, e);
+                }
+            }
+        }
+
+        // ============= FIN LÓGICA COBROS PENDIENTES =============
 
         // Al guardar una remisión con ítems prestados:
         // crea un archivo Prestado-XXXX-NombrePrestador.json por cada prestador único
