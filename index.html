@@ -2867,19 +2867,27 @@
 
         async function obtenerConsecutivos() {
             try {
+                // Traer todos los archivos que empiecen con "Remision-" y sean .json
+                // No usamos pageSize:1 porque el orden alfabético desc no garantiza
+                // el número más alto cuando hay otros archivos en la carpeta
                 const response = await gapi.client.drive.files.list({
-                    q: `'${FOLDER_IDS.remisiones}' in parents and trashed=false`,
+                    q: `'${FOLDER_IDS.remisiones}' in parents and trashed=false and name contains 'Remision-' and mimeType='application/json'`,
                     fields: 'files(name)',
-                    orderBy: 'name desc',
-                    pageSize: 1
+                    pageSize: 500
                 });
-                
+
                 if (response.result.files.length > 0) {
-                    const lastFile = response.result.files[0].name;
-                    const match = lastFile.match(/Remision-(\d+)/);
-                    if (match) {
-                        consecutivo = parseInt(match[1]) + 1;
-                    }
+                    // Extraer todos los números y quedarse con el máximo
+                    let maxNum = 0;
+                    response.result.files.forEach(f => {
+                        // Solo archivos con formato exacto Remision-XXXX.json (sin sufijos)
+                        const match = f.name.match(/^Remision-(\d{4})\.json$/);
+                        if (match) {
+                            const num = parseInt(match[1]);
+                            if (num > maxNum) maxNum = num;
+                        }
+                    });
+                    if (maxNum > 0) consecutivo = maxNum + 1;
                 }
 
                 actualizarNumeroDocumento();
