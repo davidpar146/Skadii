@@ -2371,7 +2371,7 @@
         <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
             <button class="toggle-btn active" id="gas-tab-nuevo" onclick="gasMostrarTab('nuevo')" style="flex:1;">➕ Nuevo Gasto</button>
             <button class="toggle-btn" id="gas-tab-lista" onclick="gasMostrarTab('lista')" style="flex:1;">📋 Lista</button>
-            <button class="toggle-btn" id="gas-tab-cat" onclick="gasMostrarTab('categorias')" style="flex:1;">🏷️ Categorías</button>
+            <button class="toggle-btn" id="gas-tab-cat" onclick="gasMostrarTab('categorias')" style="flex:1;">📦 Inventario</button>
         </div>
 
         <!-- TAB NUEVO GASTO -->
@@ -2488,21 +2488,169 @@
             </div>
         </div>
 
-        <!-- TAB CATEGORÍAS -->
+        <!-- TAB INVENTARIO (Bajas) -->
         <div id="gas-tab-content-categorias" style="display:none;">
-            <div class="card">
-                <div class="card-title">🏷️ Gestionar Categorías</div>
-                <p style="font-size:0.85rem; color:var(--gray-600); margin-bottom:1rem;">
-                    Agrega o elimina categorías. Se guardan en Drive automáticamente.
-                </p>
-                <div class="form-group">
-                    <label>Nueva Categoría</label>
-                    <div class="input-with-button">
-                        <input type="text" id="gas-nueva-categoria" placeholder="Ej: Arriendo, Servicios...">
-                        <button onclick="gasAgregarCategoria()" style="background:var(--success);">➕</button>
+
+            <!-- Sub-tabs: Solicitud / Aprobación -->
+            <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
+                <button class="toggle-btn active" id="inv-sub-solicitud" onclick="invMostrarSub('solicitud')" style="flex:1;">📝 Nueva Solicitud</button>
+                <button class="toggle-btn" id="inv-sub-aprobacion" onclick="invMostrarSub('aprobacion')" style="flex:1;">✅ Aprobación</button>
+            </div>
+
+            <!-- SUB-TAB: NUEVA SOLICITUD -->
+            <div id="inv-sub-content-solicitud">
+
+                <div class="card">
+                    <div class="doc-number-display">
+                        <div class="doc-number-label">Consecutivo Solicitud</div>
+                        <div class="doc-number-value" id="inv-numero-display">Inv-0001</div>
                     </div>
                 </div>
-                <div id="gas-categorias-lista" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.75rem;"></div>
+
+                <!-- Datos del elemento -->
+                <div class="card">
+                    <div class="card-title">📦 Elemento a dar de Baja</div>
+                    <div class="form-group">
+                        <label>Tipo de elemento *</label>
+                        <div class="toggle-group">
+                            <button class="toggle-btn active" id="inv-tipo-accesorio" onclick="invSetTipo('accesorio')">🔌 Accesorio</button>
+                            <button class="toggle-btn" id="inv-tipo-dispositivo" onclick="invSetTipo('dispositivo')">📱 Dispositivo</button>
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>Descripción *</label>
+                        <input type="text" id="inv-descripcion" placeholder="Ej: Cable USB-C dañado / iPhone 12 pantalla rota">
+                    </div>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Cantidad *</label>
+                            <input type="number" id="inv-cantidad" value="1" min="1">
+                        </div>
+                        <div class="form-group">
+                            <label>Valor unitario</label>
+                            <input type="text" id="inv-valor" placeholder="0" oninput="formatearInput(this)">
+                        </div>
+                    </div>
+                    <div class="form-group">
+                        <label>IMEI / Referencia <span style="font-size:0.75rem; color:var(--gray-500);">(Opcional)</span></label>
+                        <div class="input-with-button">
+                            <input type="text" id="inv-imei" placeholder="IMEI o código de referencia">
+                            <button onclick="invEscanearIMEI()" style="background:var(--primary);">📷</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Motivo y disposición -->
+                <div class="card">
+                    <div class="card-title">📋 Motivo de Baja</div>
+                    <div class="form-group">
+                        <label>Motivo detallado *</label>
+                        <textarea id="inv-motivo" placeholder="Explique por qué se da de baja este elemento..." rows="3"></textarea>
+                    </div>
+                    <div class="form-group">
+                        <label>Disposición Final *</label>
+                        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:0.5rem; margin-top:0.5rem;">
+                            <button class="empresa-btn active" data-disp="Destrucción" onclick="invSetDisposicion(this)">🗑️ Destrucción</button>
+                            <button class="empresa-btn" data-disp="Devolución a proveedor" onclick="invSetDisposicion(this)">🔁 Devolución</button>
+                            <button class="empresa-btn" data-disp="Otro" onclick="invSetDisposicion(this)">📌 Otro</button>
+                        </div>
+                    </div>
+                    <div class="form-group" id="inv-disposicion-otro-group" style="display:none;">
+                        <input type="text" id="inv-disposicion-otro" placeholder="Especifique la disposición...">
+                    </div>
+                </div>
+
+                <!-- Foto soporte -->
+                <div class="card">
+                    <div class="card-title">📸 Foto del Elemento</div>
+                    <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                        Foto que evidencie el daño o imperfecto
+                    </p>
+                    <button class="btn btn-photo" id="btn-invFoto" onclick="tomarFoto('invFoto')" style="margin-bottom:0.5rem;">
+                        📸 Foto del Daño / Elemento
+                    </button>
+                    <button class="btn btn-photo" id="btn-invFoto2" onclick="tomarFoto('invFoto2')">
+                        📸 Foto Adicional (Opcional)
+                    </button>
+                </div>
+
+                <!-- Asesor solicitante -->
+                <div class="card">
+                    <div class="card-title">👤 Solicitado por *</div>
+                    <div class="form-group">
+                        <select id="inv-asesor">
+                            <option value="">Seleccione...</option>
+                        </select>
+                    </div>
+                </div>
+
+                <button class="btn btn-primary" onclick="invGuardarSolicitud()" style="margin-bottom:1rem;">
+                    📤 Enviar Solicitud de Baja
+                </button>
+            </div>
+
+            <!-- SUB-TAB: APROBACIÓN (solo Sirley) -->
+            <div id="inv-sub-content-aprobacion" style="display:none;">
+
+                <!-- Autenticación de Sirley -->
+                <div class="card" id="inv-auth-card">
+                    <div class="card-title">🔐 Acceso Restringido</div>
+                    <p style="font-size:0.85rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                        Solo la administradora puede ver y aprobar solicitudes de baja.
+                    </p>
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>Administradora</label>
+                            <select id="inv-auth-asesor">
+                                <option value="">Seleccione...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Clave *</label>
+                            <input type="password" id="inv-auth-clave" placeholder="••••" maxlength="4" inputmode="numeric">
+                        </div>
+                    </div>
+                    <button class="btn btn-primary" onclick="invAutenticar()" style="padding:0.75rem;">
+                        🔐 Ingresar
+                    </button>
+                </div>
+
+                <!-- Lista de solicitudes (solo visible tras autenticar) -->
+                <div id="inv-aprobacion-panel" style="display:none;">
+                    <div style="display:flex; gap:0.5rem; margin-bottom:0.75rem;">
+                        <button class="btn btn-secondary" onclick="invCargarSolicitudes('pendiente')"
+                                style="flex:1; padding:0.6rem; font-size:0.82rem;">🟡 Pendientes</button>
+                        <button class="btn btn-secondary" onclick="invCargarSolicitudes('aprobada')"
+                                style="flex:1; padding:0.6rem; font-size:0.82rem;">🟢 Aprobadas</button>
+                        <button class="btn btn-secondary" onclick="invCargarSolicitudes('rechazada')"
+                                style="flex:1; padding:0.6rem; font-size:0.82rem;">🔴 Rechazadas</button>
+                    </div>
+                    <div id="inv-solicitudes-container">
+                        <p style="color:var(--gray-500); text-align:center; padding:1rem; font-size:0.85rem;">
+                            Selecciona un filtro para cargar las solicitudes
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Aprobación/Rechazo de Inventario -->
+    <div id="inv-decision-modal" class="modal">
+        <div class="modal-content" style="max-width:480px;">
+            <div class="modal-header">
+                <h3 id="inv-decision-titulo">Solicitud de Baja</h3>
+                <button class="modal-close" onclick="document.getElementById('inv-decision-modal').classList.remove('active')">×</button>
+            </div>
+            <div id="inv-decision-detalle" style="background:var(--gray-50); border-radius:8px; padding:0.75rem; margin-bottom:1rem; font-size:0.85rem;"></div>
+            <div class="form-group">
+                <label>Nota de la Administradora * <span style="font-size:0.75rem; color:var(--gray-500);">(Obligatoria)</span></label>
+                <textarea id="inv-decision-nota" placeholder="Motivo de aprobación o rechazo..." rows="3"></textarea>
+            </div>
+            <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
+                <button class="btn btn-success" onclick="invProcesarDecision('aprobada')" style="flex:1;">✅ Aprobar</button>
+                <button class="btn" onclick="invProcesarDecision('rechazada')"
+                        style="flex:1; background:var(--danger); color:white;">❌ Rechazar</button>
             </div>
         </div>
     </div>
@@ -3475,6 +3623,8 @@
                     'ingComprobante':     'btn-ingComprobante',
                     'gasSoporte':         'btn-gasSoporte',
                     'gasSoporte2':        'btn-gasSoporte2',
+                    'invFoto':            'btn-invFoto',
+                    'invFoto2':           'btn-invFoto2',
                 };
                 const btnId = btnIdMap[currentPhotoType] || `btn-${currentPhotoType}`;
                 const btn = document.getElementById(btnId);
@@ -3528,6 +3678,8 @@
                 'ingComprobante':     'btn-ingComprobante',
                 'gasSoporte':         'btn-gasSoporte',
                 'gasSoporte2':        'btn-gasSoporte2',
+                'invFoto':            'btn-invFoto',
+                'invFoto2':           'btn-invFoto2',
             };
             const btnId = btnIdMap[currentPhotoType] || `btn-${currentPhotoType}`;
             const btn = document.getElementById(btnId);
@@ -6684,7 +6836,10 @@
                 document.getElementById(`gas-tab-${t}`).classList.toggle('active', t === tab);
             });
             if (tab === 'lista') gasCargarLista();
-            if (tab === 'categorias') gasRenderizarCategorias();
+            if (tab === 'categorias') {
+                // Inicializar sub-tab de solicitud por defecto
+                invMostrarSub('solicitud');
+            }
         }
 
         async function gasInicializar() {
@@ -6731,21 +6886,30 @@
             try {
                 const r = await gapi.client.drive.files.list({
                     q: `name='CATEGORIAS-GASTOS.json' and '${FOLDER_IDS.gastos}' in parents and trashed=false`,
-                    fields: 'files(id)'
+                    fields: 'files(id)',
+                    pageSize: 5
                 });
+
                 if (r.result.files.length) {
                     gasCatFileId = r.result.files[0].id;
                     const resp = await fetch(
                         `https://www.googleapis.com/drive/v3/files/${gasCatFileId}?alt=media`,
                         { headers: { 'Authorization': 'Bearer ' + accessToken } }
                     );
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
                     const data = await resp.json();
-                    gasCategorias = data.categorias || GAS_CATS_DEFAULT;
+                    // Copia del array para no modificar la referencia original
+                    gasCategorias = Array.isArray(data.categorias) && data.categorias.length
+                        ? [...data.categorias]
+                        : [...GAS_CATS_DEFAULT];
+                    console.log('✅ Categorías cargadas desde Drive:', gasCategorias.length, gasCategorias);
                 } else {
                     gasCategorias = [...GAS_CATS_DEFAULT];
+                    console.log('Creando CATEGORIAS-GASTOS.json por primera vez...');
                     await gasGuardarCategorias();
                 }
             } catch(e) {
+                console.error('Error cargando categorías:', e);
                 gasCategorias = [...GAS_CATS_DEFAULT];
             }
             gasRenderizarSelector();
@@ -6757,17 +6921,28 @@
             try {
                 if (gasCatFileId) {
                     const form = new FormData();
-                    form.append('metadata', new Blob([JSON.stringify({ name: 'CATEGORIAS-GASTOS.json' })], { type: 'application/json' }));
+                    form.append('metadata', new Blob(
+                        [JSON.stringify({ name: 'CATEGORIAS-GASTOS.json' })],
+                        { type: 'application/json' }
+                    ));
                     form.append('file', new Blob([contenido], { type: 'application/json' }));
-                    await fetch(
+                    const resp = await fetch(
                         `https://www.googleapis.com/upload/drive/v3/files/${gasCatFileId}?uploadType=multipart`,
                         { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
                     );
+                    if (!resp.ok) throw new Error(`PATCH falló: ${resp.status}`);
+                    console.log('✅ Categorías guardadas en Drive:', gasCategorias);
                 } else {
-                    const result = await subirArchivoDrive(contenido, 'CATEGORIAS-GASTOS.json', FOLDER_IDS.gastos);
+                    const result = await subirArchivoDrive(
+                        contenido, 'CATEGORIAS-GASTOS.json', FOLDER_IDS.gastos
+                    );
                     gasCatFileId = result.id;
+                    console.log('✅ CATEGORIAS-GASTOS.json creado, ID:', gasCatFileId);
                 }
-            } catch(e) { console.error('Error guardando categorías:', e); }
+            } catch(e) {
+                console.error('Error guardando categorías:', e);
+                mostrarToast('❌ Error al guardar categorías en Drive');
+            }
         }
 
         function gasRenderizarSelector() {
@@ -6788,39 +6963,413 @@
         }
 
         function gasRenderizarCategorias() {
-            const cont = document.getElementById('gas-categorias-lista');
-            if (!cont) return;
-            cont.innerHTML = gasCategorias.length
-                ? gasCategorias.map((cat, idx) => `
-                    <span class="categoria-tag">
-                        ${cat}
-                        <button class="del-btn" onclick="gasEliminarCategoria(${idx})" title="Eliminar">×</button>
-                    </span>`).join('')
-                : '<p style="color:var(--gray-500); font-size:0.85rem;">No hay categorías</p>';
+            // Mantenida por compatibilidad — ahora el tab muestra Inventario
         }
 
         async function gasAgregarCategoria() {
-            const input = document.getElementById('gas-nueva-categoria');
-            const nueva = input.value.trim();
-            if (!nueva) { mostrarToast('⚠️ Escribe el nombre de la categoría'); return; }
-            if (gasCategorias.includes(nueva)) { mostrarToast('⚠️ Esa categoría ya existe'); return; }
-            gasCategorias.push(nueva);
-            input.value = '';
-            gasRenderizarSelector();
-            gasRenderizarCategorias();
-            await gasGuardarCategorias();
-            mostrarToast(`✅ Categoría "${nueva}" agregada`);
+            // Mantenida por compatibilidad
         }
 
         async function gasEliminarCategoria(idx) {
-            const cat = gasCategorias[idx];
-            gasCategorias.splice(idx, 1);
-            if (gasCategoriaActual === cat) gasCategoriaActual = null;
-            gasRenderizarSelector();
-            gasRenderizarCategorias();
-            await gasGuardarCategorias();
-            mostrarToast(`🗑️ "${cat}" eliminada`);
+            // Mantenida por compatibilidad
         }
+
+        // ============= MÓDULO INVENTARIO (dentro de Gastos) =============
+
+        let invConsecutivo    = 1;
+        let invTipoActual     = 'accesorio';
+        let invDisposicion    = 'Destrucción';
+        let invSolicitudActual = null; // solicitud en proceso de aprobación
+        let invAutenticado    = false;
+        let invAsesorAdmin    = null;
+
+        function invMostrarSub(sub) {
+            ['solicitud','aprobacion'].forEach(s => {
+                document.getElementById(`inv-sub-content-${s}`).style.display = s === sub ? 'block' : 'none';
+                document.getElementById(`inv-sub-${s}`).classList.toggle('active', s === sub);
+            });
+            if (sub === 'solicitud') invInicializarSolicitud();
+            if (sub === 'aprobacion') invInicializarAprobacion();
+        }
+
+        function invInicializarSolicitud() {
+            // Poblar select de asesores
+            const sel = document.getElementById('inv-asesor');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            Object.keys(clavesAsesores).sort().forEach(nombre => {
+                const opt = document.createElement('option');
+                opt.value = nombre; opt.textContent = nombre;
+                sel.appendChild(opt);
+            });
+            if (sel.options.length <= 1) setTimeout(() => invInicializarSolicitud(), 1500);
+            // Consecutivo
+            if (accessToken) invObtenerConsecutivo();
+        }
+
+        function invInicializarAprobacion() {
+            // Poblar select de autorizadoras (solo admin)
+            const sel = document.getElementById('inv-auth-asesor');
+            if (!sel) return;
+            sel.innerHTML = '<option value="">Seleccione...</option>';
+            Object.keys(asesoresPermisos).forEach(nombre => {
+                if (tienePermiso(nombre, 'administrador') || tienePermiso(nombre, 'admin')) {
+                    const opt = document.createElement('option');
+                    opt.value = nombre; opt.textContent = nombre;
+                    sel.appendChild(opt);
+                }
+            });
+            // Fallback: mostrar todos si permisos vacíos
+            if (sel.options.length <= 1 && Object.keys(clavesAsesores).length > 0) {
+                ['Sirley'].forEach(nombre => {
+                    if (clavesAsesores[nombre]) {
+                        const opt = document.createElement('option');
+                        opt.value = nombre; opt.textContent = nombre;
+                        sel.appendChild(opt);
+                    }
+                });
+            }
+            // Reset estado si cambia de sub-tab
+            if (!invAutenticado) {
+                document.getElementById('inv-auth-card').style.display = 'block';
+                document.getElementById('inv-aprobacion-panel').style.display = 'none';
+            }
+        }
+
+        function invSetTipo(tipo) {
+            invTipoActual = tipo;
+            document.getElementById('inv-tipo-accesorio').classList.toggle('active', tipo === 'accesorio');
+            document.getElementById('inv-tipo-dispositivo').classList.toggle('active', tipo === 'dispositivo');
+        }
+
+        function invSetDisposicion(btn) {
+            document.querySelectorAll('[data-disp]').forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+            invDisposicion = btn.dataset.disp;
+            document.getElementById('inv-disposicion-otro-group').style.display =
+                invDisposicion === 'Otro' ? 'block' : 'none';
+        }
+
+        function invEscanearIMEI() {
+            document.getElementById('scanner-modal').classList.add('active');
+            if (!html5QrCode) html5QrCode = new Html5Qrcode("qr-reader");
+            html5QrCode.start(
+                { facingMode: "environment" },
+                { fps: 10, qrbox: { width: 250, height: 250 } },
+                (decodedText) => {
+                    document.getElementById('inv-imei').value = decodedText;
+                    cerrarEscaner();
+                    mostrarToast('✅ Código escaneado');
+                },
+                () => {}
+            ).catch(() => { mostrarToast('❌ Error cámara'); cerrarEscaner(); });
+        }
+
+        async function invObtenerConsecutivo() {
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'BajaInv-'`,
+                    fields: 'files(name)', pageSize: 500
+                });
+                let maxNum = 0;
+                (r.result.files || []).forEach(f => {
+                    const m = f.name.match(/^BajaInv-(\d{4})\.json$/);
+                    if (m && parseInt(m[1]) > maxNum) maxNum = parseInt(m[1]);
+                });
+                if (maxNum > 0) invConsecutivo = maxNum + 1;
+                document.getElementById('inv-numero-display').textContent =
+                    `Inv-${String(invConsecutivo).padStart(4,'0')}`;
+            } catch(e) { console.error('Error consecutivo inventario:', e); }
+        }
+
+        async function invGuardarSolicitud() {
+            const descripcion = document.getElementById('inv-descripcion').value.trim();
+            const cantidad    = parseInt(document.getElementById('inv-cantidad').value) || 1;
+            const valor       = parsearValor(document.getElementById('inv-valor').value);
+            const imei        = document.getElementById('inv-imei').value.trim();
+            const motivo      = document.getElementById('inv-motivo').value.trim();
+            const asesor      = document.getElementById('inv-asesor').value;
+            const dispFinal   = invDisposicion === 'Otro'
+                ? document.getElementById('inv-disposicion-otro').value.trim()
+                : invDisposicion;
+
+            if (!descripcion || !motivo || !asesor || !dispFinal) {
+                mostrarToast('⚠️ Complete descripción, motivo, disposición y asesor');
+                return;
+            }
+
+            mostrarToast('☁️ Enviando solicitud...');
+            try {
+                const numF    = String(invConsecutivo).padStart(4,'0');
+                const docName = `BajaInv-${numF}`;
+
+                const doc = {
+                    tipo:           'baja_inventario',
+                    numero:         invConsecutivo,
+                    fecha_solicitud: new Date().toISOString(),
+                    estado:         'pendiente',
+                    elemento: {
+                        tipo_elemento: invTipoActual,
+                        descripcion,
+                        cantidad,
+                        valor_unitario: valor || null,
+                        imei_referencia: imei || null
+                    },
+                    motivo,
+                    disposicion_final: dispFinal,
+                    asesor_solicitante: asesor,
+                    foto_soporte:   capturedPhotos['invFoto']  ? true : false,
+                    foto_soporte2:  capturedPhotos['invFoto2'] ? true : false,
+                    aprobacion:     null
+                };
+
+                await subirArchivoDrive(
+                    JSON.stringify(doc, null, 2),
+                    `${docName}.json`,
+                    FOLDER_IDS.gastos
+                );
+
+                if (capturedPhotos['invFoto']) {
+                    await subirImagenDrive(capturedPhotos['invFoto'],
+                        `${docName}-Foto.jpg`, FOLDER_IDS.gastos);
+                }
+                if (capturedPhotos['invFoto2']) {
+                    await subirImagenDrive(capturedPhotos['invFoto2'],
+                        `${docName}-Foto2.jpg`, FOLDER_IDS.gastos);
+                }
+
+                invConsecutivo++;
+                invLimpiarSolicitud();
+                mostrarToast(`✅ Solicitud ${docName} enviada — pendiente de aprobación`);
+
+            } catch(e) {
+                console.error('Error guardando solicitud:', e);
+                mostrarToast('❌ Error al enviar solicitud');
+            }
+        }
+
+        function invLimpiarSolicitud() {
+            ['inv-descripcion','inv-imei','inv-valor','inv-motivo','inv-disposicion-otro']
+                .forEach(id => { const el = document.getElementById(id); if(el) el.value = ''; });
+            document.getElementById('inv-cantidad').value = '1';
+            document.getElementById('inv-asesor').value   = '';
+            invTipoActual  = 'accesorio';
+            invDisposicion = 'Destrucción';
+            document.getElementById('inv-tipo-accesorio').classList.add('active');
+            document.getElementById('inv-tipo-dispositivo').classList.remove('active');
+            document.querySelectorAll('[data-disp]').forEach((b,i) => b.classList.toggle('active', i===0));
+            document.getElementById('inv-disposicion-otro-group').style.display = 'none';
+            ['invFoto','invFoto2'].forEach(k => delete capturedPhotos[k]);
+            ['btn-invFoto','btn-invFoto2'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) { btn.classList.remove('captured'); btn.innerHTML = btn.innerHTML.replace('✅','📸'); }
+            });
+            document.getElementById('inv-numero-display').textContent =
+                `Inv-${String(invConsecutivo).padStart(4,'0')}`;
+            window.scrollTo(0,0);
+        }
+
+        // Autenticación para ver aprobaciones
+        function invAutenticar() {
+            const asesor = document.getElementById('inv-auth-asesor').value;
+            const clave  = document.getElementById('inv-auth-clave').value;
+
+            if (!asesor || !clave) {
+                mostrarToast('⚠️ Selecciona el asesor e ingresa la clave');
+                return;
+            }
+            if (clavesAsesores[asesor] !== clave) {
+                mostrarToast('❌ Clave incorrecta');
+                document.getElementById('inv-auth-clave').value = '';
+                return;
+            }
+            if (!tienePermiso(asesor, 'administrador') && !tienePermiso(asesor, 'admin')) {
+                mostrarToast('❌ Solo la administradora puede acceder');
+                return;
+            }
+
+            invAutenticado   = true;
+            invAsesorAdmin   = asesor;
+            document.getElementById('inv-auth-card').style.display    = 'none';
+            document.getElementById('inv-aprobacion-panel').style.display = 'block';
+            invCargarSolicitudes('pendiente');
+            mostrarToast(`✅ Bienvenida ${asesor}`);
+        }
+
+        async function invCargarSolicitudes(filtro) {
+            const container = document.getElementById('inv-solicitudes-container');
+            container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando...</p>';
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'BajaInv-'`,
+                    fields: 'files(id,name)', orderBy: 'name desc', pageSize: 200
+                });
+
+                const archivos = r.result.files || [];
+                if (!archivos.length) {
+                    container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No hay solicitudes registradas</p>';
+                    return;
+                }
+
+                const docs = await Promise.all(archivos.map(async f => {
+                    try {
+                        const resp = await fetch(
+                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                        );
+                        return { fileId: f.id, fileName: f.name, doc: await resp.json() };
+                    } catch { return null; }
+                }));
+
+                let validos = docs.filter(d => d && d.doc?.tipo === 'baja_inventario');
+                if (filtro !== 'todos') validos = validos.filter(d => d.doc.estado === filtro);
+
+                if (!validos.length) {
+                    const labels = { pendiente:'pendientes', aprobada:'aprobadas', rechazada:'rechazadas' };
+                    container.innerHTML = `<p style="text-align:center; color:var(--gray-500); padding:1rem;">No hay solicitudes ${labels[filtro]||''}</p>`;
+                    return;
+                }
+
+                const semaforo = { pendiente:'🟡', aprobada:'🟢', rechazada:'🔴' };
+                const bgColor  = { pendiente:'#fef9c3', aprobada:'#f0fdf4', rechazada:'#fef2f2' };
+
+                container.innerHTML = validos.map(({ fileId, fileName, doc }) => {
+                    const el      = doc.elemento || {};
+                    const numNombre = fileName.replace('.json','');
+                    const fecha   = doc.fecha_solicitud?.slice(0,10) || '-';
+                    const est     = doc.estado || 'pendiente';
+
+                    return `
+                        <div style="background:${bgColor[est]||'white'}; border:2px solid var(--gray-200);
+                                    border-radius:10px; padding:0.85rem 1rem; margin-bottom:0.75rem;">
+                            <div style="display:flex; justify-content:space-between; align-items:start; gap:0.5rem;">
+                                <div style="flex:1;">
+                                    <div style="font-weight:700; font-size:0.9rem;">${numNombre}</div>
+                                    <div style="font-size:0.8rem; color:var(--gray-600);">
+                                        ${el.tipo_elemento === 'dispositivo' ? '📱' : '🔌'} ${el.descripcion||'-'}
+                                        · Cant: ${el.cantidad||1}
+                                    </div>
+                                    ${el.imei_referencia ? `<div style="font-size:0.75rem; color:var(--gray-500);">Ref: ${el.imei_referencia}</div>` : ''}
+                                    <div style="font-size:0.75rem; color:var(--gray-600);">
+                                        📋 ${doc.disposicion_final||'-'} · 👤 ${doc.asesor_solicitante||'-'} · 📅 ${fecha}
+                                    </div>
+                                    <div style="font-size:0.8rem; color:var(--gray-700); margin-top:0.25rem; font-style:italic;">
+                                        "${doc.motivo||''}"
+                                    </div>
+                                    ${doc.aprobacion ? `
+                                        <div style="font-size:0.75rem; color:var(--gray-500); margin-top:0.25rem;">
+                                            ${semaforo[est]} ${doc.aprobacion.asesor} · ${doc.aprobacion.fecha?.slice(0,10)||''}<br>
+                                            <em>"${doc.aprobacion.nota}"</em>
+                                        </div>` : ''}
+                                </div>
+                                <div style="text-align:right; flex-shrink:0;">
+                                    <div style="font-size:0.82rem; font-weight:700;">${semaforo[est]} ${est}</div>
+                                    ${el.valor_unitario ? `<div style="font-size:0.8rem; color:var(--danger);">${formatMoney(el.valor_unitario * (el.cantidad||1))}</div>` : ''}
+                                    ${est === 'pendiente' ? `
+                                        <button class="btn btn-primary" onclick="invAbrirDecision('${fileId}','${fileName}')"
+                                                style="margin-top:0.4rem; padding:0.4rem 0.75rem; font-size:0.8rem; width:auto;">
+                                            📋 Decidir
+                                        </button>` : ''}
+                                    <br>
+                                    <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank"
+                                       style="font-size:0.72rem; color:var(--primary);">Ver →</a>
+                                </div>
+                            </div>
+                        </div>`;
+                }).join('');
+
+            } catch(e) {
+                container.innerHTML = '<p style="text-align:center; color:var(--danger);">❌ Error cargando solicitudes</p>';
+                console.error(e);
+            }
+        }
+
+        function invAbrirDecision(fileId, fileName) {
+            invSolicitudActual = { fileId, fileName };
+            // Buscar el doc en el DOM para mostrar en el modal
+            document.getElementById('inv-decision-titulo').textContent = `📋 ${fileName.replace('.json','')}`;
+            document.getElementById('inv-decision-nota').value = '';
+            // Mostrar info básica
+            document.getElementById('inv-decision-detalle').innerHTML =
+                '<p style="color:var(--gray-500); font-size:0.85rem;">⏳ Cargando detalle...</p>';
+            document.getElementById('inv-decision-modal').classList.add('active');
+
+            // Cargar detalle del archivo
+            fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                { headers: { 'Authorization': 'Bearer ' + accessToken } })
+            .then(r => r.json())
+            .then(doc => {
+                const el = doc.elemento || {};
+                document.getElementById('inv-decision-detalle').innerHTML = `
+                    <div style="display:grid; gap:0.3rem;">
+                        <div><strong>Elemento:</strong> ${el.tipo_elemento==='dispositivo'?'📱':'🔌'} ${el.descripcion||'-'}</div>
+                        <div><strong>Cantidad:</strong> ${el.cantidad||1} · <strong>Valor:</strong> ${el.valor_unitario ? formatMoney(el.valor_unitario * (el.cantidad||1)) : 'N/A'}</div>
+                        ${el.imei_referencia ? `<div><strong>Ref/IMEI:</strong> ${el.imei_referencia}</div>` : ''}
+                        <div><strong>Motivo:</strong> ${doc.motivo||'-'}</div>
+                        <div><strong>Disposición:</strong> ${doc.disposicion_final||'-'}</div>
+                        <div><strong>Solicitado por:</strong> ${doc.asesor_solicitante||'-'} · ${doc.fecha_solicitud?.slice(0,10)||'-'}</div>
+                    </div>`;
+            })
+            .catch(() => {
+                document.getElementById('inv-decision-detalle').innerHTML =
+                    '<p style="color:var(--danger);">❌ Error cargando detalle</p>';
+            });
+        }
+
+        async function invProcesarDecision(decision) {
+            if (!invSolicitudActual) return;
+            const nota = document.getElementById('inv-decision-nota').value.trim();
+            if (!nota) { mostrarToast('⚠️ La nota es obligatoria'); return; }
+
+            mostrarToast('☁️ Procesando...');
+            try {
+                // Leer el JSON actual
+                const getResp = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${invSolicitudActual.fileId}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
+                const doc = await getResp.json();
+
+                // Actualizar estado y aprobación
+                doc.estado = decision;
+                doc.aprobacion = {
+                    asesor:    invAsesorAdmin,
+                    decision,
+                    nota,
+                    fecha:     new Date().toISOString()
+                };
+
+                // PATCH
+                const form = new FormData();
+                form.append('metadata', new Blob(
+                    [JSON.stringify({ name: invSolicitudActual.fileName })],
+                    { type: 'application/json' }
+                ));
+                form.append('file', new Blob(
+                    [JSON.stringify(doc, null, 2)],
+                    { type: 'application/json' }
+                ));
+                await fetch(
+                    `https://www.googleapis.com/upload/drive/v3/files/${invSolicitudActual.fileId}?uploadType=multipart`,
+                    { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
+                );
+
+                document.getElementById('inv-decision-modal').classList.remove('active');
+                invSolicitudActual = null;
+
+                const emoji = decision === 'aprobada' ? '✅' : '❌';
+                mostrarToast(`${emoji} Solicitud ${decision} por ${invAsesorAdmin}`);
+
+                // Recargar lista de pendientes
+                setTimeout(() => invCargarSolicitudes('pendiente'), 600);
+
+            } catch(e) {
+                console.error('Error procesando decisión:', e);
+                mostrarToast('❌ Error al procesar. Revisa consola.');
+            }
+        }
+
+        // ============= FIN MÓDULO INVENTARIO =============
 
         async function gasObtenerConsecutivo() {
             try {
