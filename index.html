@@ -6567,18 +6567,18 @@
         function gasRenderizarSelector() {
             const cont = document.getElementById('gas-categorias-selector');
             if (!cont) return;
-            cont.innerHTML = gasCategorias.map(cat => `
+            cont.innerHTML = gasCategorias.map((cat, idx) => `
                 <button class="empresa-btn ${gasCategoriaActual === cat ? 'active' : ''}"
-                        onclick="gasSeleccionarCategoria(this, '${cat.replace(/'/g,"\\'")}')">
+                        onclick="gasSeleccionarCategoriaIdx(this, ${idx})">
                     ${cat}
-                </button>`).join('') || '<p style="color:var(--gray-500);font-size:0.85rem;">Sin categorías. Agrégalas en la pestaña 🏷️</p>';
+                </button>`).join('') || '<p style="color:var(--gray-500);font-size:0.85rem;">Sin categorías</p>';
         }
 
-        function gasSeleccionarCategoria(btn, cat) {
+        function gasSeleccionarCategoriaIdx(btn, idx) {
             document.querySelectorAll('#gas-categorias-selector .empresa-btn')
                 .forEach(b => b.classList.remove('active'));
             btn.classList.add('active');
-            gasCategoriaActual = cat;
+            gasCategoriaActual = gasCategorias[idx];
         }
 
         function gasRenderizarCategorias() {
