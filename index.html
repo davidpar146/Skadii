@@ -4125,6 +4125,8 @@
                 }
                 
                 actualizarDropdownAsesores();
+                // Repoblar select de inventario ahora que los asesores del Drive están disponibles
+                invRepoblarAsesor();
                 mostrarToast('✅ Asesores cargados: ' + Object.keys(clavesAsesores).length);
 
             } catch (error) {
@@ -6658,12 +6660,17 @@
         }
 
         function invInicializarSolicitud() {
-            // Poblar select con asesores — combina fijos + los cargados del Drive
+            invRepoblarAsesor();
+            if (accessToken) invObtenerConsecutivo();
+        }
+
+        // Repobla solo el select de asesor — se llama también al terminar de cargar Drive
+        function invRepoblarAsesor() {
             const sel = document.getElementById('inv-asesor');
             if (!sel) return;
+            const valorActual = sel.value; // conservar selección si ya había una
             sel.innerHTML = '<option value="">Seleccione...</option>';
 
-            // Unir ASESORES_FIJOS con los cargados dinámicamente del Drive (clavesAsesores)
             const desdeDrive = Object.keys(clavesAsesores);
             const todosAsesores = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
 
@@ -6673,13 +6680,8 @@
                 sel.appendChild(opt);
             });
 
-            // Si aún no hay asesores del Drive, reintentar en 1.5s para cuando carguen
-            if (desdeDrive.length === 0) {
-                setTimeout(() => invInicializarSolicitud(), 1500);
-            }
-
-            // Consecutivo
-            if (accessToken) invObtenerConsecutivo();
+            // Restaurar selección previa si aún existe
+            if (valorActual) sel.value = valorActual;
         }
 
         function invInicializarAprobacion() {
