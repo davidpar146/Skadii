@@ -1350,6 +1350,7 @@
                     <option value="addi">ADDI</option>
                     <option value="gora">Gora</option>
                     <option value="coordinadora">Coordinadora</option>
+                    <option value="ecredit">E-Credit</option>
                     <option value="retoma">Retoma (Parte de Pago)</option>
                     <option value="otro">Otro</option>
                 </select>
@@ -1384,6 +1385,22 @@
                     📸 Cédula Posterior
                 </button>
                 <button class="btn btn-photo" id="btn-contrato" onclick="tomarFoto('contrato')">
+                    📸 Contrato Firmado
+                </button>
+            </div>
+
+            <!-- Fotos para E-Credit -->
+            <div id="ecredit-photos-section" style="display: none;">
+                <div style="background: #ede9fe; padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
+                    <strong>📋 Documentos Obligatorios para E-Credit</strong>
+                </div>
+                <button class="btn btn-photo" id="btn-ecreditCedulaFrontal" onclick="tomarFoto('ecreditCedulaFrontal')" style="margin-bottom: 0.5rem;">
+                    📸 Cédula Frontal
+                </button>
+                <button class="btn btn-photo" id="btn-ecreditCedulaPosterior" onclick="tomarFoto('ecreditCedulaPosterior')" style="margin-bottom: 0.5rem;">
+                    📸 Cédula Posterior
+                </button>
+                <button class="btn btn-photo" id="btn-ecreditContrato" onclick="tomarFoto('ecreditContrato')">
                     📸 Contrato Firmado
                 </button>
             </div>
@@ -2929,6 +2946,7 @@
                     addi: 'ADDI',
                     gora: 'Gora',
                     coordinadora: 'Coordinadora',
+                    ecredit: 'E-Credit',
                     retoma: 'Retoma',
                     otro: 'Otro'
                 };
@@ -3335,6 +3353,7 @@
             photoSection.style.display = 'none';
             refGroup.style.display = 'none';
             creditSection.style.display = 'none';
+            document.getElementById('ecredit-photos-section').style.display = 'none';
             retomaSection.style.display = 'none';
             
             if (this.value === 'credito') {
@@ -3352,6 +3371,11 @@
                 refGroup.style.display = 'block';
                 refLabel.textContent = 'Referencia/Comprobante';
                 refInput.placeholder = 'Número de referencia';
+            } else if (this.value === 'ecredit') {
+                document.getElementById('ecredit-photos-section').style.display = 'block';
+                refGroup.style.display = 'block';
+                refLabel.textContent = 'Número de Aprobación E-Credit *';
+                refInput.placeholder = 'Código de aprobación';
             } else if (this.value === 'addi' || this.value === 'gora') {
                 photoSection.style.display = 'block';
                 refGroup.style.display = 'block';
@@ -3388,6 +3412,14 @@
             if (method === 'credito') {
                 if (!capturedPhotos.cedulaFrontal || !capturedPhotos.cedulaPosterior || !capturedPhotos.contrato) {
                     mostrarToast('⚠️ Debe capturar las 3 fotos para crédito');
+                    return;
+                }
+            }
+
+            // Validación para E-Credit
+            if (method === 'ecredit') {
+                if (!capturedPhotos.ecreditCedulaFrontal || !capturedPhotos.ecreditCedulaPosterior || !capturedPhotos.ecreditContrato) {
+                    mostrarToast('⚠️ Debe capturar las 3 fotos para E-Credit');
                     return;
                 }
             }
@@ -3456,6 +3488,7 @@
                 addi: '🔵 ADDI',
                 gora: '🟣 Gora',
                 coordinadora: '📦 Coordinadora',
+                ecredit: '🟪 E-Credit',
                 retoma: '🔄 Retoma',
                 otro: '💰 Otro'
             };
@@ -3509,6 +3542,7 @@
             document.getElementById('payment-photo-section').style.display = 'none';
             document.getElementById('payment-reference-group').style.display = 'none';
             document.getElementById('credit-photos-section').style.display = 'none';
+            document.getElementById('ecredit-photos-section').style.display = 'none';
             document.getElementById('retoma-section').style.display = 'none';
             document.getElementById('retoma-descripcion').value = '';
             document.getElementById('retoma-cantidad').value = '1';
@@ -3519,7 +3553,8 @@
         }
 
         function resetPhotoButtons() {
-            ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato', 
+            ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato',
+             'ecreditCedulaFrontal', 'ecreditCedulaPosterior', 'ecreditContrato',
              'retomaCedulaFrontal', 'retomaCedulaPosterior', 'retomaContrato'].forEach(type => {
                 const btn = document.getElementById(`btn-${type}`);
                 if (btn) {
@@ -3883,6 +3918,17 @@
                             } else if (type === 'soporte') {
                                 folder = FOLDER_IDS.soportes;
                                 fileName = `${docName}-Soporte-Pago.jpg`;
+                            }
+                            // Fotos de E-Credit
+                            else if (type === 'ecreditCedulaFrontal') {
+                                folder = FOLDER_IDS.cedulas;
+                                fileName = `${docName}-ECredit-Cedula-Frontal.jpg`;
+                            } else if (type === 'ecreditCedulaPosterior') {
+                                folder = FOLDER_IDS.cedulas;
+                                fileName = `${docName}-ECredit-Cedula-Posterior.jpg`;
+                            } else if (type === 'ecreditContrato') {
+                                folder = FOLDER_IDS.contratos;
+                                fileName = `${docName}-ECredit-Contrato.jpg`;
                             }
                             // Fotos de retoma
                             else if (type === 'retomaCedulaFrontal') {
@@ -6139,7 +6185,7 @@
         let ingEmpresaActiva = null;
         let ingRemisionesPendientes = [];
 
-        const ING_DIAS_PLAZO = { addi: 30, gora: 30, coordinadora: 15 };
+        const ING_DIAS_PLAZO = { addi: 30, gora: 30, coordinadora: 15, ecredit: 30 };
 
         function ingInicializar() {
             ingCargarResumen();
@@ -6156,7 +6202,7 @@
                 });
                 const archivos = r.result.files || [];
                 if (!archivos.length) {
-                    cont.innerHTML = '<p style="text-align:center; color:var(--gray-500); padding:1.5rem;">No hay cobros registrados aún.<br><small>Se crean automáticamente al guardar remisiones con ADDI, Gora o Coordinadora.</small></p>';
+                    cont.innerHTML = '<p style="text-align:center; color:var(--gray-500); padding:1.5rem;">No hay cobros registrados aún.<br><small>Se crean automáticamente al guardar remisiones con ADDI, Gora, Coordinadora o E-Credit.</small></p>';
                     return;
                 }
 
@@ -6200,8 +6246,8 @@
                         </div>
                     </div>`;
 
-                const empIconos = { addi: '🔵', gora: '🟣', coordinadora: '📦' };
-                const empColores = { addi: '#3b82f6', gora: '#8b5cf6', coordinadora: '#f59e0b' };
+                const empIconos = { addi: '🔵', gora: '🟣', coordinadora: '📦', ecredit: '🟪' };
+                const empColores = { addi: '#3b82f6', gora: '#8b5cf6', coordinadora: '#f59e0b', ecredit: '#7c3aed' };
 
                 Object.entries(porEmpresa).forEach(([empKey, data]) => {
                     data.remisiones.sort((a, b) =>
@@ -6612,15 +6658,26 @@
         }
 
         function invInicializarSolicitud() {
-            // Poblar select con asesores fijos — todos pueden solicitar bajas
+            // Poblar select con asesores — combina fijos + los cargados del Drive
             const sel = document.getElementById('inv-asesor');
             if (!sel) return;
             sel.innerHTML = '<option value="">Seleccione...</option>';
-            ASESORES_FIJOS.forEach(nombre => {
+
+            // Unir ASESORES_FIJOS con los cargados dinámicamente del Drive (clavesAsesores)
+            const desdeDrive = Object.keys(clavesAsesores);
+            const todosAsesores = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
+
+            todosAsesores.forEach(nombre => {
                 const opt = document.createElement('option');
                 opt.value = nombre; opt.textContent = nombre;
                 sel.appendChild(opt);
             });
+
+            // Si aún no hay asesores del Drive, reintentar en 1.5s para cuando carguen
+            if (desdeDrive.length === 0) {
+                setTimeout(() => invInicializarSolicitud(), 1500);
+            }
+
             // Consecutivo
             if (accessToken) invObtenerConsecutivo();
         }
@@ -7150,7 +7207,7 @@
 
         // ============= LÓGICA COBROS PENDIENTES (ADDI / GORA / COORDINADORA) =============
 
-        const EMPRESAS_FINANCIERAS = ['addi', 'gora', 'coordinadora'];
+        const EMPRESAS_FINANCIERAS = ['addi', 'gora', 'coordinadora', 'ecredit'];
 
         async function registrarCobrosPendientes(documento, docName) {
             const pagosFinancieros = (documento.payments || [])
