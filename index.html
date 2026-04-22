@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistema de Remisiones Skaoll</title>
+    <title>Sistema Skaoll v24</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
@@ -1218,7 +1218,7 @@
             <div id="colaboradores-section" style="display: none;">
                 <div class="form-group">
                     <label>Selecciona los colaboradores</label>
-                    <div id="colaboradores-checkboxes" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;"></div>
+                    <div id="colaboradores-checkboxes" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.5rem;"></div>
                 </div>
                 <div id="colaboradores-list"></div>
             </div>
@@ -3128,15 +3128,16 @@
             container.innerHTML = disponibles.map(nombre => {
                 const marcado = yaAgregados.includes(nombre);
                 return `
-                    <label style="display:flex; align-items:center; gap:0.75rem; padding:0.65rem 0.75rem;
-                                  border:2px solid ${marcado ? 'var(--primary)' : 'var(--gray-200)'};
-                                  border-radius:8px; cursor:pointer; font-weight:500;
-                                  background:${marcado ? '#dbeafe' : 'white'}; transition:all 0.2s;">
-                        <input type="checkbox" value="${nombre}" ${marcado ? 'checked' : ''}
-                               onchange="toggleColaborador('${nombre}', this.checked)"
-                               style="width:18px; height:18px; cursor:pointer; accent-color:var(--primary);">
-                        ${nombre}
-                    </label>`;
+                    <button type="button"
+                        onclick="toggleColaborador('${nombre}', ${!marcado})"
+                        style="padding:0.55rem 1rem; border-radius:20px; font-size:0.9rem; font-weight:600;
+                               cursor:pointer; transition:all 0.15s; white-space:nowrap;
+                               ${marcado
+                                   ? 'background:#2563eb; color:white; border:2px solid #1d4ed8; box-shadow:0 2px 6px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.15);'
+                                   : 'background:white; color:var(--gray-700); border:2px solid var(--gray-200); box-shadow:0 1px 3px rgba(0,0,0,0.08);'
+                               }">
+                        ${marcado ? '✓ ' : ''}${nombre}
+                    </button>`;
             }).join('');
         }
 
