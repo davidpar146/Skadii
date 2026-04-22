@@ -1609,16 +1609,6 @@
                     <label>Descripción *</label>
                     <input type="text" id="mant-equipo-descripcion" placeholder="iPhone 13 Pro Max 256GB">
                 </div>
-                <div class="form-row">
-                    <div class="form-group">
-                        <label>Marca</label>
-                        <input type="text" id="mant-equipo-marca" placeholder="Apple">
-                    </div>
-                    <div class="form-group">
-                        <label>Modelo</label>
-                        <input type="text" id="mant-equipo-modelo" placeholder="iPhone 13 Pro">
-                    </div>
-                </div>
                 <div class="form-group">
                     <label>IMEI / Serie *</label>
                     <div class="input-with-button">
@@ -1765,7 +1755,7 @@
             <div class="card">
                 <div class="card-title">👤 Asesor Responsable</div>
                 <div class="form-group">
-                    <input type="text" id="mant-asesor" placeholder="Tu nombre">
+                    <div id="mant-asesor-chips" style="display:flex; flex-wrap:wrap; gap:0.5rem; margin-top:0.25rem;"></div>
                 </div>
             </div>
 
@@ -4130,6 +4120,7 @@
                 actualizarDropdownAsesores();
                 // Repoblar select de inventario ahora que los asesores del Drive están disponibles
                 invRepoblarAsesor();
+                mantRenderizarChipsAsesor();
                 mostrarToast('✅ Asesores cargados: ' + Object.keys(clavesAsesores).length);
 
             } catch (error) {
@@ -4221,6 +4212,7 @@
                 setTimeout(() => {
                     mantIniciarFirma();
                     if (accessToken) mantObtenerConsecutivo();
+                    mantRenderizarChipsAsesor();
                 }, 100);
             }
             if (modulo === 'garantias') {
@@ -4578,13 +4570,39 @@
             }
         }
 
+        let mantAsesorActual = null;
+
+        function mantRenderizarChipsAsesor() {
+            const container = document.getElementById('mant-asesor-chips');
+            if (!container) return;
+            const desdeDrive = Object.keys(clavesAsesores);
+            const todos = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
+            container.innerHTML = todos.map(nombre => {
+                const marcado = mantAsesorActual === nombre;
+                return `<button type="button"
+                    onclick="mantSeleccionarAsesor('${nombre}')"
+                    style="padding:0.55rem 1rem; border-radius:20px; font-size:0.9rem; font-weight:600;
+                           cursor:pointer; transition:all 0.15s; white-space:nowrap;
+                           ${marcado
+                               ? 'background:#2563eb; color:white; border:2px solid #1d4ed8; box-shadow:0 2px 6px rgba(37,99,235,0.35), inset 0 1px 0 rgba(255,255,255,0.15);'
+                               : 'background:white; color:var(--gray-700); border:2px solid var(--gray-200); box-shadow:0 1px 3px rgba(0,0,0,0.08);'}">
+                    ${marcado ? '✓ ' : ''}${nombre}
+                </button>`;
+            }).join('');
+        }
+
+        function mantSeleccionarAsesor(nombre) {
+            mantAsesorActual = mantAsesorActual === nombre ? null : nombre;
+            mantRenderizarChipsAsesor();
+        }
+
         async function mantGuardar() {
             const nombre = document.getElementById('mant-cliente-nombre').value.trim();
             const telefono = document.getElementById('mant-cliente-telefono').value.trim();
             const descripcion = document.getElementById('mant-equipo-descripcion').value.trim();
             const imei = document.getElementById('mant-equipo-imei').value.trim();
             const falla = document.getElementById('mant-falla').value.trim();
-            const asesor = document.getElementById('mant-asesor').value.trim();
+            const asesor = mantAsesorActual || '';
 
             if (!nombre || !telefono || !descripcion || !imei || !falla || !asesor) {
                 mostrarToast('⚠️ Complete los campos obligatorios (*)');
@@ -4612,9 +4630,7 @@
                     },
                     equipo: {
                         descripcion,
-                        imei,
-                        marca: document.getElementById('mant-equipo-marca').value.trim(),
-                        modelo: document.getElementById('mant-equipo-modelo').value.trim()
+                        imei
                     },
                     falla_reportada: falla,
                     inspeccion_visual: mantDanos,
@@ -4658,12 +4674,13 @@
 
         function mantLimpiarFormulario() {
             ['mant-cliente-nombre','mant-cliente-telefono','mant-cliente-id',
-             'mant-equipo-descripcion','mant-equipo-marca','mant-equipo-modelo',
-             'mant-equipo-imei','mant-falla','mant-costo-estimado',
-             'mant-anticipo','mant-fecha-entrega','mant-asesor'].forEach(id => {
+             'mant-equipo-descripcion','mant-equipo-imei','mant-falla',
+             'mant-costo-estimado','mant-anticipo','mant-fecha-entrega'].forEach(id => {
                 const el = document.getElementById(id);
                 if (el) el.value = '';
             });
+            mantAsesorActual = null;
+            mantRenderizarChipsAsesor();
             mantDanos = { frente: [], posterior: [] };
             mantRenderizarMarcadores();
             mantActualizarListaDanos();
