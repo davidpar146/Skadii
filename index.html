@@ -1217,13 +1217,8 @@
 
             <div id="colaboradores-section" style="display: none;">
                 <div class="form-group">
-                    <label>Colaborador</label>
-                    <div class="input-with-button">
-                        <select id="colaborador-nombre">
-                            <option value="">Seleccione...</option>
-                        </select>
-                        <button onclick="agregarColaborador()">➕</button>
-                    </div>
+                    <label>Selecciona los colaboradores</label>
+                    <div id="colaboradores-checkboxes" style="display:flex; flex-direction:column; gap:0.5rem; margin-top:0.5rem;"></div>
                 </div>
                 <div id="colaboradores-list"></div>
             </div>
@@ -3117,36 +3112,50 @@
 
         const ASESORES_FIJOS = ['Camilo', 'Sirley', 'Josue', 'Male'];
 
+        // Renderiza los checkboxes de colaboradores disponibles
         function actualizarSelectColaboradores() {
             const asesorPrincipal = document.getElementById('asesor-principal').value;
-            const sel = document.getElementById('colaborador-nombre');
+            const container = document.getElementById('colaboradores-checkboxes');
+            if (!container) return;
+
+            // Combinar ASESORES_FIJOS con los del Drive
+            const desdeDrive = Object.keys(clavesAsesores);
+            const todos = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
+
+            const disponibles = todos.filter(n => n !== asesorPrincipal);
             const yaAgregados = currentColaboradores.map(c => c.nombre);
-            sel.innerHTML = '<option value="">Seleccione...</option>';
-            ASESORES_FIJOS.forEach(nombre => {
-                // Excluir el asesor principal y los ya agregados
-                if (nombre !== asesorPrincipal && !yaAgregados.includes(nombre)) {
-                    const opt = document.createElement('option');
-                    opt.value = nombre; opt.textContent = nombre;
-                    sel.appendChild(opt);
+
+            container.innerHTML = disponibles.map(nombre => {
+                const marcado = yaAgregados.includes(nombre);
+                return `
+                    <label style="display:flex; align-items:center; gap:0.75rem; padding:0.65rem 0.75rem;
+                                  border:2px solid ${marcado ? 'var(--primary)' : 'var(--gray-200)'};
+                                  border-radius:8px; cursor:pointer; font-weight:500;
+                                  background:${marcado ? '#dbeafe' : 'white'}; transition:all 0.2s;">
+                        <input type="checkbox" value="${nombre}" ${marcado ? 'checked' : ''}
+                               onchange="toggleColaborador('${nombre}', this.checked)"
+                               style="width:18px; height:18px; cursor:pointer; accent-color:var(--primary);">
+                        ${nombre}
+                    </label>`;
+            }).join('');
+        }
+
+        function toggleColaborador(nombre, agregar) {
+            if (agregar) {
+                if (!currentColaboradores.find(c => c.nombre === nombre)) {
+                    currentColaboradores.push({ id: Date.now(), nombre });
+                    mostrarToast('✅ ' + nombre + ' agregado como colaborador');
                 }
-            });
+            } else {
+                currentColaboradores = currentColaboradores.filter(c => c.nombre !== nombre);
+                mostrarToast('❌ ' + nombre + ' removido');
+            }
+            actualizarListaColaboradores();
+            actualizarSelectColaboradores(); // refrescar estilos
         }
 
         function agregarColaborador() {
-            const sel = document.getElementById('colaborador-nombre');
-            const nombre = sel.value;
-            if (!nombre) {
-                mostrarToast('⚠️ Selecciona un colaborador');
-                return;
-            }
-            if (currentColaboradores.find(c => c.nombre === nombre)) {
-                mostrarToast('⚠️ Ese colaborador ya fue agregado');
-                return;
-            }
-            currentColaboradores.push({ id: Date.now(), nombre });
-            actualizarListaColaboradores();
-            actualizarSelectColaboradores(); // refrescar para quitar el recién agregado
-            mostrarToast(`✅ ${nombre} agregado`);
+            // Mantenida por compatibilidad — ya no se usa con el nuevo flujo de checkboxes
         }
 
         function actualizarListaColaboradores() {
@@ -3155,23 +3164,16 @@
                 lista.innerHTML = '';
                 return;
             }
-
-            lista.innerHTML = currentColaboradores.map(c => `
-                <div class="item-card">
-                    <div class="item-header">
-                        <div style="flex: 1;">
-                            <div class="item-title">${c.nombre}</div>
-                        </div>
-                        <button class="btn-icon delete" onclick="eliminarColaborador(${c.id})">×</button>
-                    </div>
-                </div>
-            `).join('');
+            // Mostrar resumen compacto de colaboradores seleccionados
+            lista.innerHTML = '<div style="margin-top:0.5rem; padding:0.5rem 0.75rem; background:var(--gray-50); border-radius:8px; font-size:0.85rem; color:var(--gray-700);">' +
+                '👥 Colaboradores: <strong>' + currentColaboradores.map(c => c.nombre).join(', ') + '</strong></div>';
         }
 
         function eliminarColaborador(id) {
+            const colab = currentColaboradores.find(c => c.id === id);
             currentColaboradores = currentColaboradores.filter(c => c.id !== id);
             actualizarListaColaboradores();
-            actualizarSelectColaboradores(); // devolver al select el nombre eliminado
+            actualizarSelectColaboradores(); // refrescar checkboxes
         }
 
         function agregarItem() {
