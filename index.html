@@ -2697,6 +2697,386 @@
         }
 
 
+        // ============= REMISIONES: COLABORADORES, ÍTEMS Y PAGOS =============
+
+        const ASESORES_FIJOS = ['Camilo', 'Sirley', 'Josue', 'Male'];
+
+        function setEstado(estado) {
+            currentEstado = estado;
+            document.getElementById('estado-propio').classList.toggle('active', estado === 'propio');
+            document.getElementById('estado-prestado').classList.toggle('active', estado === 'prestado');
+            document.getElementById('estado-warning').style.display = 'none';
+            const grupo = document.getElementById('prestado-por-group');
+            if (estado === 'prestado') {
+                grupo.style.display = 'block';
+                prestadoresReset();
+                prestadoresRenderizar();
+            } else {
+                grupo.style.display = 'none';
+                prestadoresReset();
+            }
+        }
+
+        function setColaborativa(value) {
+            isColaborativa = value;
+            document.getElementById('collab-no').classList.toggle('active', !value);
+            document.getElementById('collab-si').classList.toggle('active', value);
+            document.getElementById('colaboradores-section').style.display = value ? 'block' : 'none';
+            if (value) actualizarSelectColaboradores();
+        }
+
+        function actualizarSelectColaboradores() {
+            const asesorPrincipal = document.getElementById('asesor-principal').value;
+            const container = document.getElementById('colaboradores-checkboxes');
+            if (!container) return;
+            const desdeDrive = Object.keys(clavesAsesores);
+            const todos = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
+            const disponibles = todos.filter(n => n !== asesorPrincipal);
+            const yaAgregados = currentColaboradores.map(c => c.nombre);
+            container.innerHTML = disponibles.map(nombre => {
+                const marcado = yaAgregados.includes(nombre);
+                return `<button type="button" onclick="toggleColaborador('${nombre}', ${!marcado})"
+                    style="padding:0.55rem 1rem; border-radius:20px; font-size:0.9rem; font-weight:600;
+                           cursor:pointer; transition:all 0.15s; white-space:nowrap;
+                           ${marcado
+                               ? 'background:#2563eb; color:white; border:2px solid #1d4ed8; box-shadow:0 2px 6px rgba(37,99,235,0.35);'
+                               : 'background:white; color:var(--gray-700); border:2px solid var(--gray-200); box-shadow:0 1px 3px rgba(0,0,0,0.08);'}">
+                    ${marcado ? '✓ ' : ''}${nombre}</button>`;
+            }).join('');
+        }
+
+        function toggleColaborador(nombre, agregar) {
+            if (agregar) {
+                if (!currentColaboradores.find(c => c.nombre === nombre)) {
+                    currentColaboradores.push({ id: Date.now(), nombre });
+                    mostrarToast('✅ ' + nombre + ' agregado como colaborador');
+                }
+            } else {
+                currentColaboradores = currentColaboradores.filter(c => c.nombre !== nombre);
+                mostrarToast('❌ ' + nombre + ' removido');
+            }
+            actualizarListaColaboradores();
+            actualizarSelectColaboradores();
+        }
+
+        function actualizarListaColaboradores() {
+            const lista = document.getElementById('colaboradores-list');
+            if (!lista) return;
+            if (currentColaboradores.length === 0) { lista.innerHTML = ''; return; }
+            lista.innerHTML = '<div style="margin-top:0.5rem; padding:0.5rem 0.75rem; background:var(--gray-50); border-radius:8px; font-size:0.85rem; color:var(--gray-700);">' +
+                '👥 Colaboradores: <strong>' + currentColaboradores.map(c => c.nombre).join(', ') + '</strong></div>';
+        }
+
+        function eliminarColaborador(id) {
+            currentColaboradores = currentColaboradores.filter(c => c.id !== id);
+            actualizarListaColaboradores();
+            actualizarSelectColaboradores();
+        }
+
+        function agregarItem() {
+            const descripcion = document.getElementById('item-descripcion').value.trim();
+            const cantidad = parseInt(document.getElementById('item-cantidad').value) || 1;
+            const valor = parsearValor(document.getElementById('item-valor').value);
+            const imei = document.getElementById('item-imei').value.trim();
+            const notas = document.getElementById('item-notas').value.trim();
+
+            if (!descripcion) { mostrarToast('⚠️ Ingrese una descripción'); return; }
+            if (!imei) { mostrarToast('⚠️ El IMEI es obligatorio'); return; }
+            if (!currentEstado) {
+                mostrarToast('⚠️ Seleccione el estado del equipo');
+                document.getElementById('estado-warning').style.display = 'block';
+                return;
+            }
+            const prestadoPor = document.getElementById('item-prestado-por').value.trim();
+            if (currentEstado === 'prestado' && !prestadoPor) {
+                mostrarToast('⚠️ Selecciona quién presta el equipo');
+                return;
+            }
+
+            const costo = parsearValor(document.getElementById('item-costo').value);
+
+            if (itemEditandoId !== null) {
+                const idx = currentItems.findIndex(i => i.id === itemEditandoId);
+                if (idx !== -1) {
+                    currentItems[idx] = {
+                        ...currentItems[idx],
+                        descripcion, cantidad, valor, costo, imei,
+                        estado: currentEstado,
+                        prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
+                        notas, total: cantidad * valor
+                    };
+                }
+                itemEditandoId = null;
+                document.querySelector('button[onclick="agregarItem()"]').innerHTML = '➕ Agregar Ítem';
+                mostrarToast('✅ Ítem actualizado');
+            } else {
+                currentItems.push({
+                    id: Date.now(), descripcion, cantidad, valor, costo, imei,
+                    estado: currentEstado,
+                    prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
+                    notas, total: cantidad * valor
+                });
+                mostrarToast('✅ Ítem agregado' + (costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''));
+            }
+            actualizarListaItems();
+            limpiarFormularioItem();
+        }
+
+        function editarItem(id) {
+            const item = currentItems.find(i => i.id === id);
+            if (!item) return;
+            document.getElementById('item-descripcion').value = item.descripcion;
+            document.getElementById('item-cantidad').value = item.cantidad;
+            document.getElementById('item-valor').value = new Intl.NumberFormat('es-CO').format(item.valor);
+            document.getElementById('item-imei').value = item.imei;
+            document.getElementById('item-notas').value = item.notas || '';
+            document.getElementById('item-costo').value = item.costo > 0
+                ? new Intl.NumberFormat('es-CO').format(item.costo) : '';
+            setEstado(item.estado);
+            if (item.estado === 'prestado') {
+                prestadorSeleccionado = item.prestadoPor || null;
+                document.getElementById('item-prestado-por').value = item.prestadoPor || '';
+                prestadoresRenderizar();
+            }
+            itemEditandoId = id;
+            document.querySelector('button[onclick="agregarItem()"]').innerHTML = '✅ Actualizar Ítem';
+            document.getElementById('item-descripcion').scrollIntoView({ behavior: 'smooth', block: 'center' });
+            mostrarToast('✏️ Editando ítem — modifica y presiona Actualizar');
+        }
+
+        function actualizarListaItems() {
+            const lista = document.getElementById('items-list');
+            const summary = document.getElementById('summary-items');
+            if (currentItems.length === 0) {
+                lista.innerHTML = ''; summary.style.display = 'none'; return;
+            }
+            const subtotal = currentItems.reduce((sum, item) => sum + item.total, 0);
+            lista.innerHTML = currentItems.map(item => `
+                <div class="item-card">
+                    <div class="item-header">
+                        <div style="flex: 1;">
+                            <div class="item-title">${item.descripcion}</div>
+                            ${item.imei ? `<div class="item-detail">📱 IMEI: ${item.imei}</div>` : ''}
+                            <div class="item-detail">
+                                Cantidad: ${item.cantidad} × ${formatMoney(item.valor)} = ${formatMoney(item.total)}
+                            </div>
+                            ${item.costo > 0 ? `<div class="item-detail" style="color: var(--gray-500);">💰 Costo: ${formatMoney(item.costo)}</div>` : ''}
+                            ${item.prestadoPor ? `<div class="item-detail" style="color: #d97706;">🤝 Prestado por: ${item.prestadoPor}</div>` : ''}
+                            ${item.notas ? `<div class="item-detail">📝 ${item.notas}</div>` : ''}
+                            <span class="badge badge-${item.estado}">${item.estado === 'propio' ? '🏢 Propio' : '🤝 Prestado'}</span>
+                        </div>
+                        <div class="item-actions">
+                            <button class="btn-icon edit" onclick="editarItem(${item.id})" title="Editar ítem">✏️</button>
+                            <button class="btn-icon delete" onclick="eliminarItem(${item.id})">×</button>
+                        </div>
+                    </div>
+                </div>`).join('');
+            document.getElementById('total-items').textContent = formatMoney(subtotal);
+            summary.style.display = 'block';
+            actualizarResumenPagos();
+        }
+
+        function eliminarItem(id) {
+            currentItems = currentItems.filter(item => item.id !== id);
+            actualizarListaItems();
+        }
+
+        function limpiarFormularioItem() {
+            document.getElementById('item-descripcion').value = '';
+            document.getElementById('item-cantidad').value = '1';
+            document.getElementById('item-valor').value = '';
+            document.getElementById('item-costo').value = '';
+            document.getElementById('item-imei').value = '';
+            document.getElementById('item-notas').value = '';
+            prestadoresReset();
+            document.getElementById('prestado-por-group').style.display = 'none';
+            currentEstado = null;
+            itemEditandoId = null;
+            document.getElementById('estado-propio').classList.remove('active');
+            document.getElementById('estado-prestado').classList.remove('active');
+            document.getElementById('estado-warning').style.display = 'none';
+            const btnAgregar = document.querySelector('button[onclick="agregarItem()"]');
+            if (btnAgregar) btnAgregar.innerHTML = '➕ Agregar Ítem';
+        }
+
+        // === Listeners para método de pago (cambia formularios visibles) ===
+        document.addEventListener('DOMContentLoaded', () => {
+            const pmSelect = document.getElementById('payment-method');
+            if (pmSelect) {
+                pmSelect.addEventListener('change', function() {
+                    const photoSection = document.getElementById('payment-photo-section');
+                    const refGroup = document.getElementById('payment-reference-group');
+                    const refLabel = document.getElementById('payment-reference-label');
+                    const refInput = document.getElementById('payment-reference');
+                    const creditSection = document.getElementById('credit-photos-section');
+                    const retomaSection = document.getElementById('retoma-section');
+                    photoSection.style.display = 'none';
+                    refGroup.style.display = 'none';
+                    creditSection.style.display = 'none';
+                    document.getElementById('ecredit-photos-section').style.display = 'none';
+                    retomaSection.style.display = 'none';
+                    if (this.value === 'credito') {
+                        creditSection.style.display = 'block';
+                        refGroup.style.display = 'block';
+                        refLabel.textContent = 'Referencia/Comprobante';
+                        refInput.placeholder = 'Número de referencia';
+                    } else if (this.value === 'transferencia' || this.value === 'coordinadora') {
+                        photoSection.style.display = 'block';
+                        refGroup.style.display = 'block';
+                        refLabel.textContent = 'Banco al que ingresó *';
+                        refInput.placeholder = 'Nombre del banco';
+                    } else if (this.value === 'tarjeta') {
+                        photoSection.style.display = 'block';
+                        refGroup.style.display = 'block';
+                        refLabel.textContent = 'Referencia/Comprobante';
+                        refInput.placeholder = 'Número de referencia';
+                    } else if (this.value === 'ecredit') {
+                        document.getElementById('ecredit-photos-section').style.display = 'block';
+                        refGroup.style.display = 'block';
+                        refLabel.textContent = 'Número de Aprobación E-Credit *';
+                        refInput.placeholder = 'Código de aprobación';
+                    } else if (this.value === 'addi' || this.value === 'gora') {
+                        photoSection.style.display = 'block';
+                        refGroup.style.display = 'block';
+                        refLabel.textContent = this.value === 'gora' ? 'Número de Aprobación Gora *' : 'Número de Aprobación ADDI *';
+                        refInput.placeholder = 'Código de aprobación';
+                    } else if (this.value === 'retoma') {
+                        retomaSection.style.display = 'block';
+                    }
+                });
+            }
+        });
+
+        function agregarPago() {
+            const method = document.getElementById('payment-method').value;
+            const amount = parsearValor(document.getElementById('payment-amount').value);
+            const reference = document.getElementById('payment-reference').value.trim();
+            if (!method || amount <= 0) { mostrarToast('⚠️ Complete los datos del pago'); return; }
+            if ((method === 'transferencia' || method === 'coordinadora') && !reference) {
+                mostrarToast('⚠️ Debe ingresar el banco'); return;
+            }
+            if ((method === 'transferencia' || method === 'tarjeta' || method === 'addi' || method === 'gora' || method === 'coordinadora') && !capturedPhotos.soporte) {
+                mostrarToast('⚠️ Debe capturar foto del comprobante'); return;
+            }
+            if (method === 'credito') {
+                if (!capturedPhotos.cedulaFrontal || !capturedPhotos.cedulaPosterior || !capturedPhotos.contrato) {
+                    mostrarToast('⚠️ Debe capturar las 3 fotos para crédito'); return;
+                }
+            }
+            if (method === 'ecredit') {
+                if (!capturedPhotos.ecreditCedulaFrontal || !capturedPhotos.ecreditCedulaPosterior || !capturedPhotos.ecreditContrato) {
+                    mostrarToast('⚠️ Debe capturar las 3 fotos para E-Credit'); return;
+                }
+            }
+            if (method === 'retoma') {
+                if (!capturedPhotos.retomaCedulaFrontal || !capturedPhotos.retomaCedulaPosterior || !capturedPhotos.retomaContrato) {
+                    mostrarToast('⚠️ Debe capturar las 3 fotos para retoma'); return;
+                }
+            }
+
+            const payment = { id: Date.now(), method, amount, reference, photos: { ...capturedPhotos } };
+            if (method === 'retoma') {
+                const retomaDesc = document.getElementById('retoma-descripcion').value.trim();
+                const retomaImei = document.getElementById('retoma-imei').value.trim();
+                if (!retomaDesc) { mostrarToast('⚠️ Ingrese descripción del equipo en retoma'); return; }
+                if (!retomaImei) { mostrarToast('⚠️ Ingrese IMEI del equipo en retoma'); return; }
+                payment.retomaItem = {
+                    descripcion: retomaDesc,
+                    cantidad: parseInt(document.getElementById('retoma-cantidad').value) || 1,
+                    valor: parsearValor(document.getElementById('retoma-valor').value),
+                    imei: retomaImei,
+                    estado: document.getElementById('retoma-estado').value
+                };
+                payment.amount = payment.retomaItem.cantidad * payment.retomaItem.valor;
+            }
+            currentPayments.push(payment);
+            actualizarListaPagos();
+            limpiarFormularioPago();
+            mostrarToast('✅ Pago agregado');
+        }
+
+        function actualizarListaPagos() {
+            const lista = document.getElementById('payments-list');
+            const summary = document.getElementById('summary-payments');
+            if (currentPayments.length === 0) { lista.innerHTML = ''; summary.style.display = 'none'; return; }
+            const methodNames = {
+                efectivo: '💵 Efectivo', transferencia: '🏦 Transferencia',
+                tarjeta: '💳 Tarjeta', credito: '📋 Crédito', addi: '🔵 ADDI',
+                gora: '🟣 Gora', coordinadora: '📦 Coordinadora',
+                ecredit: '🟪 E-Credit', retoma: '🔄 Retoma', otro: '💰 Otro'
+            };
+            lista.innerHTML = currentPayments.map(pay => `
+                <div class="payment-card">
+                    <div style="display: flex; justify-content: space-between; align-items: start;">
+                        <div style="flex: 1;">
+                            <div style="font-weight: 600;">${methodNames[pay.method]}</div>
+                            ${pay.reference ? `<div class="item-detail">Ref: ${pay.reference}</div>` : ''}
+                            ${pay.photos && Object.keys(pay.photos).length > 0 ? '<div class="item-detail">📷 Con fotos adjuntas</div>' : ''}
+                            ${pay.retomaItem ? `
+                                <div style="margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 6px;">
+                                    <strong>📱 ${pay.retomaItem.descripcion}</strong>
+                                    <div class="item-detail">IMEI: ${pay.retomaItem.imei}</div>
+                                    <div class="item-detail">Estado: ${pay.retomaItem.estado}</div>
+                                </div>` : ''}
+                            <div style="font-size: 1.125rem; font-weight: 700; color: var(--success); margin-top: 0.5rem;">
+                                ${formatMoney(pay.amount)}
+                            </div>
+                        </div>
+                        <button class="btn-icon delete" onclick="eliminarPago(${pay.id})">×</button>
+                    </div>
+                </div>`).join('');
+            summary.style.display = 'block';
+            actualizarResumenPagos();
+        }
+
+        function actualizarResumenPagos() {
+            const totalItems = currentItems.reduce((sum, item) => sum + item.total, 0);
+            const totalPaid = currentPayments.reduce((sum, pay) => sum + pay.amount, 0);
+            const balance = totalItems - totalPaid;
+            const tp = document.getElementById('total-paid');
+            const bd = document.getElementById('balance-due');
+            if (tp) tp.textContent = formatMoney(totalPaid);
+            if (bd) {
+                bd.textContent = formatMoney(balance);
+                bd.style.color = balance > 0 ? 'var(--danger)' : 'var(--success)';
+            }
+        }
+
+        function eliminarPago(id) {
+            currentPayments = currentPayments.filter(pay => pay.id !== id);
+            actualizarListaPagos();
+        }
+
+        function limpiarFormularioPago() {
+            document.getElementById('payment-method').value = '';
+            document.getElementById('payment-amount').value = '';
+            document.getElementById('payment-reference').value = '';
+            document.getElementById('payment-photo-section').style.display = 'none';
+            document.getElementById('payment-reference-group').style.display = 'none';
+            document.getElementById('credit-photos-section').style.display = 'none';
+            document.getElementById('ecredit-photos-section').style.display = 'none';
+            document.getElementById('retoma-section').style.display = 'none';
+            document.getElementById('retoma-descripcion').value = '';
+            document.getElementById('retoma-cantidad').value = '1';
+            document.getElementById('retoma-valor').value = '';
+            document.getElementById('retoma-imei').value = '';
+            capturedPhotos = {};
+            resetPhotoButtons();
+        }
+
+        function resetPhotoButtons() {
+            ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato',
+             'ecreditCedulaFrontal', 'ecreditCedulaPosterior', 'ecreditContrato',
+             'retomaCedulaFrontal', 'retomaCedulaPosterior', 'retomaContrato'].forEach(type => {
+                const btn = document.getElementById(`btn-${type}`);
+                if (btn) {
+                    btn.classList.remove('captured');
+                    btn.textContent = btn.textContent.replace('✅', '📸');
+                }
+            });
+        }
+
+
         // ============= CÁMARA Y GALERÍA =============
 
         function tomarFoto(type) {
