@@ -1021,6 +1021,52 @@
         </div>
     </div>
 
+    <!-- Modal de Éxito de Garantía / Cambio -->
+    <div id="gar-success-modal" class="success-modal">
+        <div class="success-content">
+            <div class="success-icon">✓</div>
+            <h2 style="margin-bottom: 1rem;">¡Garantía Guardada!</h2>
+            <div style="background: var(--gray-50); padding: 1rem; border-radius: 8px; margin-bottom: 1rem; text-align: left;">
+                <p style="margin-bottom: 0.5rem;">
+                    <strong style="color: var(--primary);"><span id="gar-success-doc-number">Garantia-0001-01</span></strong>
+                </p>
+                <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
+                    <strong>📅 Fecha:</strong> <span id="gar-success-fecha">-</span>
+                </p>
+                <p style="margin-bottom: 0.5rem; color: var(--gray-700);">
+                    <strong>👤 Cliente:</strong> <span id="gar-success-cliente">-</span>
+                </p>
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
+                    <strong style="color: var(--danger);">📥 Equipo que entra:</strong>
+                    <div id="gar-success-entra" style="font-size:0.9rem; color:var(--gray-700); margin-top:0.25rem;">-</div>
+                </div>
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
+                    <strong style="color: var(--success);">📤 Equipo que sale:</strong>
+                    <div id="gar-success-sale" style="font-size:0.9rem; color:var(--gray-700); margin-top:0.25rem;">-</div>
+                </div>
+                <div id="gar-success-adicional-box" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200); display:none;">
+                    <strong style="color: var(--gray-800);">💰 Pago adicional:</strong>
+                    <span id="gar-success-adicional" style="font-weight:700; color:var(--warning); margin-left:0.5rem;">-</span>
+                </div>
+                <div id="gar-success-prestado-box" style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200); display:none;">
+                    <strong style="color:#d97706;">🤝 Equipo prestado por:</strong>
+                    <span id="gar-success-prestado" style="font-weight:600; color:#d97706; margin-left:0.5rem;">-</span>
+                </div>
+                <div style="margin-top: 0.75rem; padding-top: 0.75rem; border-top: 1px solid var(--gray-200);">
+                    <strong style="color: var(--gray-800);">✍️ Firma del cliente:</strong>
+                    <div style="margin-top:0.5rem; text-align:center;">
+                        <img id="gar-success-firma" src="" alt="Firma del cliente"
+                             style="max-width:180px; max-height:70px; border:1px solid var(--gray-200); border-radius:6px; background:white; padding:2px;">
+                    </div>
+                </div>
+            </div>
+            <p style="font-size: 0.875rem; color: var(--gray-500);">
+                ✅ Datos guardados en Google Drive
+            </p>
+            <button class="btn btn-primary" onclick="cerrarExitoGarantia()" style="margin-top: 1.5rem;">Aceptar</button>
+        </div>
+    </div>
+
     <!-- ===== MÓDULO MANTENIMIENTOS ===== -->
     <div class="container" id="modulo-mantenimientos" style="display: none;">
         <div style="display:flex; gap:0.5rem; margin-bottom:1rem;">
@@ -1434,6 +1480,53 @@
             <div class="form-group">
                 <label>Precio del Equipo Nuevo</label>
                 <input type="text" id="gar-sale-precio" placeholder="0" oninput="formatearInput(this); garCalcularDiferencia()">
+            </div>
+
+            <!-- Estado del equipo que sale: propio o prestado (misma línea que en Remisiones) -->
+            <div class="form-group" style="margin-top:0.5rem;">
+                <label>Estado del Equipo que Sale *</label>
+                <div class="toggle-group">
+                    <button class="toggle-btn" id="gar-sale-estado-propio" onclick="garSaleSetEstado('propio')">🏢 Propio</button>
+                    <button class="toggle-btn" id="gar-sale-estado-prestado" onclick="garSaleSetEstado('prestado')">🤝 Prestado</button>
+                </div>
+                <div id="gar-sale-estado-warning" style="display:none; color:var(--danger); font-size:0.875rem; margin-top:0.5rem;">
+                    ⚠️ Debe seleccionar el estado del equipo que sale
+                </div>
+            </div>
+
+            <!-- Selector visual de prestadores (igual que en Remisiones) -->
+            <div class="form-group" id="gar-sale-prestado-por-group" style="display:none;">
+                <label>Prestado por *</label>
+                <p style="font-size:0.78rem; color:var(--gray-500); margin-bottom:0.4rem;">
+                    Toca el nombre del prestador
+                </p>
+                <div id="gar-sale-prest-chips-list" class="prest-chips-container"></div>
+                <button id="gar-sale-prest-ver-mas-btn" type="button" class="prest-ver-mas-btn"
+                        onclick="garSalePrestadoresVerMas()" style="display:none;">▼ Ver más (5)</button>
+                <div id="gar-sale-prest-otro-input-box" class="prest-otro-input-box" style="display:none;">
+                    <div class="label">👤 Agregar nuevo prestador</div>
+                    <input type="text" id="gar-sale-prest-otro-input" placeholder="Nombre del prestador..."
+                           oninput="garSalePrestadoresValidarNuevo()" autocomplete="off">
+                    <div id="gar-sale-prest-duplicado-warning"></div>
+                    <div class="prest-otro-buttons">
+                        <button type="button" class="prest-otro-confirm" onclick="garSalePrestadoresConfirmarNuevo()">
+                            Agregar y seleccionar
+                        </button>
+                        <button type="button" class="prest-otro-cancel" onclick="garSalePrestadoresCancelarNuevo()">
+                            Cancelar
+                        </button>
+                    </div>
+                </div>
+                <input type="hidden" id="gar-sale-item-prestado-por">
+            </div>
+
+            <!-- Costo del equipo (lo que se pagará al prestador) -->
+            <div class="form-group" id="gar-sale-costo-group" style="display:none;">
+                <label>Costo del Equipo <span style="font-size:0.75rem; color:var(--gray-500);">(Lo que se pagará al prestador)</span></label>
+                <input type="text" id="gar-sale-costo" placeholder="0" oninput="formatearInput(this)" onblur="formatearInput(this)" inputmode="numeric">
+                <div style="font-size:0.75rem; color:var(--gray-600); margin-top:0.25rem;">
+                    💡 Campo interno. No visible para el cliente.
+                </div>
             </div>
         </div>
 
@@ -4280,6 +4373,10 @@
         let garFirmaCtx = null;
         let garFirmaActiva = false;
         let garIMEIScanTarget = 'entra';
+        // Estado propio/prestado del equipo que SALE (reutiliza la lista de prestadores)
+        let garSaleEstado = null;                  // 'propio' | 'prestado'
+        let garSalePrestadorSeleccionado = null;
+        let garSalePrestadoresMostrados = 5;
 
         async function garBuscarRemision() {
             const numero = document.getElementById('gar-remision-numero').value;
@@ -4461,6 +4558,139 @@
             if (garFirmaCtx) garFirmaCtx.clearRect(0, 0, canvas.width, canvas.height);
         }
 
+        // ===== ESTADO PROPIO/PRESTADO DEL EQUIPO QUE SALE (misma lógica que Remisiones) =====
+        // Reutiliza la lista compartida `prestadoresLista` y los helpers
+        // `normalizarPrestador`, `prestadoresGuardarLista`, `prestadoresIncrementarFrecuencia`.
+        function garSaleSetEstado(estado) {
+            garSaleEstado = estado;
+            document.getElementById('gar-sale-estado-propio').classList.toggle('active', estado === 'propio');
+            document.getElementById('gar-sale-estado-prestado').classList.toggle('active', estado === 'prestado');
+            document.getElementById('gar-sale-estado-warning').style.display = 'none';
+            const grupoPrest = document.getElementById('gar-sale-prestado-por-group');
+            const grupoCosto = document.getElementById('gar-sale-costo-group');
+            if (estado === 'prestado') {
+                grupoPrest.style.display = 'block';
+                grupoCosto.style.display = 'block';
+                garSalePrestadoresReset();
+                garSalePrestadoresRenderizar();
+            } else {
+                grupoPrest.style.display = 'none';
+                grupoCosto.style.display = 'none';
+                garSalePrestadoresReset();
+            }
+        }
+
+        function garSalePrestadoresRenderizar() {
+            const container = document.getElementById('gar-sale-prest-chips-list');
+            const verMasBtn = document.getElementById('gar-sale-prest-ver-mas-btn');
+            if (!container) return;
+            const ordenados = [...prestadoresLista].sort((a, b) => b.frecuencia - a.frecuencia);
+            const aMostrar = ordenados.slice(0, garSalePrestadoresMostrados);
+            const restantes = ordenados.length - aMostrar.length;
+            const mostrarOtroAlFinal = restantes <= 0;
+            const chipsHTML = aMostrar.map((p, idx) => {
+                const seleccionado = garSalePrestadorSeleccionado === p.nombre;
+                const tenue = idx >= 5;
+                let clases = 'prest-chip';
+                if (seleccionado) clases += ' selected';
+                else if (tenue) clases += ' tenue';
+                return `<button type="button" class="${clases}"
+                    onclick="garSalePrestadoresSeleccionar('${p.nombre.replace(/'/g, "\\'")}')">${p.nombre}</button>`;
+            }).join('');
+            const chipOtroHTML = mostrarOtroAlFinal ? `
+                <button type="button" class="prest-chip prest-chip-otro${garSalePrestadorSeleccionado === '__OTRO__' ? ' selected' : ''}"
+                    onclick="garSalePrestadoresSeleccionarOtro()">+ OTRO</button>
+            ` : '';
+            container.innerHTML = chipsHTML + chipOtroHTML;
+            if (restantes > 0) {
+                const siguiente = Math.min(5, restantes);
+                verMasBtn.textContent = `▼ Ver más (${siguiente})`;
+                verMasBtn.style.display = 'block';
+            } else {
+                verMasBtn.style.display = 'none';
+            }
+        }
+
+        function garSalePrestadoresVerMas() {
+            garSalePrestadoresMostrados += 5;
+            garSalePrestadoresRenderizar();
+        }
+
+        function garSalePrestadoresSeleccionar(nombre) {
+            garSalePrestadorSeleccionado = nombre;
+            document.getElementById('gar-sale-item-prestado-por').value = nombre;
+            document.getElementById('gar-sale-prest-otro-input-box').style.display = 'none';
+            document.getElementById('gar-sale-prest-otro-input').value = '';
+            document.getElementById('gar-sale-prest-duplicado-warning').innerHTML = '';
+            garSalePrestadoresRenderizar();
+        }
+
+        function garSalePrestadoresSeleccionarOtro() {
+            garSalePrestadorSeleccionado = '__OTRO__';
+            document.getElementById('gar-sale-item-prestado-por').value = '';
+            document.getElementById('gar-sale-prest-otro-input-box').style.display = 'block';
+            document.getElementById('gar-sale-prest-otro-input').value = '';
+            document.getElementById('gar-sale-prest-duplicado-warning').innerHTML = '';
+            garSalePrestadoresRenderizar();
+            setTimeout(() => document.getElementById('gar-sale-prest-otro-input').focus(), 100);
+        }
+
+        function garSalePrestadoresValidarNuevo() {
+            const input = document.getElementById('gar-sale-prest-otro-input').value;
+            const warning = document.getElementById('gar-sale-prest-duplicado-warning');
+            if (!input.trim()) { warning.innerHTML = ''; return; }
+            const normalizado = normalizarPrestador(input);
+            const existente = prestadoresLista.find(p => normalizarPrestador(p.nombre) === normalizado);
+            if (existente) {
+                warning.innerHTML = `
+                    <div class="prest-duplicado-warning">
+                        ⚠️ Ya existe: <strong>${existente.nombre}</strong> — Se seleccionará el existente al confirmar.
+                    </div>`;
+            } else {
+                warning.innerHTML = '';
+            }
+        }
+
+        async function garSalePrestadoresConfirmarNuevo() {
+            const input = document.getElementById('gar-sale-prest-otro-input').value.trim();
+            if (!input) { mostrarToast('⚠️ Escribe el nombre del prestador'); return; }
+            const normalizado = normalizarPrestador(input);
+            const existente = prestadoresLista.find(p => normalizarPrestador(p.nombre) === normalizado);
+            if (existente) {
+                garSalePrestadoresSeleccionar(existente.nombre);
+                mostrarToast(`✅ Seleccionado prestador existente: ${existente.nombre}`);
+                return;
+            }
+            const nuevoPrestador = { nombre: normalizado, frecuencia: 0 };
+            prestadoresLista.push(nuevoPrestador);
+            prestadoresGuardarLista().catch(e => console.error('Error guardando:', e));
+            garSalePrestadoresSeleccionar(normalizado);
+            mostrarToast(`✅ Nuevo prestador agregado: ${normalizado}`);
+        }
+
+        function garSalePrestadoresCancelarNuevo() {
+            garSalePrestadorSeleccionado = null;
+            document.getElementById('gar-sale-item-prestado-por').value = '';
+            document.getElementById('gar-sale-prest-otro-input-box').style.display = 'none';
+            document.getElementById('gar-sale-prest-otro-input').value = '';
+            document.getElementById('gar-sale-prest-duplicado-warning').innerHTML = '';
+            garSalePrestadoresRenderizar();
+        }
+
+        function garSalePrestadoresReset() {
+            garSalePrestadorSeleccionado = null;
+            garSalePrestadoresMostrados = 5;
+            const hidden = document.getElementById('gar-sale-item-prestado-por');
+            if (hidden) hidden.value = '';
+            const otroBox = document.getElementById('gar-sale-prest-otro-input-box');
+            if (otroBox) otroBox.style.display = 'none';
+            const otroInput = document.getElementById('gar-sale-prest-otro-input');
+            if (otroInput) otroInput.value = '';
+            const warning = document.getElementById('gar-sale-prest-duplicado-warning');
+            if (warning) warning.innerHTML = '';
+            garSalePrestadoresRenderizar();
+        }
+
         function garPoblarAutorizadores() {
             const select = document.getElementById('gar-auth-asesor');
             select.innerHTML = '<option value="">Seleccione...</option>';
@@ -4490,6 +4720,17 @@
             if (!entraDesc || !entraImei || !saleDesc || !saleImei || !motivo) {
                 mostrarToast('⚠️ Complete todos los campos obligatorios (*)'); return;
             }
+            if (!garSaleEstado) {
+                mostrarToast('⚠️ Seleccione si el equipo que sale es propio o prestado');
+                document.getElementById('gar-sale-estado-warning').style.display = 'block';
+                document.getElementById('gar-sale-estado-propio').scrollIntoView({ behavior: 'smooth', block: 'center' });
+                return;
+            }
+            const salePrestadoPor = document.getElementById('gar-sale-item-prestado-por').value.trim();
+            if (garSaleEstado === 'prestado' && !salePrestadoPor) {
+                mostrarToast('⚠️ Selecciona quién presta el equipo que sale');
+                return;
+            }
             const numRaw = garRemisionOriginal.numero ?? garRemisionOriginal.remision ?? '';
             const numOriginal = numRaw ? String(numRaw).replace('Remision-','').padStart(4, '0') : '????';
             const precioEntra = parsearValor(document.getElementById('gar-entra-precio').value);
@@ -4508,7 +4749,10 @@
                         ${diff > 0 ? 'Cobrar ' : diff < 0 ? 'Devolver ' : 'Sin diferencia '}${diff !== 0 ? formatMoney(Math.abs(diff)) : ''}
                     </span>
                 </div>
-                <div class="gar-resumen-row"><span>Destino equipo:</span><span>${garDestinoActual}</span></div>`;
+                <div class="gar-resumen-row"><span>Destino equipo:</span><span>${garDestinoActual}</span></div>
+                ${garSaleEstado === 'prestado' && salePrestadoPor
+                    ? `<div class="gar-resumen-row"><span>Equipo sale (prestado):</span><span style="color:#d97706; font-weight:700;">🤝 ${salePrestadoPor}${parsearValor(document.getElementById('gar-sale-costo').value) > 0 ? ' · ' + formatMoney(parsearValor(document.getElementById('gar-sale-costo').value)) : ''}</span></div>`
+                    : ''}`;
             garPoblarAutorizadores();
             const select = document.getElementById('gar-auth-asesor');
             if (select.options.length <= 1 && Object.keys(clavesAsesores).length === 0) {
@@ -4559,7 +4803,12 @@
                     equipo_que_sale: {
                         descripcion: document.getElementById('gar-sale-descripcion').value.trim(),
                         imei: document.getElementById('gar-sale-imei').value.trim(),
-                        precio: precioSale
+                        precio: precioSale,
+                        estado: garSaleEstado || 'propio',
+                        prestadoPor: garSaleEstado === 'prestado'
+                            ? document.getElementById('gar-sale-item-prestado-por').value.trim() : '',
+                        costo: garSaleEstado === 'prestado'
+                            ? parsearValor(document.getElementById('gar-sale-costo').value) : 0
                     },
                     diferencia: {
                         monto: Math.abs(diff),
@@ -4573,8 +4822,14 @@
                 if (capturedPhotos['garEntra']) {
                     await subirImagenDrive(capturedPhotos['garEntra'], `${docName}-Equipo-Entra.jpg`, FOLDER_IDS.fotosGarantias);
                 }
+                // Si el equipo que SALE fue prestado, registrarlo para el reporte de pago a prestadores
+                if (doc.equipo_que_sale.estado === 'prestado' && doc.equipo_que_sale.prestadoPor) {
+                    await garRegistrarPrestadoEntregado(doc, docName, autorizador);
+                    await prestadoresIncrementarFrecuencia(doc.equipo_que_sale.prestadoPor);
+                }
                 garLimpiarFormulario();
                 mostrarToast(`✅ ${docName} guardada y autorizada por ${autorizador}`);
+                mostrarExitoGarantia(doc, docName);
             } catch (error) {
                 console.error('Error guardando garantía:', error);
                 mostrarToast('❌ Error al guardar. Revisa consola.');
@@ -4594,9 +4849,22 @@
             document.querySelector('.destino-btn[data-destino="inventario"]').classList.add('active');
             ['gar-remision-numero','gar-motivo-descripcion','gar-entra-descripcion',
              'gar-entra-imei','gar-entra-precio','gar-sale-descripcion',
-             'gar-sale-imei','gar-sale-precio'].forEach(id => {
+             'gar-sale-imei','gar-sale-precio','gar-sale-costo'].forEach(id => {
                 const el = document.getElementById(id); if (el) el.value = '';
             });
+            // Reset estado propio/prestado del equipo que sale
+            garSaleEstado = null;
+            const btnPropio = document.getElementById('gar-sale-estado-propio');
+            const btnPrestado = document.getElementById('gar-sale-estado-prestado');
+            if (btnPropio) btnPropio.classList.remove('active');
+            if (btnPrestado) btnPrestado.classList.remove('active');
+            const warnEstado = document.getElementById('gar-sale-estado-warning');
+            if (warnEstado) warnEstado.style.display = 'none';
+            const grpPrest = document.getElementById('gar-sale-prestado-por-group');
+            if (grpPrest) grpPrest.style.display = 'none';
+            const grpCosto = document.getElementById('gar-sale-costo-group');
+            if (grpCosto) grpCosto.style.display = 'none';
+            garSalePrestadoresReset();
             document.getElementById('gar-remision-resultado').innerHTML = '';
             document.getElementById('gar-diferencia-display').innerHTML =
                 '<p style="color:var(--gray-500); font-size:0.85rem; text-align:center;">Complete los precios para calcular la diferencia</p>';
@@ -6084,6 +6352,90 @@
                     await subirArchivoDrive(JSON.stringify(registro, null, 2), nombreArchivo, FOLDER_IDS.prestamosPagos);
                 } catch (e) { console.error(`Error registrando prestado ${nombreArchivo}:`, e); }
             }
+        }
+
+        // Registra el equipo que SALE en una garantía cuando fue prestado.
+        // Usa EXACTAMENTE el mismo formato que registrarPrestadosEnDrive y nombre 'Prestado-...'
+        // para que el módulo "Pagar Prestadores" lo recoja automáticamente.
+        async function garRegistrarPrestadoEntregado(doc, docName, asesor) {
+            const sale = doc.equipo_que_sale;
+            if (!sale || sale.estado !== 'prestado' || !sale.prestadoPor) return;
+            const prestador = sale.prestadoPor.trim();
+            const nombreArchivo = `Prestado-${docName}-${prestador.replace(/\s+/g, '-')}.json`;
+            const registro = {
+                tipo: 'prestado_pendiente', estado: 'pendiente',
+                prestador, remision: docName,
+                fecha_remision: doc.fecha,
+                cliente: doc.cliente, asesor: asesor || '',
+                origen: 'garantia',
+                equipos: [{
+                    descripcion: sale.descripcion, imei: sale.imei,
+                    costo: sale.costo || 0, valor_venta: sale.precio || 0,
+                    notas: `Entregado en ${docName} (cambio/garantía)`
+                }],
+                total_costo: sale.costo || 0,
+                pago: null
+            };
+            try {
+                await subirArchivoDrive(JSON.stringify(registro, null, 2), nombreArchivo, FOLDER_IDS.prestamosPagos);
+            } catch (e) { console.error(`Error registrando prestado de garantía ${nombreArchivo}:`, e); }
+        }
+
+        // Cuadro de éxito de garantía: cliente, equipo que entra/sale, pago adicional,
+        // prestador (si aplica) y firma del cliente en tamaño reducido.
+        function mostrarExitoGarantia(doc, docName) {
+            document.getElementById('gar-success-doc-number').textContent = docName;
+            document.getElementById('gar-success-fecha').textContent = formatearFechaCorta(doc.fecha);
+            document.getElementById('gar-success-cliente').textContent = doc.cliente || '-';
+
+            const entra = doc.equipo_que_entra || {};
+            document.getElementById('gar-success-entra').innerHTML =
+                `${entra.descripcion || '-'}${entra.imei ? `<br><span style="font-size:0.8rem; color:var(--gray-500);">IMEI: ${entra.imei}</span>` : ''}`;
+
+            const sale = doc.equipo_que_sale || {};
+            document.getElementById('gar-success-sale').innerHTML =
+                `${sale.descripcion || '-'}${sale.imei ? `<br><span style="font-size:0.8rem; color:var(--gray-500);">IMEI: ${sale.imei}</span>` : ''}`;
+
+            // Pago adicional (diferencia de precios)
+            const adicionalBox = document.getElementById('gar-success-adicional-box');
+            const adicionalSpan = document.getElementById('gar-success-adicional');
+            const dif = doc.diferencia || {};
+            if (dif.tipo === 'cobro' && dif.monto > 0) {
+                adicionalSpan.style.color = 'var(--warning)';
+                adicionalSpan.textContent = `Cobrar ${formatMoney(dif.monto)}${dif.metodo_pago ? ' · ' + dif.metodo_pago : ''}`;
+                adicionalBox.style.display = 'block';
+            } else if (dif.tipo === 'devolucion' && dif.monto > 0) {
+                adicionalSpan.style.color = 'var(--success)';
+                adicionalSpan.textContent = `Devolver ${formatMoney(dif.monto)}`;
+                adicionalBox.style.display = 'block';
+            } else {
+                adicionalBox.style.display = 'none';
+            }
+
+            // Equipo prestado (si aplica)
+            const prestadoBox = document.getElementById('gar-success-prestado-box');
+            if (sale.estado === 'prestado' && sale.prestadoPor) {
+                document.getElementById('gar-success-prestado').textContent =
+                    `${sale.prestadoPor}${sale.costo > 0 ? ' — ' + formatMoney(sale.costo) : ''}`;
+                prestadoBox.style.display = 'block';
+            } else {
+                prestadoBox.style.display = 'none';
+            }
+
+            // Firma del cliente en tamaño reducido
+            const firmaImg = document.getElementById('gar-success-firma');
+            if (doc.firma_cliente) {
+                firmaImg.src = doc.firma_cliente;
+                firmaImg.style.display = 'inline-block';
+            } else {
+                firmaImg.style.display = 'none';
+            }
+
+            document.getElementById('gar-success-modal').classList.add('show');
+        }
+
+        function cerrarExitoGarantia() {
+            document.getElementById('gar-success-modal').classList.remove('show');
         }
 
         // ============= INICIALIZACIÓN =============
