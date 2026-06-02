@@ -82,8 +82,20 @@ Como toda la app es un único archivo crítico:
    git diff
    ```
 4. Commit con mensaje claro en español describiendo el ajuste.
-5. Abrir Pull Request hacia `main` para revisión antes del merge.
-   No mergear a `main` sin que el usuario lo apruebe.
+5. Abrir Pull Request hacia `main`, mergear (squash) y borrar la rama.
+
+### Política de automatización (acordada con el usuario)
+
+El usuario pidió el flujo **totalmente automático**: el asistente ejecuta
+solo los pasos 1–5 (rama → commit → push → PR → **merge a `main`** → limpieza
+de la rama) sin pedir confirmación manual para cada paso. Aun así:
+
+- Cada cambio se evalúa primero **dónde encaja** (dónde se agrega o reescribe)
+  y se aplica de forma **quirúrgica y aislada**, sin tocar lo que ya funciona.
+- Se respetan SIEMPRE las validaciones de la sección siguiente antes de mergear.
+- El merge se hace por **squash** para mantener `main` limpio.
+- Los PR/merge se gestionan por la **API de GitHub** usando las credenciales ya
+  guardadas (Git Credential Manager); no hay `gh` instalado en el equipo.
 
 ---
 
