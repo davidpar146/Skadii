@@ -1,0 +1,107 @@
+# CLAUDE.md — Proyecto Skadii (SKADIICELL S.A.S.)
+
+> Este archivo lo lee Claude Code automáticamente al iniciar.
+> Contiene el contexto y las reglas de trabajo del proyecto. Mantenerlo actualizado.
+
+---
+
+## Qué es este proyecto
+
+PWA (Progressive Web App) de un solo archivo para la operación de **SKADIICELL S.A.S.**
+(venta y servicio de equipos iPhone). Toda la aplicación vive en **`index.html`**
+(~6.470 líneas): HTML + CSS + JavaScript puro, sin framework ni build step.
+
+- **Sin frameworks**: JavaScript vanilla. No hay React, Vue, ni bundlers.
+- **Sin compilación**: el archivo se sirve tal cual. No hay `npm build`, no hay `dist/`.
+- **Backend = Google Drive + Google Sheets** vía OAuth (Google API JS + GIS).
+  Cada documento se guarda como JSON en su carpeta de Drive y se registra en un spreadsheet.
+- **Repositorio**: `davidpar146/Skadii`. Se publica como página estática.
+
+---
+
+## Regla de oro
+
+**NO romper lo que ya funciona.** Este es un sistema en producción real.
+
+- Hacer **cambios quirúrgicos y aislados**, no reescrituras.
+- Un cambio a la vez; explicar qué se tocó y por qué.
+- Preferir **funciones e IDs nuevos con prefijo propio** antes que modificar lógica existente.
+- Cuando se reutilice lógica existente (p. ej. la lista de prestadores), **reutilizar los
+  helpers compartidos** en lugar de duplicar datos.
+- Ante la duda, preguntar antes de editar.
+
+---
+
+## Arquitectura de módulos
+
+La app se organiza por módulos, cada uno con su prefijo de funciones e IDs.
+Respetar SIEMPRE el prefijo del módulo al añadir código:
+
+| Módulo               | Prefijo JS / IDs | Qué hace |
+|----------------------|------------------|----------|
+| Remisiones           | (base) `item-`, `payment-`, `estado-` | Venta: consecutivo, ítems propios/prestados, pagos, fotos, OCR IMEI, código de barras |
+| Mantenimientos       | `mant…`          | Diagrama de daños sobre SVG del iPhone, firma, estados |
+| Garantías / Cambios  | `gar…`           | Cambio de equipo, diferencia de precios, autorización por clave |
+| Pagar Prestadores    | `prest…`         | Agrupa equipos prestados pendientes y registra pagos |
+| Ingresos Pendientes  | `ing…`           | Cobros a empresas financieras |
+| Inventario / Gastos  | `inv…`, `gas…`   | Inventario y gastos con categorías y aprobaciones |
+
+### Convenciones de naming ya en uso
+- Selector de prestadores en Remisiones: `prest-chips-list`, `item-prestado-por`, `prestadoresLista` (lista compartida).
+- Selector de prestadores en Garantías (equipo que sale): `gar-sale-…` (reutiliza `prestadoresLista`).
+- Modales de éxito: `success-modal` (remisiones), `gar-success-modal` (garantías).
+
+---
+
+## Integraciones con Google (puntos sensibles)
+
+- **OAuth**: `gapi` (Google API) + `google.accounts` (GIS). La inicialización está al final
+  del script, en `window.addEventListener('load', …)`. No tocar el flujo de auth salvo necesidad.
+- **Carpetas de Drive**: definidas en el objeto `FOLDER_IDS`. Cada tipo de documento tiene su carpeta.
+  No cambiar estos IDs sin confirmar con el usuario; apuntan a carpetas reales en producción.
+- **Subida de archivos**: helpers `subirArchivoDrive(...)` y `subirImagenDrive(...)`.
+- **Registro en Sheets**: `agregarFilaExcel(...)`.
+- **Compatibilidad entre módulos**: el módulo "Pagar Prestadores" detecta archivos cuyo nombre
+  empieza por `Prestado-` en la carpeta `prestamosPagos`, con `estado: 'pendiente'` y un array
+  `equipos[]`. Cualquier registro nuevo de equipo prestado DEBE seguir ese mismo formato para que
+  el reporte de pagos lo recoja. (Ver `registrarPrestadosEnDrive` y `garRegistrarPrestadoEntregado`.)
+
+---
+
+## Flujo de trabajo con Git (importante)
+
+Como toda la app es un único archivo crítico:
+
+1. **Trabajar en una rama**, nunca directo en `main`:
+   ```
+   git checkout -b ajuste/<descripcion-corta>
+   ```
+2. Aplicar el cambio en `index.html`.
+3. Revisar SIEMPRE el diff antes de confirmar:
+   ```
+   git diff
+   ```
+4. Commit con mensaje claro en español describiendo el ajuste.
+5. Abrir Pull Request hacia `main` para revisión antes del merge.
+   No mergear a `main` sin que el usuario lo apruebe.
+
+---
+
+## Validaciones antes de dar por bueno un cambio
+
+Antes de declarar terminado cualquier ajuste a `index.html`, verificar:
+
+- [ ] **IDs únicos**: ningún `id="..."` nuevo duplica uno existente.
+- [ ] **Etiquetas balanceadas**: `<div>`/`</div>`, `<button>`/`</button>`, `<script>`/`</script>`.
+- [ ] **Sintaxis JS válida**: extraer el bloque `<script>` principal y pasar `node --check`.
+- [ ] **onclick → función real**: cada `onclick="fn(...)"` nuevo apunta a una función definida.
+- [ ] **No se rompió otro módulo**: confirmar que los IDs/funciones de los demás prefijos siguen intactos.
+- [ ] **Reset de formularios**: si se añaden campos, agregarlos a la función de limpieza del módulo.
+
+---
+
+## Tono y estilo
+
+- Comentarios y mensajes de UI en **español**.
+- Mantener el esquema visual existente (variables CSS `--primary`, `--success`, `--danger`, etc.).
+- No introducir dependencias externas nuevas sin confirmar.
