@@ -273,6 +273,59 @@
             box-shadow: 0 2px 6px rgba(37,99,235,0.35);
         }
         .prest-chip.selected::before { content: '✓ '; }
+        /* ===== Accesorios (módulo acc) ===== */
+        .acc-tabs { display: flex; flex-wrap: wrap; gap: 0.4rem; margin: 0.25rem 0 0.6rem; }
+        .acc-tab {
+            padding: 0.42rem 0.8rem; border-radius: 18px; font-size: 0.82rem;
+            font-weight: 500; cursor: pointer; background: white;
+            color: var(--gray-600); border: 2px solid var(--gray-200);
+        }
+        .acc-tab.active { background: #1f2937; color: white; border-color: #1f2937; }
+        .acc-selbox {
+            margin-top: 0.9rem; padding: 0.85rem;
+            background: #eff6ff; border: 2px solid #93c5fd; border-radius: 11px;
+        }
+        .acc-sel-title { font-size: 0.82rem; color: #1e40af; font-weight: 600; margin-bottom: 0.55rem; }
+        .acc-modo-btns { display: flex; gap: 0.5rem; margin-bottom: 0.6rem; }
+        .acc-modo-btn {
+            flex: 1; padding: 0.55rem; border-radius: 9px; font-size: 0.83rem;
+            font-weight: 600; cursor: pointer; text-align: center;
+            background: white; border: 2px solid var(--gray-200); color: var(--gray-600);
+        }
+        .acc-modo-btn.precio-on { background: var(--primary); color: white; border-color: var(--primary-dark); }
+        .acc-modo-btn.obsequio-on { background: var(--success); color: white; border-color: #15803d; }
+        .acc-item {
+            display: flex; align-items: center; gap: 0.6rem;
+            padding: 0.6rem 0.7rem; border: 1.5px solid var(--gray-200);
+            border-radius: 10px; margin-bottom: 0.5rem; background: var(--gray-50);
+        }
+        .acc-info { flex: 1; }
+        .acc-item-title { font-size: 0.86rem; font-weight: 600; color: #111827; }
+        .acc-item-detail { font-size: 0.78rem; color: var(--gray-500); }
+        .acc-cat-badge {
+            display: inline-block; font-size: 0.68rem; font-weight: 600;
+            padding: 0.12rem 0.5rem; border-radius: 20px;
+            background: #dbeafe; color: #1e40af; margin-top: 0.15rem;
+        }
+        .acc-gift-badge {
+            display: inline-block; font-size: 0.68rem; font-weight: 600;
+            padding: 0.12rem 0.5rem; border-radius: 20px;
+            background: #dcfce7; color: #166534; margin-top: 0.15rem; margin-left: 0.3rem;
+        }
+        .acc-del {
+            background: #fee2e2; color: var(--danger); border: none;
+            width: 26px; height: 26px; border-radius: 7px;
+            font-size: 1rem; cursor: pointer; font-weight: 700;
+        }
+        .acc-subtotal {
+            display: flex; justify-content: space-between; font-weight: 700;
+            color: #111827; padding-top: 0.5rem; border-top: 2px solid var(--gray-200);
+            font-size: 0.9rem; margin-top: 0.3rem;
+        }
+        .acc-titulo-lista {
+            font-size: 0.78rem; color: var(--gray-500); font-weight: 600;
+            text-transform: uppercase; letter-spacing: 0.03em; margin: 0.3rem 0;
+        }
         .prest-chip-otro {
             background: #fef3c7; color: #854f0b;
             border: 2px dashed #d97706;
@@ -716,7 +769,7 @@
 
         <!-- Items -->
         <div class="card">
-            <div class="card-title">📦 Agregar Ítem</div>
+            <div class="card-title">📦 Agregar Dispositivo</div>
             <div class="form-group">
                 <label>Descripción *</label>
                 <input type="text" id="item-descripcion" placeholder="iPhone 15 Pro Max">
@@ -782,7 +835,7 @@
                 <label>Notas</label>
                 <textarea id="item-notas" placeholder="Observaciones..."></textarea>
             </div>
-            <button class="btn btn-primary" onclick="agregarItem()">➕ Agregar Ítem</button>
+            <button class="btn btn-primary" onclick="agregarItem()">➕ Agregar Dispositivo</button>
             <div class="item-list" id="items-list"></div>
             <div class="summary" id="summary-items" style="display: none;">
                 <div class="summary-row total">
@@ -790,6 +843,22 @@
                     <span id="total-items">$0</span>
                 </div>
             </div>
+        </div>
+
+        <!-- Accesorios -->
+        <div class="card">
+            <div class="card-title">🎁 Accesorios</div>
+            <p style="font-size: 0.8rem; color: var(--gray-500); margin-bottom: 0.75rem;">
+                Se guardan por código para evitar nombres repetidos. Busca por nombre o filtra por categoría.
+            </p>
+            <div class="form-group">
+                <input type="text" id="acc-buscar" placeholder="🔍 Buscar accesorio (ej: estuche, airpods, vidrio)..."
+                       oninput="accRenderizarChips()" autocomplete="off">
+            </div>
+            <div id="acc-tabs" class="acc-tabs"></div>
+            <div id="acc-chips" class="prest-chips-container"></div>
+            <div id="acc-selbox"></div>
+            <div id="acc-list" style="margin-top: 1rem;"></div>
         </div>
 
         <!-- Medios de Pago -->
@@ -2794,6 +2863,188 @@
 
         const ASESORES_FIJOS = ['Camilo', 'Sirley', 'Josue', 'Nicolas'];
 
+        // ============= REMISIONES: ACCESORIOS (módulo acc) =============
+        // Los accesorios se agregan al mismo array `currentItems` con tipo 'accesorio',
+        // así entran solos en el total, el cuadre de pagos y el guardado de la remisión.
+        // El código es el identificador oficial (evita nombres duplicados).
+        const ACC_CATEGORIAS = ['Todos', 'Estuches', 'Audio', 'Cargadores y cables', 'Vidrios'];
+        const ACCESORIOS_CATALOGO = [
+            { codigo: 'AC01', nombre: 'Estuche silicona', categoria: 'Estuches' },
+            { codigo: 'AC02', nombre: 'Estuche space', categoria: 'Estuches' },
+            { codigo: 'AC03', nombre: 'Estuche space magnético 17', categoria: 'Estuches' },
+            { codigo: 'AC04', nombre: 'Estuche silicon 17', categoria: 'Estuches' },
+            { codigo: 'AC06', nombre: 'Estuche MG silicon', categoria: 'Estuches' },
+            { codigo: 'AC07', nombre: 'Estuche nice y focus', categoria: 'Estuches' },
+            { codigo: 'AC08', nombre: 'Estuche magnético stand', categoria: 'Estuches' },
+            { codigo: 'AC09', nombre: 'Estuche escarchado iph 17PM', categoria: 'Estuches' },
+            { codigo: 'AC10', nombre: 'Estuche anillo iph 17PM', categoria: 'Estuches' },
+            { codigo: 'AC11', nombre: 'Estuche billetera', categoria: 'Estuches' },
+            { codigo: 'AC23', nombre: 'Estuche promoción', categoria: 'Estuches' },
+            { codigo: 'AC12', nombre: 'Auricular tipo lightning', categoria: 'Audio' },
+            { codigo: 'AC13', nombre: 'Auricular tipo C', categoria: 'Audio' },
+            { codigo: 'AC19', nombre: 'AirPods Pro 2 1.1', categoria: 'Audio' },
+            { codigo: 'AC20', nombre: 'AirPods 3 1.1', categoria: 'Audio' },
+            { codigo: 'AC21', nombre: 'AirPods Pro 3 1.1', categoria: 'Audio' },
+            { codigo: 'AC14', nombre: 'Cargador certificado lightning', categoria: 'Cargadores y cables' },
+            { codigo: 'AC15', nombre: 'Cargador certificado tipo C', categoria: 'Cargadores y cables' },
+            { codigo: 'AC16', nombre: 'Adaptador original', categoria: 'Cargadores y cables' },
+            { codigo: 'AC17', nombre: 'Cable original tipo C atomic', categoria: 'Cargadores y cables' },
+            { codigo: 'AC18', nombre: 'Cable original tipo lightning atomic', categoria: 'Cargadores y cables' },
+            { codigo: 'V-1', nombre: 'Vidrio', categoria: 'Vidrios' },
+            { codigo: 'V-2', nombre: 'Cerámico', categoria: 'Vidrios' },
+            { codigo: 'V-4', nombre: 'Vidrio línea 17', categoria: 'Vidrios' },
+            { codigo: 'V-5', nombre: 'Antiespía', categoria: 'Vidrios' }
+        ];
+        let accFiltroCategoria = 'Todos';
+        let accSeleccionado = null;   // { codigo, nombre, categoria }
+        let accModo = 'precio';       // 'precio' | 'obsequio'
+
+        function accRenderizarTabs() {
+            const cont = document.getElementById('acc-tabs');
+            if (!cont) return;
+            cont.innerHTML = ACC_CATEGORIAS.map(c =>
+                `<div class="acc-tab ${c === accFiltroCategoria ? 'active' : ''}" onclick="accSetCategoria('${c}')">${c}</div>`
+            ).join('');
+        }
+
+        function accSetCategoria(cat) {
+            accFiltroCategoria = cat;
+            accRenderizarTabs();
+            accRenderizarChips();
+        }
+
+        function accRenderizarChips() {
+            const cont = document.getElementById('acc-chips');
+            if (!cont) return;
+            const q = (document.getElementById('acc-buscar').value || '').toLowerCase().trim();
+            const lista = ACCESORIOS_CATALOGO.filter(a => {
+                const okCat = accFiltroCategoria === 'Todos' || a.categoria === accFiltroCategoria;
+                const okQ = !q || a.nombre.toLowerCase().includes(q) || a.codigo.toLowerCase().includes(q);
+                return okCat && okQ;
+            });
+            if (lista.length === 0) {
+                cont.innerHTML = '<div style="font-size:0.82rem; color:var(--gray-400); padding:0.5rem 0;">Sin resultados.</div>';
+                return;
+            }
+            cont.innerHTML = lista.map(a =>
+                `<div class="prest-chip ${accSeleccionado && accSeleccionado.codigo === a.codigo ? 'selected' : ''}" onclick="accSeleccionar('${a.codigo}')">${a.codigo} · ${a.nombre}</div>`
+            ).join('');
+        }
+
+        function accSeleccionar(codigo) {
+            accSeleccionado = ACCESORIOS_CATALOGO.find(a => a.codigo === codigo) || null;
+            accModo = 'precio';
+            accRenderizarChips();
+            accRenderizarSelbox();
+        }
+
+        function accSetModo(modo) {
+            accModo = modo;
+            accRenderizarSelbox();
+        }
+
+        function accRenderizarSelbox() {
+            const box = document.getElementById('acc-selbox');
+            if (!box) return;
+            if (!accSeleccionado) { box.innerHTML = ''; return; }
+            const s = accSeleccionado;
+            const bloquePrecio = accModo === 'precio'
+                ? `<div style="display:flex; gap:0.6rem;">
+                       <div class="form-group" style="flex:0 0 90px; margin-bottom:0;">
+                           <label>Cantidad</label>
+                           <input type="number" id="acc-cantidad" value="1" min="1">
+                       </div>
+                       <div class="form-group" style="flex:1; margin-bottom:0;">
+                           <label>Precio de venta</label>
+                           <input type="text" id="acc-precio" placeholder="0" inputmode="numeric"
+                                  oninput="formatearInput(this)" onblur="formatearInput(this)">
+                       </div>
+                   </div>`
+                : `<div class="form-group" style="flex:0 0 90px; margin-bottom:0;">
+                       <label>Cantidad</label>
+                       <input type="number" id="acc-cantidad" value="1" min="1">
+                   </div>
+                   <div style="font-size:0.8rem; color:#166534; font-weight:600; margin-top:0.5rem;">
+                       🎁 Se registrará como obsequio (valor $0) y quedará marcado.
+                   </div>`;
+            box.innerHTML = `<div class="acc-selbox">
+                <div class="acc-sel-title">Seleccionado: ${s.codigo} · ${s.nombre}</div>
+                <div class="acc-modo-btns">
+                    <div class="acc-modo-btn ${accModo === 'precio' ? 'precio-on' : ''}" onclick="accSetModo('precio')">💵 Precio de venta</div>
+                    <div class="acc-modo-btn ${accModo === 'obsequio' ? 'obsequio-on' : ''}" onclick="accSetModo('obsequio')">🎁 Obsequio</div>
+                </div>
+                ${bloquePrecio}
+                <button class="btn btn-primary" style="margin-top:0.7rem;${accModo === 'obsequio' ? ' background:var(--success);' : ''}" onclick="accAgregar()">➕ Agregar ${accModo === 'obsequio' ? 'obsequio' : 'accesorio'}</button>
+            </div>`;
+        }
+
+        function accAgregar() {
+            if (!accSeleccionado) { mostrarToast('⚠️ Selecciona un accesorio'); return; }
+            const cantidad = parseInt(document.getElementById('acc-cantidad').value) || 1;
+            const obsequio = accModo === 'obsequio';
+            const precio = obsequio ? 0 : parsearValor(document.getElementById('acc-precio').value);
+            if (!obsequio && precio <= 0) {
+                mostrarToast('⚠️ Ingresa el precio o marca Obsequio');
+                return;
+            }
+            const codigo = accSeleccionado.codigo;
+            const nombre = accSeleccionado.nombre;
+            currentItems.push({
+                id: 'acc-' + Date.now() + '-' + Math.floor(Math.random() * 10000),
+                tipo: 'accesorio',
+                codigo, categoria: accSeleccionado.categoria,
+                descripcion: obsequio ? `${codigo} · ${nombre} (Obsequio)` : `${codigo} · ${nombre}`,
+                cantidad, valor: precio, costo: 0, imei: '', estado: 'propio',
+                obsequio, notas: '', total: cantidad * precio
+            });
+            mostrarToast(obsequio ? '🎁 Obsequio agregado' : '✅ Accesorio agregado');
+            accResetSelector();
+            actualizarListaItems();
+            accActualizarLista();
+            actualizarResumenPagos();
+        }
+
+        function accEliminar(id) {
+            currentItems = currentItems.filter(i => i.id !== id);
+            actualizarListaItems();
+            accActualizarLista();
+            actualizarResumenPagos();
+        }
+
+        function accActualizarLista() {
+            const cont = document.getElementById('acc-list');
+            if (!cont) return;
+            const accs = currentItems.filter(i => i.tipo === 'accesorio');
+            if (accs.length === 0) { cont.innerHTML = ''; return; }
+            const sub = accs.reduce((s, a) => s + a.total, 0);
+            cont.innerHTML = '<div class="acc-titulo-lista">Accesorios agregados</div>' +
+                accs.map(a => `<div class="acc-item">
+                    <div class="acc-info">
+                        <div class="acc-item-title">🎁 ${a.descripcion}</div>
+                        <div class="acc-item-detail">${a.obsequio ? a.cantidad + ' × Obsequio' : a.cantidad + ' × ' + formatMoney(a.valor) + ' = ' + formatMoney(a.total)}</div>
+                        <span class="acc-cat-badge">${a.categoria}</span>${a.obsequio ? '<span class="acc-gift-badge">🎁 Obsequio</span>' : ''}
+                    </div>
+                    <button class="acc-del" onclick="accEliminar('${a.id}')" title="Quitar accesorio">×</button>
+                </div>`).join('') +
+                `<div class="acc-subtotal"><span>Subtotal accesorios</span><span>${formatMoney(sub)}</span></div>`;
+        }
+
+        function accResetSelector() {
+            accSeleccionado = null;
+            accModo = 'precio';
+            const b = document.getElementById('acc-buscar');
+            if (b) b.value = '';
+            accFiltroCategoria = 'Todos';
+            accRenderizarTabs();
+            accRenderizarChips();
+            accRenderizarSelbox();
+        }
+
+        // Inicializa el selector de accesorios al cargar (el HTML ya está en el DOM).
+        accRenderizarTabs();
+        accRenderizarChips();
+        // ============= FIN ACCESORIOS =============
+
         function setEstado(estado) {
             currentEstado = estado;
             document.getElementById('estado-propio').classList.toggle('active', estado === 'propio');
@@ -2900,8 +3151,8 @@
                     };
                 }
                 itemEditandoId = null;
-                document.querySelector('button[onclick="agregarItem()"]').innerHTML = '➕ Agregar Ítem';
-                mostrarToast('✅ Ítem actualizado');
+                document.querySelector('button[onclick="agregarItem()"]').innerHTML = '➕ Agregar Dispositivo';
+                mostrarToast('✅ Dispositivo actualizado');
             } else {
                 currentItems.push({
                     id: Date.now(), descripcion, cantidad, valor, costo, imei,
@@ -2909,7 +3160,7 @@
                     prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
                     notas, total: cantidad * valor
                 });
-                mostrarToast('✅ Ítem agregado' + (costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''));
+                mostrarToast('✅ Dispositivo agregado' + (costo > 0 ? ' | Costo: ' + formatMoney(costo) : ''));
             }
             actualizarListaItems();
             limpiarFormularioItem();
@@ -2932,7 +3183,7 @@
                 prestadoresRenderizar();
             }
             itemEditandoId = id;
-            document.querySelector('button[onclick="agregarItem()"]').innerHTML = '✅ Actualizar Ítem';
+            document.querySelector('button[onclick="agregarItem()"]').innerHTML = '✅ Actualizar Dispositivo';
             document.getElementById('item-descripcion').scrollIntoView({ behavior: 'smooth', block: 'center' });
             mostrarToast('✏️ Editando ítem — modifica y presiona Actualizar');
         }
@@ -2944,7 +3195,7 @@
                 lista.innerHTML = ''; summary.style.display = 'none'; return;
             }
             const subtotal = currentItems.reduce((sum, item) => sum + item.total, 0);
-            lista.innerHTML = currentItems.map(item => `
+            lista.innerHTML = currentItems.filter(item => item.tipo !== 'accesorio').map(item => `
                 <div class="item-card">
                     <div class="item-header">
                         <div style="flex: 1;">
@@ -3536,6 +3787,8 @@
             currentEstado = null;
             setColaborativa(false);
             actualizarListaItems();
+            accResetSelector();
+            accActualizarLista();
             actualizarListaPagos();
             actualizarListaColaboradores();
             actualizarSelectColaboradores();
