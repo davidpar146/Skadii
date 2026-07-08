@@ -2862,6 +2862,8 @@
         // ============= REMISIONES: COLABORADORES, ÍTEMS Y PAGOS =============
 
         const ASESORES_FIJOS = ['Camilo', 'Sirley', 'Josue', 'Nicolas'];
+        // Asesores dados de baja: se excluyen al cargar, aunque sigan en el archivo de Drive.
+        const ASESORES_INACTIVOS = ['Male'];
 
         // ============= REMISIONES: ACCESORIOS (módulo acc) =============
         // Los accesorios se agregan al mismo array `currentItems` con tipo 'accesorio',
@@ -3838,6 +3840,11 @@
                     clavesAsesores = data;
                     asesoresPermisos = {};
                 }
+                // Excluir asesores dados de baja (aunque sigan en el archivo de Drive).
+                ASESORES_INACTIVOS.forEach(nombre => {
+                    delete clavesAsesores[nombre];
+                    delete asesoresPermisos[nombre];
+                });
                 actualizarDropdownAsesores();
                 invRepoblarAsesor();
                 mantRenderizarChipsAsesor();
