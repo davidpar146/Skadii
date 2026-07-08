@@ -871,7 +871,7 @@
                     <option value="efectivo">Efectivo</option>
                     <option value="transferencia">Transferencia</option>
                     <option value="tarjeta">Tarjeta</option>
-                    <option value="credito">Crédito</option>
+                    <option value="credito">Crédito Banco de Bogotá</option>
                     <option value="addi">ADDI</option>
                     <option value="gora">Gora</option>
                     <option value="coordinadora">Coordinadora</option>
@@ -2289,6 +2289,7 @@
                 await verificarOCrearSpreadsheet();
                 await cargarClavesAsesores();
                 await prestadoresCargarLista();  // CAMBIO #2: cargar lista de prestadores
+                await accCargarPopularidad();     // Popularidad de accesorios (para el modo contraído)
                 mostrarToast('✅ Conectado a Google Drive + Sheets');
             };
             if (gapi.client.getToken() === null) {
@@ -2354,7 +2355,7 @@
             const pagos = documento.payments.map(p => {
                 const methodNames = {
                     efectivo: 'Efectivo', transferencia: 'Transferencia',
-                    tarjeta: 'Tarjeta', credito: 'Crédito', addi: 'ADDI', gora: 'Gora',
+                    tarjeta: 'Tarjeta', credito: 'Crédito Banco de Bogotá', addi: 'ADDI', gora: 'Gora',
                     coordinadora: 'Coordinadora', ecredit: 'E-Credit',
                     retoma: 'Retoma', otro: 'Otro'
                 };
@@ -2897,9 +2898,13 @@
             { codigo: 'V-4', nombre: 'Vidrio línea 17', categoria: 'Vidrios' },
             { codigo: 'V-5', nombre: 'Antiespía', categoria: 'Vidrios' }
         ];
-        let accFiltroCategoria = 'Todos';
+        let accFiltroCategoria = null;   // null = contraído (solo populares); 'Todos'/categoría = ver todos
         let accSeleccionado = null;   // { codigo, nombre, categoria }
         let accModo = 'precio';       // 'precio' | 'obsequio'
+        const ACC_TOP_N = 6;             // máximo de accesorios populares en modo contraído
+        const ACC_POP_ARCHIVO = 'ACCESORIOS-POPULARIDAD.json';
+        let accPopFileId = null;
+        let accPopularidad = {};         // { codigo: frecuencia }, se carga desde Drive
 
         function accRenderizarTabs() {
             const cont = document.getElementById('acc-tabs');
@@ -2911,6 +2916,8 @@
 
         function accSetCategoria(cat) {
             accFiltroCategoria = cat;
+            const b = document.getElementById('acc-buscar');
+            if (b) b.value = '';
             accRenderizarTabs();
             accRenderizarChips();
         }
@@ -2919,18 +2926,38 @@
             const cont = document.getElementById('acc-chips');
             if (!cont) return;
             const q = (document.getElementById('acc-buscar').value || '').toLowerCase().trim();
-            const lista = ACCESORIOS_CATALOGO.filter(a => {
-                const okCat = accFiltroCategoria === 'Todos' || a.categoria === accFiltroCategoria;
-                const okQ = !q || a.nombre.toLowerCase().includes(q) || a.codigo.toLowerCase().includes(q);
-                return okCat && okQ;
-            });
+            let lista;
+            let modoColapsado = false;
+            if (q) {
+                // Búsqueda activa: mostrar todas las coincidencias (por nombre o código).
+                lista = ACCESORIOS_CATALOGO.filter(a =>
+                    a.nombre.toLowerCase().includes(q) || a.codigo.toLowerCase().includes(q));
+            } else if (accFiltroCategoria) {
+                // Categoría elegida (incluye 'Todos'): mostrar todas las de esa categoría.
+                lista = ACCESORIOS_CATALOGO.filter(a =>
+                    accFiltroCategoria === 'Todos' || a.categoria === accFiltroCategoria);
+            } else {
+                // Contraído: solo los más usados (frecuencia > 0), máximo ACC_TOP_N.
+                modoColapsado = true;
+                lista = ACCESORIOS_CATALOGO
+                    .filter(a => (accPopularidad[a.codigo] || 0) > 0)
+                    .sort((a, b) => (accPopularidad[b.codigo] || 0) - (accPopularidad[a.codigo] || 0))
+                    .slice(0, ACC_TOP_N);
+            }
             if (lista.length === 0) {
-                cont.innerHTML = '<div style="font-size:0.82rem; color:var(--gray-400); padding:0.5rem 0;">Sin resultados.</div>';
+                cont.innerHTML = modoColapsado
+                    ? '<div style="font-size:0.82rem; color:var(--gray-500); padding:0.5rem 0;">✨ Aquí aparecerán los accesorios más usados. Elige una categoría (Todos, Estuches…) o busca por nombre para verlos.</div>'
+                    : '<div style="font-size:0.82rem; color:var(--gray-400); padding:0.5rem 0;">Sin resultados.</div>';
                 return;
             }
-            cont.innerHTML = lista.map(a =>
+            let html = '';
+            if (modoColapsado) {
+                html = '<div style="font-size:0.72rem; color:var(--gray-500); width:100%; margin-bottom:0.15rem;">⭐ Más usados</div>';
+            }
+            html += lista.map(a =>
                 `<div class="prest-chip ${accSeleccionado && accSeleccionado.codigo === a.codigo ? 'selected' : ''}" onclick="accSeleccionar('${a.codigo}')">${a.codigo} · ${a.nombre}</div>`
             ).join('');
+            cont.innerHTML = html;
         }
 
         function accSeleccionar(codigo) {
@@ -3000,7 +3027,11 @@
                 obsequio, notas: '', total: cantidad * precio
             });
             mostrarToast(obsequio ? '🎁 Obsequio agregado' : '✅ Accesorio agregado');
-            accResetSelector();
+            // Reset ligero: limpia la selección pero mantiene la categoría abierta para seguir agregando.
+            accSeleccionado = null;
+            accModo = 'precio';
+            accRenderizarChips();
+            accRenderizarSelbox();
             actualizarListaItems();
             accActualizarLista();
             actualizarResumenPagos();
@@ -3036,10 +3067,73 @@
             accModo = 'precio';
             const b = document.getElementById('acc-buscar');
             if (b) b.value = '';
-            accFiltroCategoria = 'Todos';
+            accFiltroCategoria = null;
             accRenderizarTabs();
             accRenderizarChips();
             accRenderizarSelbox();
+        }
+
+        // ----- Popularidad de accesorios (persistida en Drive, patrón igual a prestadores) -----
+        async function accCargarPopularidad() {
+            try {
+                const r = await gapi.client.drive.files.list({
+                    q: `name='${ACC_POP_ARCHIVO}' and '${FOLDER_IDS.prestamosPagos}' in parents and trashed=false`,
+                    fields: 'files(id)', pageSize: 5
+                });
+                if (r.result.files.length > 0) {
+                    accPopFileId = r.result.files[0].id;
+                    const resp = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${accPopFileId}?alt=media`,
+                        { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                    );
+                    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
+                    const data = await resp.json();
+                    accPopularidad = (data && data.popularidad && typeof data.popularidad === 'object') ? data.popularidad : {};
+                    console.log('✅ Popularidad accesorios cargada:', Object.keys(accPopularidad).length);
+                } else {
+                    accPopularidad = {};
+                    await accGuardarPopularidad();
+                }
+            } catch (e) {
+                console.error('Error cargando popularidad de accesorios:', e);
+                accPopularidad = {};
+            }
+            accRenderizarChips();
+        }
+
+        async function accGuardarPopularidad() {
+            const contenido = JSON.stringify({
+                popularidad: accPopularidad,
+                ultima_actualizacion: new Date().toISOString()
+            }, null, 2);
+            try {
+                if (accPopFileId) {
+                    const form = new FormData();
+                    form.append('metadata', new Blob(
+                        [JSON.stringify({ name: ACC_POP_ARCHIVO })],
+                        { type: 'application/json' }
+                    ));
+                    form.append('file', new Blob([contenido], { type: 'application/json' }));
+                    const resp = await fetch(
+                        `https://www.googleapis.com/upload/drive/v3/files/${accPopFileId}?uploadType=multipart`,
+                        { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
+                    );
+                    if (!resp.ok) throw new Error(`PATCH falló: ${resp.status}`);
+                } else {
+                    const result = await subirArchivoDrive(
+                        contenido, ACC_POP_ARCHIVO, FOLDER_IDS.prestamosPagos
+                    );
+                    accPopFileId = result.id;
+                }
+            } catch (e) {
+                console.error('Error guardando popularidad de accesorios:', e);
+            }
+        }
+
+        async function accIncrementarPopularidad(codigos) {
+            if (!codigos || codigos.length === 0) return;
+            codigos.forEach(c => { accPopularidad[c] = (accPopularidad[c] || 0) + 1; });
+            await accGuardarPopularidad();
         }
 
         // Inicializa el selector de accesorios al cargar (el HTML ya está en el DOM).
@@ -3347,7 +3441,7 @@
             if (currentPayments.length === 0) { lista.innerHTML = ''; summary.style.display = 'none'; return; }
             const methodNames = {
                 efectivo: '💵 Efectivo', transferencia: '🏦 Transferencia',
-                tarjeta: '💳 Tarjeta', credito: '📋 Crédito', addi: '🔵 ADDI',
+                tarjeta: '💳 Tarjeta', credito: '📋 Crédito Banco de Bogotá', addi: '🔵 ADDI',
                 gora: '🟣 Gora', coordinadora: '📦 Coordinadora',
                 ecredit: '🟪 E-Credit', retoma: '🔄 Retoma', otro: '💰 Otro'
             };
@@ -3719,6 +3813,12 @@
                 for (const nombrePrestador of prestadoresUsados) {
                     await prestadoresIncrementarFrecuencia(nombrePrestador);
                 }
+
+                // Popularidad de accesorios: +1 por cada accesorio usado en esta remisión
+                const accCodigosUsados = currentItems
+                    .filter(i => i.tipo === 'accesorio' && i.codigo)
+                    .map(i => i.codigo);
+                await accIncrementarPopularidad(accCodigosUsados);
 
                 if (lockFileId) {
                     try { await gapi.client.drive.files.delete({ fileId: lockFileId }); }
