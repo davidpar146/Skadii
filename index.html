@@ -326,6 +326,23 @@
             font-size: 0.78rem; color: var(--gray-500); font-weight: 600;
             text-transform: uppercase; letter-spacing: 0.03em; margin: 0.3rem 0;
         }
+        /* ===== Recargo por medio de pago ===== */
+        .rec-section {
+            margin-top: 0.75rem; padding: 0.85rem;
+            background: #fffbeb; border: 2px solid #fcd34d; border-radius: 11px;
+        }
+        .rec-title { font-size: 0.85rem; font-weight: 700; color: #92400e; margin-bottom: 0.35rem; }
+        .rec-sub { font-size: 0.8rem; color: var(--gray-600); font-weight: 600; margin: 0.55rem 0 0.35rem; }
+        .rec-btns { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+        .rec-btn {
+            padding: 0.5rem 0.8rem; border-radius: 9px; font-size: 0.82rem; font-weight: 600;
+            cursor: pointer; background: white; border: 2px solid var(--gray-200); color: var(--gray-700);
+        }
+        .rec-btn.on { background: var(--warning); color: white; border-color: #c2410c; }
+        .rec-calc {
+            font-size: 0.9rem; color: #111827; margin: 0.5rem 0 0.2rem;
+            padding: 0.55rem 0.65rem; background: white; border-radius: 8px; border: 1px solid #fde68a;
+        }
         .prest-chip-otro {
             background: #fef3c7; color: #854f0b;
             border: 2px dashed #d97706;
@@ -882,8 +899,9 @@
             </div>
             <div class="form-group">
                 <label>Monto *</label>
-                <input type="text" id="payment-amount" placeholder="0" oninput="formatearInput(this)">
+                <input type="text" id="payment-amount" placeholder="0" oninput="formatearInput(this); recActualizarMonto()">
             </div>
+            <div id="recargo-section" class="rec-section" style="display: none;"></div>
             <div class="form-group" id="payment-reference-group" style="display: none;">
                 <label id="payment-reference-label">Referencia/Comprobante</label>
                 <input type="text" id="payment-reference" placeholder="Número de referencia">
@@ -960,6 +978,14 @@
                 <div class="summary-row">
                     <span>Saldo Pendiente:</span>
                     <span id="balance-due">$0</span>
+                </div>
+                <div class="summary-row" id="recargo-row" style="display:none; color:#b45309;">
+                    <span>💠 Recargo financiero:</span>
+                    <span id="total-recargo">$0</span>
+                </div>
+                <div class="summary-row" id="total-recibido-row" style="display:none; font-weight:700;">
+                    <span>Total recibido (venta + recargo):</span>
+                    <span id="total-recibido">$0</span>
                 </div>
             </div>
         </div>
@@ -3383,9 +3409,79 @@
                     } else if (this.value === 'retoma') {
                         retomaSection.style.display = 'block';
                     }
+                    recActualizarPorMetodo();
                 });
             }
         });
+
+        // ===== Recargo por medio de pago (para contabilidad) =====
+        // El % se calcula sobre el MONTO de ese medio (base). El recargo NO afecta el
+        // cuadre de la venta: se guarda aparte en cada pago (recargoPct/Monto/Forma).
+        const RECARGOS_FIJOS = { tarjeta: 5, gora: 12, addi: 12, ecredit: 10 };
+        // 'credito' (Banco de Bogotá) es 5% o 6% y lo elige el asesor.
+        // Sin recargo: efectivo, transferencia, coordinadora, retoma, otro.
+        let recCreditoPct = null;   // 5 o 6 cuando el medio es 'credito'
+        let recFormaActual = null;  // 'sumado' | 'efectivo' | 'transferencia'
+
+        function recTieneRecargo(method) {
+            return method === 'credito' || (RECARGOS_FIJOS[method] || 0) > 0;
+        }
+        function recPctDe(method) {
+            if (method === 'credito') return recCreditoPct;   // null hasta que elija
+            return RECARGOS_FIJOS[method] || 0;
+        }
+        function recFormaLabel(forma) {
+            return forma === 'sumado' ? 'sumado a la transacción'
+                : forma === 'efectivo' ? 'pagado en efectivo'
+                : forma === 'transferencia' ? 'pagado por transferencia' : '';
+        }
+        function recSetCreditoPct(p) { recCreditoPct = p; recRender(); }
+        function recSetForma(f) { recFormaActual = f; recRender(); }
+        function recActualizarMonto() { recRender(); }
+        function recActualizarPorMetodo() {
+            recCreditoPct = null;
+            recFormaActual = null;
+            recRender();
+        }
+        function recReset() {
+            recCreditoPct = null;
+            recFormaActual = null;
+            const box = document.getElementById('recargo-section');
+            if (box) { box.style.display = 'none'; box.innerHTML = ''; }
+        }
+        function recRender() {
+            const box = document.getElementById('recargo-section');
+            if (!box) return;
+            const method = document.getElementById('payment-method').value;
+            if (!recTieneRecargo(method)) { box.style.display = 'none'; box.innerHTML = ''; return; }
+            box.style.display = 'block';
+            const base = parsearValor(document.getElementById('payment-amount').value);
+            const pct = recPctDe(method);
+            let html = '<div class="rec-title">💠 Recargo del medio de pago</div>';
+            if (method === 'credito') {
+                html += `<div class="rec-sub">Elige el porcentaje del crédito:</div>
+                    <div class="rec-btns">
+                        <div class="rec-btn ${recCreditoPct === 5 ? 'on' : ''}" onclick="recSetCreditoPct(5)">5%</div>
+                        <div class="rec-btn ${recCreditoPct === 6 ? 'on' : ''}" onclick="recSetCreditoPct(6)">6%</div>
+                    </div>`;
+            }
+            if (pct) {
+                const recargo = Math.round(base * pct / 100);
+                html += `<div class="rec-calc">
+                        <div>Recargo <strong>${pct}%</strong> sobre ${formatMoney(base)}: <strong>${formatMoney(recargo)}</strong></div>
+                        <div style="color:var(--gray-600);">Total a cobrar (venta + recargo): <strong>${formatMoney(base + recargo)}</strong></div>
+                    </div>
+                    <div class="rec-sub">¿Cómo se paga el recargo?</div>
+                    <div class="rec-btns">
+                        <div class="rec-btn ${recFormaActual === 'sumado' ? 'on' : ''}" onclick="recSetForma('sumado')">➕ Sumado a la transacción</div>
+                        <div class="rec-btn ${recFormaActual === 'efectivo' ? 'on' : ''}" onclick="recSetForma('efectivo')">💵 Efectivo</div>
+                        <div class="rec-btn ${recFormaActual === 'transferencia' ? 'on' : ''}" onclick="recSetForma('transferencia')">🏦 Transferencia</div>
+                    </div>`;
+            } else if (method === 'credito') {
+                html += `<div class="rec-sub" style="color:var(--gray-500); font-weight:400;">Selecciona 5% o 6% para calcular el recargo.</div>`;
+            }
+            box.innerHTML = html;
+        }
 
         function agregarPago() {
             const method = document.getElementById('payment-method').value;
@@ -3429,6 +3525,20 @@
                 };
                 payment.amount = payment.retomaItem.cantidad * payment.retomaItem.valor;
             }
+            // Recargo del medio de pago (si aplica). NO afecta el cuadre de la venta:
+            // amount sigue siendo la base; el recargo se guarda aparte para contabilidad.
+            if (recTieneRecargo(method)) {
+                const pctR = recPctDe(method);
+                if (!pctR) { mostrarToast('⚠️ Elige el porcentaje del crédito (5% o 6%)'); return; }
+                if (!recFormaActual) { mostrarToast('⚠️ Indica cómo se paga el recargo'); return; }
+                payment.recargoPct = pctR;
+                payment.recargoMonto = Math.round(amount * pctR / 100);
+                payment.recargoForma = recFormaActual;
+            } else {
+                payment.recargoPct = 0;
+                payment.recargoMonto = 0;
+                payment.recargoForma = null;
+            }
             currentPayments.push(payment);
             actualizarListaPagos();
             limpiarFormularioPago();
@@ -3461,6 +3571,7 @@
                             <div style="font-size: 1.125rem; font-weight: 700; color: var(--success); margin-top: 0.5rem;">
                                 ${formatMoney(pay.amount)}
                             </div>
+                            ${pay.recargoMonto > 0 ? `<div class="item-detail" style="color:#b45309; margin-top:0.25rem;">💠 Recargo ${pay.recargoPct}%: ${formatMoney(pay.recargoMonto)} · ${recFormaLabel(pay.recargoForma)}</div>` : ''}
                         </div>
                         <button class="btn-icon delete" onclick="eliminarPago(${pay.id})">×</button>
                     </div>
@@ -3480,6 +3591,23 @@
                 bd.textContent = formatMoney(balance);
                 bd.style.color = balance > 0 ? 'var(--danger)' : 'var(--success)';
             }
+            // Recargo financiero (aparte del valor de la venta)
+            const totalRecargo = currentPayments.reduce((s, p) => s + (p.recargoMonto || 0), 0);
+            const rr = document.getElementById('recargo-row');
+            const trr = document.getElementById('total-recibido-row');
+            if (rr && trr) {
+                if (totalRecargo > 0) {
+                    rr.style.display = 'flex';
+                    trr.style.display = 'flex';
+                    const tr = document.getElementById('total-recargo');
+                    const trec = document.getElementById('total-recibido');
+                    if (tr) tr.textContent = formatMoney(totalRecargo);
+                    if (trec) trec.textContent = formatMoney(totalPaid + totalRecargo);
+                } else {
+                    rr.style.display = 'none';
+                    trr.style.display = 'none';
+                }
+            }
         }
 
         function eliminarPago(id) {
@@ -3496,6 +3624,7 @@
             document.getElementById('credit-photos-section').style.display = 'none';
             document.getElementById('ecredit-photos-section').style.display = 'none';
             document.getElementById('retoma-section').style.display = 'none';
+            recReset();
             document.getElementById('retoma-descripcion').value = '';
             document.getElementById('retoma-cantidad').value = '1';
             document.getElementById('retoma-valor').value = '';
@@ -3771,6 +3900,7 @@
                     payments: currentPayments.map(p => ({ ...p, photos: undefined })),
                     totalItems: currentItems.reduce((s, i) => s + i.total, 0),
                     totalPaid: currentPayments.reduce((s, p) => s + p.amount, 0),
+                    totalRecargos: currentPayments.reduce((s, p) => s + (p.recargoMonto || 0), 0),
                     observaciones: document.getElementById('observaciones').value.trim()
                 };
 
@@ -3891,6 +4021,7 @@
             actualizarListaItems();
             accResetSelector();
             accActualizarLista();
+            recReset();
             actualizarListaPagos();
             actualizarListaColaboradores();
             actualizarSelectColaboradores();
