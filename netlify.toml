@@ -11,11 +11,16 @@
     Permissions-Policy = "camera=(), microphone=(), geolocation=()"
 
 [[headers]]
-  for = "/sistema-facturas-v3.html"
+  for = "/index.html"
+  [headers.values]
+    Permissions-Policy = "camera=(self), microphone=(), geolocation=()"
+
+[[headers]]
+  for = "/"
   [headers.values]
     Permissions-Policy = "camera=(self), microphone=(), geolocation=()"
 
 [[redirects]]
   from = "/"
-  to = "/sistema-facturas-v3.html"
+  to = "/index.html"
   status = 200
