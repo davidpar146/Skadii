@@ -898,7 +898,7 @@
                     <option value="otro">Otro</option>
                 </select>
             </div>
-            <div class="form-group">
+            <div class="form-group" id="payment-amount-group">
                 <label>Monto *</label>
                 <input type="text" id="payment-amount" placeholder="0" oninput="formatearInput(this); recActualizarMonto()">
             </div>
@@ -948,7 +948,7 @@
                         <input type="number" id="retoma-cantidad" value="1" min="1">
                     </div>
                     <div class="form-group">
-                        <label>Valor</label>
+                        <label>Valor *</label>
                         <input type="text" id="retoma-valor" placeholder="0" oninput="formatearInput(this)">
                     </div>
                 </div>
@@ -3386,6 +3386,8 @@
                     creditSection.style.display = 'none';
                     document.getElementById('ecredit-photos-section').style.display = 'none';
                     retomaSection.style.display = 'none';
+                    // Retoma: el monto sale de Cantidad × Valor del equipo, no se pide dos veces.
+                    document.getElementById('payment-amount-group').style.display = this.value === 'retoma' ? 'none' : '';
                     if (this.value === 'credito') {
                         creditSection.style.display = 'block';
                         refGroup.style.display = 'block';
@@ -3492,7 +3494,7 @@
             const method = document.getElementById('payment-method').value;
             const amount = parsearValor(document.getElementById('payment-amount').value);
             const reference = document.getElementById('payment-reference').value.trim();
-            if (!method || amount <= 0) { mostrarToast('⚠️ Complete los datos del pago'); return; }
+            if (!method || (method !== 'retoma' && amount <= 0)) { mostrarToast('⚠️ Complete los datos del pago'); return; }
             if ((method === 'transferencia' || method === 'coordinadora') && !reference) {
                 mostrarToast('⚠️ Debe ingresar el banco'); return;
             }
@@ -3521,6 +3523,7 @@
                 const retomaImei = document.getElementById('retoma-imei').value.trim();
                 if (!retomaDesc) { mostrarToast('⚠️ Ingrese descripción del equipo en retoma'); return; }
                 if (!retomaImei) { mostrarToast('⚠️ Ingrese IMEI del equipo en retoma'); return; }
+                if (parsearValor(document.getElementById('retoma-valor').value) <= 0) { mostrarToast('⚠️ Ingrese el valor del equipo en retoma'); return; }
                 payment.retomaItem = {
                     descripcion: retomaDesc,
                     cantidad: parseInt(document.getElementById('retoma-cantidad').value) || 1,
@@ -3629,6 +3632,7 @@
             document.getElementById('credit-photos-section').style.display = 'none';
             document.getElementById('ecredit-photos-section').style.display = 'none';
             document.getElementById('retoma-section').style.display = 'none';
+            document.getElementById('payment-amount-group').style.display = '';
             recReset();
             document.getElementById('retoma-descripcion').value = '';
             document.getElementById('retoma-cantidad').value = '1';
