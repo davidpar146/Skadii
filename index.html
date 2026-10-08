@@ -2889,7 +2889,10 @@
 
         // ============= REMISIONES: COLABORADORES, ÍTEMS Y PAGOS =============
 
-        const ASESORES_FIJOS = ['Camilo', 'Sirley', 'Josue', 'Nicolas', 'Sandra'];
+        const ASESORES_FIJOS = ['Camilo', 'Sirley', 'Josue', 'Nicolas'];
+        // Asesores que solo aplican en Remisiones (asesor principal y colaboradores);
+        // no se listan en Mantenimientos ni Inventario aunque estén en el archivo de Drive.
+        const ASESORES_SOLO_REMISIONES = ['Sandra'];
         // Asesores dados de baja: se excluyen al cargar, aunque sigan en el archivo de Drive.
         const ASESORES_INACTIVOS = ['Male'];
 
@@ -3198,7 +3201,7 @@
             const container = document.getElementById('colaboradores-checkboxes');
             if (!container) return;
             const desdeDrive = Object.keys(clavesAsesores);
-            const todos = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
+            const todos = [...new Set([...ASESORES_FIJOS, ...ASESORES_SOLO_REMISIONES, ...desdeDrive])].sort();
             const disponibles = todos.filter(n => n !== asesorPrincipal);
             const yaAgregados = currentColaboradores.map(c => c.nombre);
             container.innerHTML = disponibles.map(nombre => {
@@ -4415,7 +4418,7 @@
         function mantRenderizarChipsAsesor() {
             const container = document.getElementById('mant-asesor-chips');
             if (!container) return;
-            const desdeDrive = Object.keys(clavesAsesores);
+            const desdeDrive = Object.keys(clavesAsesores).filter(n => !ASESORES_SOLO_REMISIONES.includes(n));
             const todos = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
             container.innerHTML = todos.map(nombre => {
                 const marcado = mantAsesorActual === nombre;
@@ -6508,7 +6511,7 @@
             if (!sel) return;
             const valorActual = sel.value;
             sel.innerHTML = '<option value="">Seleccione...</option>';
-            const desdeDrive = Object.keys(clavesAsesores);
+            const desdeDrive = Object.keys(clavesAsesores).filter(n => !ASESORES_SOLO_REMISIONES.includes(n));
             const todosAsesores = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
             todosAsesores.forEach(nombre => {
                 const opt = document.createElement('option');
