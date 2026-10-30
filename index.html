@@ -2900,7 +2900,7 @@
         // Los accesorios se agregan al mismo array `currentItems` con tipo 'accesorio',
         // así entran solos en el total, el cuadre de pagos y el guardado de la remisión.
         // El código es el identificador oficial (evita nombres duplicados).
-        const ACC_CATEGORIAS = ['Todos', 'Estuches', 'Audio', 'Cargadores y cables', 'Vidrios'];
+        const ACC_CATEGORIAS = ['Todos', 'Estuches', 'Audio', 'Cargadores y cables', 'Vidrios', 'Relojes'];
         const ACCESORIOS_CATALOGO = [
             { codigo: 'AC01', nombre: 'Estuche silicona', categoria: 'Estuches' },
             { codigo: 'AC02', nombre: 'Estuche space', categoria: 'Estuches' },
@@ -2927,7 +2927,8 @@
             { codigo: 'V-1', nombre: 'Vidrio', categoria: 'Vidrios' },
             { codigo: 'V-2', nombre: 'Cerámico', categoria: 'Vidrios' },
             { codigo: 'V-4', nombre: 'Vidrio línea 17', categoria: 'Vidrios' },
-            { codigo: 'V-5', nombre: 'Antiespía', categoria: 'Vidrios' }
+            { codigo: 'V-5', nombre: 'Antiespía', categoria: 'Vidrios' },
+            { codigo: 'AC25', nombre: 'Reloj inteligente', categoria: 'Relojes' }
         ];
         let accFiltroCategoria = null;   // null = contraído (solo populares); 'Todos'/categoría = ver todos
         let accSeleccionado = null;   // { codigo, nombre, categoria }
