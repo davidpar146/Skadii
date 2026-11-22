@@ -522,13 +522,17 @@
         async function login() {
             const user = document.getElementById('admin-user').value;
             const pass = document.getElementById('admin-pass').value;
+            // En el primer ingreso (o sin cifrado disponible) adminVerificarPass ya explica el
+            // motivo (clave corta, no coincide...); no taparlo con el mensaje genérico.
+            const yaExplicado = user === ADMIN_USER &&
+                (!localStorage.getItem(ADMIN_HASH_KEY) || !(window.crypto && crypto.subtle));
 
             if (user === ADMIN_USER && await adminVerificarPass(pass)) {
                 document.getElementById('login-screen').style.display = 'none';
                 document.getElementById('admin-panel').style.display = 'block';
                 cargarDatos();
                 mostrarToast('✅ Bienvenido al panel administrativo');
-            } else {
+            } else if (!yaExplicado) {
                 mostrarToast('❌ Usuario o contraseña incorrectos');
             }
         }
