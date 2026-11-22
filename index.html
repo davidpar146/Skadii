@@ -1111,7 +1111,12 @@
                     <span id="success-total" style="font-size: 1.25rem; font-weight: 700; color: var(--success); margin-left: 0.5rem;">$0</span>
                 </div>
             </div>
-            <p style="font-size: 0.875rem; color: var(--gray-500);">
+            <div id="success-pendientes" style="display: none; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; text-align: left;">
+                <strong style="color: #92400e;">⚠️ La remisión quedó guardada, pero faltó subir:</strong>
+                <ul id="success-pendientes-lista" style="margin: 0.5rem 0 0.75rem 1.25rem; padding: 0; list-style: disc; color: #92400e;"></ul>
+                <button class="btn btn-primary" onclick="sinDobleToque(this, 'remision-pendientes', remReintentarPendientes)">🔄 Reintentar lo pendiente</button>
+            </div>
+            <p id="success-drive-ok" style="font-size: 0.875rem; color: var(--gray-500);">
                 ✅ Datos guardados en Google Drive
             </p>
             <button class="btn btn-primary" onclick="cerrarExito()" style="margin-top: 1.5rem;">Aceptar</button>
@@ -2246,11 +2251,59 @@
             const htmlOriginal = boton ? boton.innerHTML : '';
             if (boton) { boton.disabled = true; boton.innerHTML = '⏳ Guardando...'; }
             try {
+                if (!(await asegurarSesionGoogle())) return;
                 return await fn();
             } finally {
                 guardadosEnCurso.delete(clave);
                 if (boton) { boton.disabled = false; boton.innerHTML = htmlOriginal; }
             }
+        }
+
+        // ===== Sesión de Google: renovar el permiso antes de que venza =====
+        // El permiso que da Google dura ~1 hora y la app no lo renovaba: pasado ese tiempo
+        // los guardados fallaban. Antes de cada guardado (vía sinDobleToque), si venció o le
+        // quedan menos de 5 minutos, se pide uno nuevo; Google puede mostrar su ventana un momento.
+        let tokenVenceEn = 0;   // fecha (ms) en que vence el permiso actual
+        async function asegurarSesionGoogle() {
+            if (typeof tokenClient === 'undefined' || !tokenClient || !accessToken) return true;
+            if (Date.now() < tokenVenceEn - 5 * 60 * 1000) return true;
+            mostrarToast('🔐 Renovando sesión de Google...', 60000);
+            try {
+                await renovarSesionGoogle();
+                mostrarToast('✅ Sesión de Google renovada');
+                return true;
+            } catch (e) {
+                console.error('No se pudo renovar la sesión de Google:', e);
+                mostrarToast('❌ La sesión de Google venció y no se pudo renovar. Toque de nuevo el botón.', 6000);
+                return false;
+            }
+        }
+        function renovarSesionGoogle() {
+            return new Promise((resolve, reject) => {
+                const callbackOriginal = tokenClient.callback;
+                const errorOriginal = tokenClient.error_callback;
+                let terminado = false;
+                const fin = (err) => {
+                    if (terminado) return;
+                    terminado = true;
+                    clearTimeout(espera);
+                    tokenClient.callback = callbackOriginal;
+                    tokenClient.error_callback = errorOriginal;
+                    if (err) reject(err); else resolve();
+                };
+                // Si Google no responde (ventana bloqueada o cerrada), no dejar el botón colgado.
+                const espera = setTimeout(() => fin(new Error('Sin respuesta de Google')), 60000);
+                tokenClient.callback = (resp) => {
+                    if (!resp || resp.error !== undefined) { fin(resp || new Error('Respuesta vacía')); return; }
+                    const tok = gapi.client.getToken();
+                    accessToken = (tok && tok.access_token) || resp.access_token;
+                    tokenVenceEn = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+                    updateDriveStatus(true);
+                    fin();
+                };
+                tokenClient.error_callback = (err) => fin(err || new Error('Error de Google'));
+                tokenClient.requestAccessToken({ prompt: '' });
+            });
         }
 
         // ===== Señalar el campo que falta =====
@@ -2362,6 +2415,7 @@
             tokenClient.callback = async (resp) => {
                 if (resp.error !== undefined) throw (resp);
                 accessToken = gapi.client.getToken().access_token;
+                tokenVenceEn = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('main-content').style.display = 'block';
                 updateDriveStatus(true);
@@ -2428,7 +2482,8 @@
             } catch (error) { console.error('Error creando spreadsheet:', error); }
         }
 
-        async function agregarFilaExcel(documento, docName, fileId) {
+        // fallas (opcional): si se pasa, un error se agrega ahí para reintentarlo (ver guardarDocumento).
+        async function agregarFilaExcel(documento, docName, fileId, fallas) {
             if (!SPREADSHEET_ID) return;
             const linkDrive = `https://drive.google.com/file/d/${fileId}/view`;
             const colaboradores = documento.colaboradores.map(c => c.nombre).join(', ');
@@ -2463,14 +2518,18 @@
                 linkDrive
             ]);
 
+            const agregar = () => gapi.client.sheets.spreadsheets.values.append({
+                spreadsheetId: SPREADSHEET_ID,
+                range: 'Remisiones!A:R',
+                valueInputOption: 'USER_ENTERED',
+                resource: { values: filas }
+            });
             try {
-                await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: SPREADSHEET_ID,
-                    range: 'Remisiones!A:R',
-                    valueInputOption: 'USER_ENTERED',
-                    resource: { values: filas }
-                });
-            } catch (error) { console.error('Error agregando fila a Excel:', error); }
+                await agregar();
+            } catch (error) {
+                console.error('Error agregando fila a Excel:', error);
+                if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', fn: agregar });
+            }
         }
 
         async function obtenerConsecutivos() {
@@ -3908,6 +3967,7 @@
 
             mostrarToast('☁️ Verificando consecutivo...');
             let lockFileId = null;
+            let jsonGuardado = false;
 
             try {
                 let numero = consecutivo;
@@ -3983,6 +4043,12 @@
                 const jsonResult = await subirArchivoDrive(
                     JSON.stringify(documento, null, 2), `${docName}.json`, folderId
                 );
+                // Desde aquí la remisión YA existe en Drive y el consecutivo queda usado.
+                // Cada paso siguiente se intenta por separado: si alguno falla se avisa y se
+                // reintenta solo ese paso (reintentar todo crearía una remisión duplicada).
+                jsonGuardado = true;
+                consecutivo = numero + 1;
+                const fallas = [];
 
                 // Subir fotos
                 for (const payment of currentPayments) {
@@ -4000,15 +4066,20 @@
                             else if (type === 'retomaCedulaPosterior') { folder = FOLDER_IDS.cedulas; fileName = `${docName}-Retoma-Cedula-Posterior.jpg`; }
                             else if (type === 'retomaContrato') { folder = FOLDER_IDS.contratos; fileName = `${docName}-Retoma-Contrato.jpg`; }
                             if (folder && fileName) {
-                                await subirImagenDrive(dataUrl, fileName, folder);
+                                try {
+                                    await subirImagenDrive(dataUrl, fileName, folder);
+                                } catch (e) {
+                                    console.error(`Error subiendo foto ${fileName}:`, e);
+                                    fallas.push({ nombre: `Foto ${fileName}`, fn: () => subirImagenDrive(dataUrl, fileName, folder) });
+                                }
                             }
                         }
                     }
                 }
 
-                await agregarFilaExcel(documento, docName, jsonResult.id);
-                await registrarPrestadosEnDrive(documento, docName);
-                await registrarCobrosPendientes(documento, docName);
+                await agregarFilaExcel(documento, docName, jsonResult.id, fallas);
+                await registrarPrestadosEnDrive(documento, docName, fallas);
+                await registrarCobrosPendientes(documento, docName, fallas);
 
                 // CAMBIO #2: Sumar +1 a frecuencia de cada prestador usado
                 const prestadoresUsados = [...new Set(
@@ -4017,21 +4088,21 @@
                         .map(i => i.prestadoPor)
                 )];
                 for (const nombrePrestador of prestadoresUsados) {
-                    await prestadoresIncrementarFrecuencia(nombrePrestador);
+                    try { await prestadoresIncrementarFrecuencia(nombrePrestador); }
+                    catch (e) { console.error('Error actualizando frecuencia de prestador:', e); }
                 }
 
                 // Popularidad de accesorios: +1 por cada accesorio usado en esta remisión
                 const accCodigosUsados = currentItems
                     .filter(i => i.tipo === 'accesorio' && i.codigo)
                     .map(i => i.codigo);
-                await accIncrementarPopularidad(accCodigosUsados);
+                try { await accIncrementarPopularidad(accCodigosUsados); }
+                catch (e) { console.error('Error actualizando popularidad de accesorios:', e); }
 
                 if (lockFileId) {
                     try { await gapi.client.drive.files.delete({ fileId: lockFileId }); }
                     catch (deleteLockError) { console.error('Error eliminando lock:', deleteLockError); }
                 }
-
-                consecutivo = numero + 1;
 
                 // Guardar datos para el modal antes de limpiar
                 const modalItems = [...currentItems];
@@ -4064,6 +4135,7 @@
 
                 const totalPagado = modalPayments.reduce((sum, p) => sum + p.amount, 0);
                 document.getElementById('success-total').textContent = formatMoney(totalPagado);
+                remMostrarPendientes(docName, fallas);
                 document.getElementById('success-modal').classList.add('show');
 
             } catch (error) {
@@ -4072,11 +4144,49 @@
                     try { await gapi.client.drive.files.delete({ fileId: lockFileId }); }
                     catch (cleanupError) { console.error('Error limpiando lock:', cleanupError); }
                 }
-                mostrarToast('❌ Error al subir. Intente de nuevo.');
+                if (jsonGuardado) {
+                    mostrarToast('⚠️ La remisión SÍ quedó guardada en Drive, pero hubo un error al terminar. No la guarde otra vez; revise en Drive.', 10000);
+                } else {
+                    mostrarToast('❌ Error al subir. Intente de nuevo.');
+                }
             }
         }
 
+        // ===== Remisión: pasos pendientes tras guardar (reintento parcial) =====
+        let remPendientes = { docName: null, pasos: [] };
+        function remMostrarPendientes(docName, pasos) {
+            remPendientes = { docName, pasos };
+            const box = document.getElementById('success-pendientes');
+            const ok = document.getElementById('success-drive-ok');
+            if (!box) return;
+            if (!pasos.length) {
+                box.style.display = 'none';
+                document.getElementById('success-pendientes-lista').innerHTML = '';
+                if (ok) ok.style.display = '';
+                return;
+            }
+            document.getElementById('success-pendientes-lista').innerHTML =
+                pasos.map(p => `<li>${p.nombre}</li>`).join('');
+            box.style.display = 'block';
+            if (ok) ok.style.display = 'none';
+        }
+        async function remReintentarPendientes() {
+            const fallas = [];
+            for (const paso of remPendientes.pasos) {
+                try { await paso.fn(); }
+                catch (e) { console.error(`Reintento fallido (${paso.nombre}):`, e); fallas.push(paso); }
+            }
+            remMostrarPendientes(remPendientes.docName, fallas);
+            mostrarToast(fallas.length
+                ? `⚠️ Aún faltan ${fallas.length} paso(s). Revise la conexión e intente de nuevo.`
+                : '✅ Todo quedó subido');
+        }
+
         function cerrarExito() {
+            const n = remPendientes.pasos.length;
+            if (n && !confirm(`⚠️ Quedan ${n} paso(s) sin subir de la ${remPendientes.docName}.\n\nSi cierra, no se reintentarán y habrá que avisar al administrador.\n\n¿Cerrar de todas formas?`)) return;
+            if (n) console.warn(`Pasos sin subir de ${remPendientes.docName}:`, remPendientes.pasos.map(p => p.nombre));
+            remPendientes = { docName: null, pasos: [] };
             document.getElementById('success-modal').classList.remove('show');
         }
 
@@ -6885,7 +6995,7 @@
 
         const EMPRESAS_FINANCIERAS = ['addi', 'gora', 'coordinadora', 'ecredit'];
 
-        async function registrarCobrosPendientes(documento, docName) {
+        async function registrarCobrosPendientes(documento, docName, fallas) {
             const pagosFinancieros = (documento.payments || [])
                 .filter(p => EMPRESAS_FINANCIERAS.includes(p.method));
             if (pagosFinancieros.length === 0) return;
@@ -6901,13 +7011,18 @@
                     referencia_venta: pago.reference || null,
                     ingreso_registrado: null
                 };
+                const contenido = JSON.stringify(registro, null, 2);
                 try {
-                    await subirArchivoDrive(JSON.stringify(registro, null, 2), nombreArch, FOLDER_IDS.ingresos);
-                } catch(e) { console.error(`Error registrando cobro ${nombreArch}:`, e); }
+                    await subirArchivoDrive(contenido, nombreArch, FOLDER_IDS.ingresos);
+                } catch(e) {
+                    console.error(`Error registrando cobro ${nombreArch}:`, e);
+                    if (fallas) fallas.push({ nombre: `Cobro pendiente ${empresa} (Ingresos)`,
+                        fn: () => subirArchivoDrive(contenido, nombreArch, FOLDER_IDS.ingresos) });
+                }
             }
         }
 
-        async function registrarPrestadosEnDrive(documento, docName) {
+        async function registrarPrestadosEnDrive(documento, docName, fallas) {
             const itemsPrestados = documento.items.filter(i => i.estado === 'prestado' && i.prestadoPor);
             if (itemsPrestados.length === 0) return;
             const porPrestador = {};
@@ -6931,9 +7046,14 @@
                     total_costo: items.reduce((s, i) => s + (i.costo || 0), 0),
                     pago: null
                 };
+                const contenido = JSON.stringify(registro, null, 2);
                 try {
-                    await subirArchivoDrive(JSON.stringify(registro, null, 2), nombreArchivo, FOLDER_IDS.prestamosPagos);
-                } catch (e) { console.error(`Error registrando prestado ${nombreArchivo}:`, e); }
+                    await subirArchivoDrive(contenido, nombreArchivo, FOLDER_IDS.prestamosPagos);
+                } catch (e) {
+                    console.error(`Error registrando prestado ${nombreArchivo}:`, e);
+                    if (fallas) fallas.push({ nombre: `Equipo prestado de ${prestador} (Pagar Prestadores)`,
+                        fn: () => subirArchivoDrive(contenido, nombreArchivo, FOLDER_IDS.prestamosPagos) });
+                }
             }
         }
 
