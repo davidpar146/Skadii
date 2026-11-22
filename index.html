@@ -125,6 +125,7 @@
         .btn-photo { padding: 0.75rem; border: 2px solid var(--gray-300); background: white; color: var(--gray-700); }
         .btn-photo.captured { background: #dcfce7; border-color: var(--success); color: var(--success); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        .campo-faltante { outline: 2px solid var(--danger) !important; outline-offset: 2px; border-radius: 8px; }
 
         .input-with-button { display: flex; gap: 0.5rem; }
         .input-with-button input { flex: 1; }
@@ -805,7 +806,7 @@
             </div>
             <div class="form-group">
                 <label>Precio Unitario *</label>
-                <input type="text" id="item-valor" placeholder="0" oninput="formatearInput(this)">
+                <input type="text" id="item-valor" inputmode="numeric" placeholder="0" oninput="formatearInput(this)">
             </div>
             <div class="form-group">
                 <label>Estado del Equipo *</label>
@@ -900,7 +901,7 @@
             </div>
             <div class="form-group" id="payment-amount-group">
                 <label>Monto *</label>
-                <input type="text" id="payment-amount" placeholder="0" oninput="formatearInput(this); recActualizarMonto()">
+                <input type="text" id="payment-amount" inputmode="numeric" placeholder="0" oninput="formatearInput(this); recActualizarMonto()">
             </div>
             <div id="recargo-section" class="rec-section" style="display: none;"></div>
             <div class="form-group" id="payment-reference-group" style="display: none;">
@@ -949,7 +950,7 @@
                     </div>
                     <div class="form-group">
                         <label>Valor *</label>
-                        <input type="text" id="retoma-valor" placeholder="0" oninput="formatearInput(this)">
+                        <input type="text" id="retoma-valor" inputmode="numeric" placeholder="0" oninput="formatearInput(this)">
                     </div>
                 </div>
                 <div class="form-group">
@@ -999,7 +1000,7 @@
             </div>
         </div>
 
-        <button class="btn btn-success" onclick="guardarDocumento()">
+        <button class="btn btn-success" onclick="sinDobleToque(this, 'remision', guardarDocumento)">
             ☁️ Guardar y Subir a Drive + Sheets
         </button>
     </div>
@@ -1294,11 +1295,11 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Costo Estimado</label>
-                        <input type="text" id="mant-costo-estimado" placeholder="0" oninput="formatearInput(this)">
+                        <input type="text" id="mant-costo-estimado" inputmode="numeric" placeholder="0" oninput="formatearInput(this)">
                     </div>
                     <div class="form-group">
                         <label>Anticipo Recibido</label>
-                        <input type="text" id="mant-anticipo" placeholder="0" oninput="formatearInput(this)">
+                        <input type="text" id="mant-anticipo" inputmode="numeric" placeholder="0" oninput="formatearInput(this)">
                     </div>
                 </div>
                 <div class="form-group">
@@ -1335,7 +1336,7 @@
                 </button>
             </div>
 
-            <button class="btn btn-success" onclick="mantGuardar()">
+            <button class="btn btn-success" onclick="sinDobleToque(this, 'mant', mantGuardar)">
                 ☁️ Guardar Mantenimiento en Drive
             </button>
         </div>
@@ -1383,7 +1384,7 @@
                 <div class="form-row">
                     <div class="form-group">
                         <label>Precio Final del Servicio</label>
-                        <input type="text" id="mant-novedad-precio-final" placeholder="0" oninput="formatearInput(this); mantCalcularSaldo()">
+                        <input type="text" id="mant-novedad-precio-final" inputmode="numeric" placeholder="0" oninput="formatearInput(this); mantCalcularSaldo()">
                     </div>
                     <div class="form-group">
                         <label>Anticipo ya recibido</label>
@@ -1428,7 +1429,7 @@
                     </button>
                 </div>
             </div>
-            <button class="btn btn-success" onclick="mantGuardarNovedad()">💾 Guardar Novedad</button>
+            <button class="btn btn-success" onclick="sinDobleToque(this, 'mant-novedad', mantGuardarNovedad)">💾 Guardar Novedad</button>
         </div>
     </div>
 
@@ -1477,7 +1478,7 @@
             </div>
             <div class="form-group">
                 <label>Precio Original de Venta</label>
-                <input type="text" id="gar-entra-precio" placeholder="0" oninput="formatearInput(this); garCalcularDiferencia()">
+                <input type="text" id="gar-entra-precio" inputmode="numeric" placeholder="0" oninput="formatearInput(this); garCalcularDiferencia()">
             </div>
 
             <div style="margin-top:0.75rem;">
@@ -1575,7 +1576,7 @@
             </div>
             <div class="form-group">
                 <label>Precio del Equipo Nuevo</label>
-                <input type="text" id="gar-sale-precio" placeholder="0" oninput="formatearInput(this); garCalcularDiferencia()">
+                <input type="text" id="gar-sale-precio" inputmode="numeric" placeholder="0" oninput="formatearInput(this); garCalcularDiferencia()">
             </div>
 
             <!-- Estado del equipo que sale: propio o prestado (misma línea que en Remisiones) -->
@@ -1685,7 +1686,7 @@
                 <label>Nota de Autorización</label>
                 <textarea id="gar-auth-nota" placeholder="Observaciones del autorizador..." rows="2"></textarea>
             </div>
-            <button class="btn btn-success" onclick="garConfirmarAutorizacion()" style="margin-bottom:0.5rem;">
+            <button class="btn btn-success" onclick="sinDobleToque(this, 'gar', garConfirmarAutorizacion)" style="margin-bottom:0.5rem;">
                 ✅ Autorizar y Guardar
             </button>
             <button class="btn btn-secondary" onclick="garCerrarAutorizacion()">Cancelar</button>
@@ -1763,7 +1764,7 @@
             </div>
             <div class="form-group">
                 <label>Monto a Pagar *</label>
-                <input type="text" id="prest-pago-monto" placeholder="0" oninput="formatearInput(this)">
+                <input type="text" id="prest-pago-monto" inputmode="numeric" placeholder="0" oninput="formatearInput(this)">
             </div>
             <div class="form-group">
                 <label>Referencia / Comprobante</label>
@@ -1848,7 +1849,7 @@
                 <div style="font-weight:600; font-size:0.85rem; margin-bottom:0.6rem;">💰 Registrar Pago Recibido</div>
                 <div class="form-group" style="margin-bottom:0.6rem;">
                     <label style="font-size:0.82rem;">Monto recibido *</label>
-                    <input type="text" id="ing-pago-monto" placeholder="0" oninput="formatearInput(this); ingSimularAplicacion()" style="padding:0.6rem; border:2px solid var(--gray-200); border-radius:8px; width:100%; font-size:0.95rem;">
+                    <input type="text" id="ing-pago-monto" inputmode="numeric" placeholder="0" oninput="formatearInput(this); ingSimularAplicacion()" style="padding:0.6rem; border:2px solid var(--gray-200); border-radius:8px; width:100%; font-size:0.95rem;">
                 </div>
                 <div id="ing-simulacion-display" style="margin-bottom:0.6rem;"></div>
                 <div class="form-row" style="margin-bottom:0.6rem;">
@@ -1875,7 +1876,7 @@
                 <button class="btn btn-photo" id="btn-ingComprobante" onclick="tomarFoto('ingComprobante')" style="margin-bottom:0.6rem;">
                     📸 Foto del Comprobante / SMS
                 </button>
-                <button class="btn btn-success" onclick="ingAplicarPago()">
+                <button class="btn btn-success" onclick="sinDobleToque(this, 'ing-pago', ingAplicarPago)">
                     ✅ Aplicar Pago y Actualizar Drive
                 </button>
             </div>
@@ -1909,7 +1910,7 @@
                 </div>
                 <div class="form-group">
                     <label>Monto *</label>
-                    <input type="text" id="gas-monto" placeholder="0" oninput="formatearInput(this)">
+                    <input type="text" id="gas-monto" inputmode="numeric" placeholder="0" oninput="formatearInput(this)">
                 </div>
                 <div class="form-row">
                     <div class="form-group">
@@ -1959,7 +1960,7 @@
                     </div>
                 </div>
             </div>
-            <button class="btn btn-success" onclick="gasGuardar()">☁️ Guardar Gasto en Drive</button>
+            <button class="btn btn-success" onclick="sinDobleToque(this, 'gas', gasGuardar)">☁️ Guardar Gasto en Drive</button>
         </div>
 
         <div id="gas-tab-content-lista" style="display:none;">
@@ -2009,7 +2010,7 @@
                         </div>
                         <div class="form-group">
                             <label>Valor unitario</label>
-                            <input type="text" id="inv-valor" placeholder="0" oninput="formatearInput(this)">
+                            <input type="text" id="inv-valor" inputmode="numeric" placeholder="0" oninput="formatearInput(this)">
                         </div>
                     </div>
                     <div class="form-group">
@@ -2054,7 +2055,7 @@
                         </select>
                     </div>
                 </div>
-                <button class="btn btn-primary" onclick="invGuardarSolicitud()" style="margin-bottom:1rem;">
+                <button class="btn btn-primary" onclick="sinDobleToque(this, 'inv-solicitud', invGuardarSolicitud)" style="margin-bottom:1rem;">
                     📤 Enviar Solicitud de Baja
                 </button>
             </div>
@@ -2107,8 +2108,8 @@
                 <textarea id="inv-decision-nota" placeholder="Motivo de aprobación o rechazo..." rows="3"></textarea>
             </div>
             <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
-                <button class="btn btn-success" onclick="invProcesarDecision('aprobada')" style="flex:1;">✅ Aprobar</button>
-                <button class="btn" onclick="invProcesarDecision('rechazada')" style="flex:1; background:var(--danger); color:white;">❌ Rechazar</button>
+                <button class="btn btn-success" onclick="sinDobleToque(this, 'inv-decision', () => invProcesarDecision('aprobada'))" style="flex:1;">✅ Aprobar</button>
+                <button class="btn" onclick="sinDobleToque(this, 'inv-decision', () => invProcesarDecision('rechazada'))" style="flex:1; background:var(--danger); color:white;">❌ Rechazar</button>
             </div>
         </div>
     </div>
@@ -2147,7 +2148,7 @@
                     Clave numérica de 4 dígitos
                 </div>
             </div>
-            <button class="btn btn-primary" onclick="procesarAnulacion()" style="margin-top: 1rem;">❌ Anular Remisión</button>
+            <button class="btn btn-primary" onclick="sinDobleToque(this, 'anulacion', procesarAnulacion)" style="margin-top: 1rem;">❌ Anular Remisión</button>
             <button class="btn btn-secondary" onclick="cerrarAnulacion()" style="margin-top: 0.5rem;">Cancelar</button>
         </div>
     </div>
@@ -2233,6 +2234,58 @@
             if (!texto) return 0;
             const soloDigitos = texto.toString().replace(/[^\d]/g, '');
             return parseInt(soloDigitos, 10) || 0;
+        }
+
+        // ===== Anti doble toque en botones de guardado =====
+        // Mientras la función corre, el botón queda bloqueado y un segundo toque se ignora
+        // (evita documentos duplicados por tocar dos veces mientras sube a Drive).
+        const guardadosEnCurso = new Set();
+        async function sinDobleToque(boton, clave, fn) {
+            if (guardadosEnCurso.has(clave)) { mostrarToast('⏳ Guardando, espere...'); return; }
+            guardadosEnCurso.add(clave);
+            const htmlOriginal = boton ? boton.innerHTML : '';
+            if (boton) { boton.disabled = true; boton.innerHTML = '⏳ Guardando...'; }
+            try {
+                return await fn();
+            } finally {
+                guardadosEnCurso.delete(clave);
+                if (boton) { boton.disabled = false; boton.innerHTML = htmlOriginal; }
+            }
+        }
+
+        // ===== Señalar el campo que falta =====
+        // Muestra el aviso, marca el campo en rojo y lleva la pantalla hasta él.
+        function marcarCampoFaltante(id, mensaje) {
+            mostrarToast(mensaje);
+            const el = document.getElementById(id);
+            if (!el) return;
+            el.classList.add('campo-faltante');
+            el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            if (/^(INPUT|SELECT|TEXTAREA)$/.test(el.tagName)) {
+                try { el.focus({ preventScroll: true }); } catch (e) {}
+            }
+            const quitar = () => {
+                el.classList.remove('campo-faltante');
+                ['input', 'change', 'click'].forEach(ev => el.removeEventListener(ev, quitar));
+            };
+            ['input', 'change', 'click'].forEach(ev => el.addEventListener(ev, quitar));
+        }
+        // campos: [[valor, idDelCampo, 'Nombre visible'], ...]. Devuelve true si falta alguno.
+        function faltaCampo(campos) {
+            for (const [valor, id, nombre] of campos) {
+                if (!valor) { marcarCampoFaltante(id, `⚠️ Falta: ${nombre}`); return true; }
+            }
+            return false;
+        }
+
+        // ===== IMEI escrito a mano =====
+        // Si no son 15 dígitos válidos (Luhn), pide confirmar; deja continuar (p. ej. un serial).
+        function confirmarImeiDudoso(imei, idCampo) {
+            const digitos = imei.replace(/\D/g, '');
+            if (digitos.length === 15 && validarLuhn(digitos)) return true;
+            const ok = confirm(`⚠️ El IMEI "${imei}" no parece válido (deben ser 15 dígitos correctos).\n\n¿Está seguro de que es correcto?`);
+            if (!ok) marcarCampoFaltante(idCampo, '✏️ Revise el IMEI');
+            return ok;
         }
 
         function formatMoney(valor) {
@@ -3253,8 +3306,8 @@
             const imei = document.getElementById('item-imei').value.trim();
             const notas = document.getElementById('item-notas').value.trim();
 
-            if (!descripcion) { mostrarToast('⚠️ Ingrese una descripción'); return; }
-            if (!imei) { mostrarToast('⚠️ El IMEI es obligatorio'); return; }
+            if (!descripcion) { marcarCampoFaltante('item-descripcion', '⚠️ Ingrese una descripción'); return; }
+            if (!imei) { marcarCampoFaltante('item-imei', '⚠️ El IMEI es obligatorio'); return; }
             if (!currentEstado) {
                 mostrarToast('⚠️ Seleccione el estado del equipo');
                 document.getElementById('estado-warning').style.display = 'block';
@@ -3262,9 +3315,10 @@
             }
             const prestadoPor = document.getElementById('item-prestado-por').value.trim();
             if (currentEstado === 'prestado' && !prestadoPor) {
-                mostrarToast('⚠️ Selecciona quién presta el equipo');
+                marcarCampoFaltante('prest-chips-list', '⚠️ Selecciona quién presta el equipo');
                 return;
             }
+            if (!confirmarImeiDudoso(imei, 'item-imei')) return;
 
             const costo = parsearValor(document.getElementById('item-costo').value);
 
@@ -3496,36 +3550,34 @@
             const method = document.getElementById('payment-method').value;
             const amount = parsearValor(document.getElementById('payment-amount').value);
             const reference = document.getElementById('payment-reference').value.trim();
-            if (!method || (method !== 'retoma' && amount <= 0)) { mostrarToast('⚠️ Complete los datos del pago'); return; }
+            if (!method) { marcarCampoFaltante('payment-method', '⚠️ Seleccione el método de pago'); return; }
+            if (method !== 'retoma' && amount <= 0) { marcarCampoFaltante('payment-amount', '⚠️ Ingrese el monto del pago'); return; }
             if ((method === 'transferencia' || method === 'coordinadora') && !reference) {
-                mostrarToast('⚠️ Debe ingresar el banco'); return;
+                marcarCampoFaltante('payment-reference', '⚠️ Debe ingresar el banco'); return;
             }
             if ((method === 'transferencia' || method === 'tarjeta' || method === 'addi' || method === 'gora' || method === 'coordinadora') && !capturedPhotos.soporte) {
-                mostrarToast('⚠️ Debe capturar foto del comprobante'); return;
+                marcarCampoFaltante('btn-soporte', '⚠️ Debe capturar foto del comprobante'); return;
             }
-            if (method === 'credito') {
-                if (!capturedPhotos.cedulaFrontal || !capturedPhotos.cedulaPosterior || !capturedPhotos.contrato) {
-                    mostrarToast('⚠️ Debe capturar las 3 fotos para crédito'); return;
-                }
-            }
-            if (method === 'ecredit') {
-                if (!capturedPhotos.ecreditCedulaFrontal || !capturedPhotos.ecreditCedulaPosterior || !capturedPhotos.ecreditContrato) {
-                    mostrarToast('⚠️ Debe capturar las 3 fotos para E-Credit'); return;
-                }
-            }
-            if (method === 'retoma') {
-                if (!capturedPhotos.retomaCedulaFrontal || !capturedPhotos.retomaCedulaPosterior || !capturedPhotos.retomaContrato) {
-                    mostrarToast('⚠️ Debe capturar las 3 fotos para retoma'); return;
-                }
+            // Fotos obligatorias por medio: se marca la primera que falte.
+            const fotosObligatorias = {
+                credito: ['cedulaFrontal', 'cedulaPosterior', 'contrato'],
+                ecredit: ['ecreditCedulaFrontal', 'ecreditCedulaPosterior', 'ecreditContrato'],
+                retoma: ['retomaCedulaFrontal', 'retomaCedulaPosterior', 'retomaContrato']
+            };
+            const nombreMedioFotos = { credito: 'crédito', ecredit: 'E-Credit', retoma: 'retoma' };
+            const fotoFaltante = (fotosObligatorias[method] || []).find(t => !capturedPhotos[t]);
+            if (fotoFaltante) {
+                marcarCampoFaltante('btn-' + fotoFaltante, `⚠️ Debe capturar las 3 fotos para ${nombreMedioFotos[method]}`); return;
             }
 
             const payment = { id: Date.now(), method, amount, reference, photos: { ...capturedPhotos } };
             if (method === 'retoma') {
                 const retomaDesc = document.getElementById('retoma-descripcion').value.trim();
                 const retomaImei = document.getElementById('retoma-imei').value.trim();
-                if (!retomaDesc) { mostrarToast('⚠️ Ingrese descripción del equipo en retoma'); return; }
-                if (!retomaImei) { mostrarToast('⚠️ Ingrese IMEI del equipo en retoma'); return; }
-                if (parsearValor(document.getElementById('retoma-valor').value) <= 0) { mostrarToast('⚠️ Ingrese el valor del equipo en retoma'); return; }
+                if (!retomaDesc) { marcarCampoFaltante('retoma-descripcion', '⚠️ Ingrese descripción del equipo en retoma'); return; }
+                if (!retomaImei) { marcarCampoFaltante('retoma-imei', '⚠️ Ingrese IMEI del equipo en retoma'); return; }
+                if (parsearValor(document.getElementById('retoma-valor').value) <= 0) { marcarCampoFaltante('retoma-valor', '⚠️ Ingrese el valor del equipo en retoma'); return; }
+                if (!confirmarImeiDudoso(retomaImei, 'retoma-imei')) return;
                 payment.retomaItem = {
                     descripcion: retomaDesc,
                     cantidad: parseInt(document.getElementById('retoma-cantidad').value) || 1,
@@ -3830,15 +3882,28 @@
             const nit = document.getElementById('nit').value.trim();
             const telefono = document.getElementById('telefono').value.trim();
 
-            if (!asesor || !cliente || !nit || !telefono) {
-                mostrarToast('⚠️ Complete todos los campos obligatorios');
-                return;
-            }
+            if (faltaCampo([
+                [asesor, 'asesor-principal', 'Asesor Principal'],
+                [cliente, 'cliente', 'Nombre del Cliente'],
+                [nit, 'nit', 'NIT/CC'],
+                [telefono, 'telefono', 'Teléfono']
+            ])) return;
             if (currentItems.length === 0) {
-                mostrarToast('⚠️ Agregue al menos un ítem'); return;
+                marcarCampoFaltante('item-descripcion', '⚠️ Agregue al menos un dispositivo o accesorio'); return;
             }
             if (currentPayments.length === 0) {
-                mostrarToast('⚠️ Agregue al menos un método de pago'); return;
+                marcarCampoFaltante('payment-method', '⚠️ Agregue al menos un método de pago'); return;
+            }
+            // Cuadre: si los pagos no coinciden con el total, confirmar antes de guardar (no bloquea).
+            const cuadreTotal = currentItems.reduce((s, i) => s + i.total, 0);
+            const cuadrePagado = currentPayments.reduce((s, p) => s + p.amount, 0);
+            if (cuadreTotal !== cuadrePagado) {
+                const dif = formatMoney(Math.abs(cuadreTotal - cuadrePagado));
+                const detalle = `\n\nTotal venta: ${formatMoney(cuadreTotal)}\nTotal pagado: ${formatMoney(cuadrePagado)}\n\n¿Guardar la remisión así?`;
+                const msg = cuadrePagado < cuadreTotal
+                    ? `⚠️ Falta ${dif} por pagar.` + detalle
+                    : `⚠️ Los pagos superan el total en ${dif}.` + detalle;
+                if (!confirm(msg)) return;
             }
 
             mostrarToast('☁️ Verificando consecutivo...');
@@ -4202,9 +4267,12 @@
             const numero = document.getElementById('anulacion-numero').value;
             const motivo = document.getElementById('anulacion-motivo').value.trim();
             const clave = document.getElementById('anulacion-clave').value;
-            if (!asesor || !numero || !motivo || !clave) {
-                mostrarToast('⚠️ Complete todos los campos obligatorios'); return;
-            }
+            if (faltaCampo([
+                [asesor, 'anulacion-asesor', 'Asesor'],
+                [numero, 'anulacion-numero', 'Número de Remisión'],
+                [motivo, 'anulacion-motivo', 'Motivo de Anulación'],
+                [clave, 'anulacion-clave', 'Clave de Seguridad']
+            ])) return;
             if (clave.length !== 4 || !/^\d+$/.test(clave)) {
                 mostrarToast('⚠️ La clave debe ser de 4 dígitos numéricos'); return;
             }
@@ -4450,9 +4518,14 @@
             const imei = document.getElementById('mant-equipo-imei').value.trim();
             const falla = document.getElementById('mant-falla').value.trim();
             const asesor = mantAsesorActual || '';
-            if (!nombre || !telefono || !descripcion || !imei || !falla || !asesor) {
-                mostrarToast('⚠️ Complete los campos obligatorios (*)'); return;
-            }
+            if (faltaCampo([
+                [nombre, 'mant-cliente-nombre', 'Nombre del cliente'],
+                [telefono, 'mant-cliente-telefono', 'Teléfono'],
+                [descripcion, 'mant-equipo-descripcion', 'Descripción del equipo'],
+                [imei, 'mant-equipo-imei', 'IMEI / Serie'],
+                [falla, 'mant-falla', 'Falla reportada'],
+                [asesor, 'mant-asesor-chips', 'Asesor']
+            ])) return;
             mostrarToast('☁️ Guardando mantenimiento...');
             try {
                 const numeroFormateado = String(mantConsecutivo).padStart(4, '0');
@@ -6374,9 +6447,14 @@
             const notas       = document.getElementById('gas-notas').value.trim();
             const asesor      = document.getElementById('gas-asesor').value;
             const clave       = document.getElementById('gas-clave').value;
-            if (!proveedor || !descripcion || !monto || !fecha || !asesor || !clave) {
-                mostrarToast('⚠️ Complete todos los campos obligatorios (*)'); return;
-            }
+            if (faltaCampo([
+                [proveedor, 'gas-proveedor', 'Proveedor / A quién se pagó'],
+                [descripcion, 'gas-descripcion', 'Descripción'],
+                [monto, 'gas-monto', 'Monto'],
+                [fecha, 'gas-fecha', 'Fecha'],
+                [asesor, 'gas-asesor', 'Nombre del asesor'],
+                [clave, 'gas-clave', 'Clave']
+            ])) return;
             if (clavesAsesores[asesor] !== clave) { mostrarToast('❌ Clave incorrecta'); return; }
             mostrarToast('☁️ Guardando gasto...');
             try {
@@ -6590,9 +6668,12 @@
             const asesor      = document.getElementById('inv-asesor').value;
             const dispFinal   = invDisposicion === 'Otro'
                 ? document.getElementById('inv-disposicion-otro').value.trim() : invDisposicion;
-            if (!descripcion || !motivo || !asesor || !dispFinal) {
-                mostrarToast('⚠️ Complete descripción, motivo, disposición y asesor'); return;
-            }
+            if (faltaCampo([
+                [descripcion, 'inv-descripcion', 'Descripción'],
+                [motivo, 'inv-motivo', 'Motivo detallado'],
+                [dispFinal, 'inv-disposicion-otro', 'Disposición final'],
+                [asesor, 'inv-asesor', 'Asesor']
+            ])) return;
             mostrarToast('☁️ Enviando solicitud...');
             try {
                 const numF = String(invConsecutivo).padStart(4,'0');
