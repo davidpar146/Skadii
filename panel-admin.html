@@ -622,7 +622,9 @@
                 
                 const matchTipo = !tipo || doc.tipo === tipo;
                 
-                const docDate = doc.fecha.split('T')[0];
+                // Día local del documento (los registros viejos se guardaron en UTC).
+                const fd = new Date(doc.fecha);
+                const docDate = `${fd.getFullYear()}-${String(fd.getMonth() + 1).padStart(2, '0')}-${String(fd.getDate()).padStart(2, '0')}`;
                 const matchDateFrom = !dateFrom || docDate >= dateFrom;
                 const matchDateTo = !dateTo || docDate <= dateTo;
                 
@@ -752,7 +754,7 @@
                 });
             });
 
-            descargarArchivo(csv, `todos_documentos_${new Date().toISOString().slice(0,10)}.csv`, 'text/csv');
+            descargarArchivo(csv, `todos_documentos_${hoyLocal()}.csv`, 'text/csv');
             mostrarToast('📊 Excel exportado exitosamente');
         }
 
@@ -764,7 +766,7 @@
             }
 
             const json = JSON.stringify(allDocuments, null, 2);
-            descargarArchivo(json, `respaldo_completo_${new Date().toISOString().slice(0,10)}.json`, 'application/json');
+            descargarArchivo(json, `respaldo_completo_${hoyLocal()}.json`, 'application/json');
             mostrarToast('💾 Respaldo JSON descargado');
         }
 
@@ -786,6 +788,12 @@
                 currency: 'COP',
                 minimumFractionDigits: 0
             }).format(valor);
+        }
+
+        // Día de hoy en hora local (AAAA-MM-DD), para nombres de archivo.
+        function hoyLocal() {
+            const d = new Date();
+            return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
         }
 
         // Formatear fecha
