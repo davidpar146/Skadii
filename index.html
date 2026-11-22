@@ -712,6 +712,15 @@
     </div>
 
     <div class="container" id="main-content" style="display: none;">
+        <!-- Borrador de remisión sin terminar (guardado en este celular) -->
+        <div id="borrador-banner" class="card" style="display: none; background: #eff6ff; border: 1px solid #93c5fd;">
+            <div id="borrador-texto" style="font-size: 0.9rem; color: #1e3a8a; margin-bottom: 0.75rem; line-height: 1.4;"></div>
+            <div style="display: flex; gap: 0.5rem;">
+                <button class="btn btn-primary" onclick="borradorRecuperar()" style="flex: 1;">📝 Recuperar</button>
+                <button class="btn" onclick="borradorDescartar()" style="flex: 1; background: var(--gray-200); color: var(--gray-700);">🗑️ Descartar</button>
+            </div>
+        </div>
+
         <!-- Equipo de Venta -->
         <div class="card">
             <div class="card-title">👥 Equipo de Venta</div>
@@ -4212,8 +4221,171 @@
             actualizarListaColaboradores();
             actualizarSelectColaboradores();
             actualizarNumeroDocumento();
+            borradorBorrar();
             window.scrollTo(0, 0);
         }
+
+        // ============= REMISIONES: BORRADOR AUTOMÁTICO (módulo borrador) =============
+        // Si el celular recarga la página o se cierra la app a mitad de una remisión, el
+        // borrador queda guardado EN ESTE CELULAR (IndexedDB; incluye las fotos de los pagos
+        // ya agregados) y al volver se ofrece recuperarlo. Se borra al guardar o limpiar.
+        const BORRADOR_DB = 'skadii-borradores';
+        const BORRADOR_STORE = 'borradores';
+        const BORRADOR_KEY = 'remision';
+        let borradorDBPromesa = null;
+        let borradorTimer = null;
+        let borradorFirma = '';         // evita reescribir si nada cambió
+        let borradorPendiente = null;   // borrador encontrado al abrir, aún sin recuperar/descartar
+
+        function borradorAbrirDB() {
+            if (!borradorDBPromesa) {
+                borradorDBPromesa = new Promise((resolve, reject) => {
+                    const req = indexedDB.open(BORRADOR_DB, 1);
+                    req.onupgradeneeded = () => req.result.createObjectStore(BORRADOR_STORE);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+                borradorDBPromesa.catch(() => { borradorDBPromesa = null; });
+            }
+            return borradorDBPromesa;
+        }
+        // modo: 'leer' | 'guardar' | 'borrar'. Nunca lanza: si el navegador no lo permite, no hace nada.
+        async function borradorOperar(modo, valor) {
+            try {
+                const db = await borradorAbrirDB();
+                return await new Promise((resolve, reject) => {
+                    const tx = db.transaction(BORRADOR_STORE, modo === 'leer' ? 'readonly' : 'readwrite');
+                    const st = tx.objectStore(BORRADOR_STORE);
+                    const req = modo === 'leer' ? st.get(BORRADOR_KEY)
+                        : modo === 'guardar' ? st.put(valor, BORRADOR_KEY) : st.delete(BORRADOR_KEY);
+                    tx.oncomplete = () => resolve(req.result);
+                    tx.onerror = () => reject(tx.error);
+                    tx.onabort = () => reject(tx.error);
+                });
+            } catch (e) {
+                console.warn('Borrador de remisión no disponible:', e);
+                return null;
+            }
+        }
+
+        function borradorEstado() {
+            const val = id => { const el = document.getElementById(id); return el ? el.value : ''; };
+            return {
+                campos: {
+                    asesor: val('asesor-principal'), cliente: val('cliente'), nit: val('nit'),
+                    telefono: val('telefono'), direccion: val('direccion'), email: val('email'),
+                    observaciones: val('observaciones')
+                },
+                isColaborativa,
+                colaboradores: currentColaboradores,
+                items: currentItems,
+                payments: currentPayments
+            };
+        }
+        function borradorHayDatos(e) {
+            const c = e.campos || {};
+            return (e.items || []).length > 0 || (e.payments || []).length > 0 ||
+                !!(c.cliente || c.nit || c.telefono || c.direccion || c.email || c.observaciones);
+        }
+        function borradorFirmaDe(e) {
+            // Las fotos pesan mucho: para comparar basta con saber cuáles hay.
+            return JSON.stringify({ ...e, payments: (e.payments || []).map(p => ({ ...p, photos: Object.keys(p.photos || {}) })) });
+        }
+
+        function borradorProgramarGuardado() {
+            clearTimeout(borradorTimer);
+            borradorTimer = setTimeout(borradorGuardarAhora, 800);
+        }
+        async function borradorGuardarAhora() {
+            clearTimeout(borradorTimer);
+            borradorTimer = null;
+            const e = borradorEstado();
+            if (!borradorHayDatos(e)) return;
+            const firma = borradorFirmaDe(e);
+            if (firma === borradorFirma) return;
+            borradorFirma = firma;
+            // Si había un borrador sin decidir y el asesor empezó otra remisión, se reemplaza.
+            if (borradorPendiente) { borradorPendiente = null; borradorMostrarBanner(null); }
+            await borradorOperar('guardar', { ...e, guardadoEn: new Date().toISOString() });
+        }
+        function borradorBorrar() {
+            clearTimeout(borradorTimer);
+            borradorTimer = null;
+            borradorFirma = '';
+            borradorPendiente = null;
+            borradorMostrarBanner(null);
+            return borradorOperar('borrar');
+        }
+
+        function borradorEsc(t) {
+            return String(t || '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function borradorMostrarBanner(b) {
+            const banner = document.getElementById('borrador-banner');
+            if (!banner) return;
+            if (!b) { banner.style.display = 'none'; return; }
+            const items = b.items || [];
+            const nAcc = items.filter(i => i.tipo === 'accesorio').length;
+            const nDisp = items.length - nAcc;
+            const cuando = b.guardadoEn
+                ? new Date(b.guardadoEn).toLocaleString('es-CO', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })
+                : '';
+            document.getElementById('borrador-texto').innerHTML =
+                `📝 <strong>Hay una remisión sin terminar</strong> guardada en este celular${cuando ? ' (' + borradorEsc(cuando) + ')' : ''}.<br>` +
+                `Cliente: <strong>${borradorEsc(b.campos && b.campos.cliente) || '—'}</strong> · ${nDisp} dispositivo(s) · ${nAcc} accesorio(s) · ${(b.payments || []).length} pago(s).<br>` +
+                `<span style="font-size: 0.8rem;">Si empieza una remisión nueva sin recuperarla, este borrador se reemplaza.</span>`;
+            banner.style.display = 'block';
+        }
+
+        async function borradorRevisarAlAbrir() {
+            const b = await borradorOperar('leer');
+            if (!b || !borradorHayDatos(b)) return;
+            // Si mientras tanto ya se empezó otra remisión, no ofrecer el borrador viejo.
+            if (borradorHayDatos(borradorEstado())) return;
+            borradorPendiente = b;
+            borradorMostrarBanner(b);
+        }
+        function borradorRecuperar() {
+            const b = borradorPendiente;
+            if (!b) return;
+            const c = b.campos || {};
+            const poner = (id, v) => { const el = document.getElementById(id); if (el) el.value = v || ''; };
+            poner('asesor-principal', c.asesor);
+            poner('cliente', c.cliente); poner('nit', c.nit); poner('telefono', c.telefono);
+            poner('direccion', c.direccion); poner('email', c.email); poner('observaciones', c.observaciones);
+            currentItems = b.items || [];
+            currentPayments = b.payments || [];
+            currentColaboradores = b.colaboradores || [];
+            setColaborativa(!!b.isColaborativa);
+            actualizarListaItems();
+            accActualizarLista();
+            actualizarListaPagos();
+            actualizarListaColaboradores();
+            actualizarSelectColaboradores();
+            borradorPendiente = null;
+            borradorMostrarBanner(null);
+            borradorFirma = borradorFirmaDe(borradorEstado());
+            mostrarToast('📝 Remisión recuperada');
+        }
+        async function borradorDescartar() {
+            if (!confirm('¿Descartar la remisión sin terminar? No se podrá recuperar.')) return;
+            await borradorBorrar();
+            mostrarToast('🗑️ Borrador descartado');
+        }
+
+        (function borradorIniciar() {
+            const cont = document.getElementById('main-content');
+            if (cont) ['input', 'change', 'click'].forEach(ev => cont.addEventListener(ev, borradorProgramarGuardado));
+            document.addEventListener('visibilitychange', () => {
+                if (document.visibilityState === 'hidden') borradorGuardarAhora();
+            });
+            window.addEventListener('pagehide', () => { borradorGuardarAhora(); });
+            // Avisar antes de salir con una remisión sin guardar (el borrador igual queda guardado).
+            window.addEventListener('beforeunload', (ev) => {
+                if (borradorHayDatos(borradorEstado())) { ev.preventDefault(); ev.returnValue = ''; }
+            });
+            borradorRevisarAlAbrir();
+        })();
 
 
         // ============= CLAVES Y ANULACIÓN =============
