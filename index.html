@@ -2365,6 +2365,22 @@
         }
 
         // CAMBIO #3: Función para fecha corta dd/mm/yyyy
+        // ===== Fechas en hora local =====
+        // toISOString() guarda la hora en UTC (5 horas adelante de Colombia): una venta a las
+        // 8 p. m. quedaba en el archivo con fecha y hora del día siguiente. fechaLocalISO()
+        // guarda la hora del celular con su zona (p. ej. 2026-11-22T20:30:00-05:00); new Date()
+        // la sigue leyendo igual y sus primeros 10 caracteres son el día local.
+        function fechaLocalISO(d = new Date()) {
+            const p = n => String(n).padStart(2, '0');
+            const off = -d.getTimezoneOffset();
+            const zona = (off >= 0 ? '+' : '-') + p(Math.floor(Math.abs(off) / 60)) + ':' + p(Math.abs(off) % 60);
+            return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}T${p(d.getHours())}:${p(d.getMinutes())}:${p(d.getSeconds())}${zona}`;
+        }
+        // Día local en formato AAAA-MM-DD (para <input type="date">).
+        function fechaLocalYMD(d = new Date()) {
+            return fechaLocalISO(d).slice(0, 10);
+        }
+
         function formatearFechaCorta(fechaISO) {
             const f = new Date(fechaISO);
             const dia = String(f.getDate()).padStart(2, '0');
@@ -4039,7 +4055,7 @@
                 mostrarToast('☁️ Consecutivo reservado, subiendo documento...');
                 const numeroFormateado = String(numero).padStart(4, '0');
                 const docName = `Remision-${numeroFormateado}`;
-                const fechaISO = new Date().toISOString();
+                const fechaISO = fechaLocalISO();
 
                 const documento = {
                     tipo: 'remision', numero,
@@ -4576,7 +4592,7 @@
                 const anulacion = {
                     tipo: 'anulacion', remisionAnulada: numeroFormateado,
                     asesor, motivo,
-                    fechaAnulacion: new Date().toISOString(),
+                    fechaAnulacion: fechaLocalISO(),
                     validadoPorClave: true
                 };
                 const jsonResult = await subirArchivoDrive(
@@ -4824,7 +4840,7 @@
                 const firmaBase64 = canvas.toDataURL('image/png');
                 const doc = {
                     tipo: 'mantenimiento', numero: mantConsecutivo,
-                    fecha_ingreso: new Date().toISOString(),
+                    fecha_ingreso: fechaLocalISO(),
                     cliente: { nombre, telefono, identificacion: document.getElementById('mant-cliente-id').value.trim() },
                     equipo: { descripcion, imei },
                     falla_reportada: falla,
@@ -5193,7 +5209,7 @@
                 );
                 const docOriginal = await getResp.json();
                 const novedad = {
-                    fecha: new Date().toISOString(),
+                    fecha: fechaLocalISO(),
                     estado: mantNovedadEstado, texto,
                     pago: precioFinal > 0 ? {
                         precio_final: precioFinal, anticipo, saldo,
@@ -5655,7 +5671,7 @@
                 const doc = {
                     tipo: 'cambio_garantia', numero: docName,
                     remision_original: numOriginal,
-                    fecha: new Date().toISOString(),
+                    fecha: fechaLocalISO(),
                     cliente: garRemisionOriginal.cliente,
                     motivo: { tipo: garTipoActual, descripcion: document.getElementById('gar-motivo-descripcion').value.trim() },
                     equipo_que_entra: {
@@ -5680,7 +5696,7 @@
                         tipo: diff > 0 ? 'cobro' : diff < 0 ? 'devolucion' : 'sin_diferencia',
                         metodo_pago: document.getElementById('gar-metodo-pago').value || null
                     },
-                    autorizacion: { autorizado_por: autorizador, fecha: new Date().toISOString(), nota },
+                    autorizacion: { autorizado_por: autorizador, fecha: fechaLocalISO(), nota },
                     firma_cliente: canvas.toDataURL('image/png')
                 };
                 await subirArchivoDrive(JSON.stringify(doc, null, 2), `${docName}.json`, FOLDER_IDS.garantias);
@@ -6185,7 +6201,7 @@
             progresoEl.style.display = 'block';
             progresoTxt.textContent = `⏳ Iniciando actualización de ${fileIdsUnicos.length} archivo(s)...`;
 
-            const fechaPago = new Date().toISOString();
+            const fechaPago = fechaLocalISO();
             const infoPago = {
                 monto, metodo,
                 referencia: ref || null,
@@ -6490,7 +6506,7 @@
                             <div>
                                 <div style="font-weight:600; font-size:0.85rem;">#${idx+1} ${rem.doc.remision || rem.fileName.replace('.json','')}</div>
                                 <div style="font-size:0.72rem; color:var(--gray-500);">
-                                    Venta: ${rem.doc.fecha_remision?.slice(0,10) || '-'} → Pago esperado: ${fechaPago.toLocaleDateString('es-CO')}
+                                    Venta: ${rem.doc.fecha_remision ? formatearFechaCorta(rem.doc.fecha_remision) : '-'} → Pago esperado: ${fechaPago.toLocaleDateString('es-CO')}
                                     ${vencida ? '<span style="color:var(--danger); font-weight:600;"> ⚠️ VENCIDA</span>' : urgente ? '<span style="color:#d97706; font-weight:600;"> ⏰ ' + diasRestantes + 'd</span>' : ''}
                                 </div>
                                 <div style="font-size:0.72rem; color:var(--gray-500);">👤 ${rem.doc.cliente || '-'}</div>
@@ -6503,7 +6519,7 @@
             document.getElementById('ing-pago-monto').value = '';
             document.getElementById('ing-pago-notas').value = '';
             document.getElementById('ing-simulacion-display').innerHTML = '';
-            document.getElementById('ing-pago-fecha').value = new Date().toISOString().slice(0,10);
+            document.getElementById('ing-pago-fecha').value = fechaLocalYMD();
             delete capturedPhotos['ingComprobante'];
             const btn = document.getElementById('btn-ingComprobante');
             if (btn) { btn.classList.remove('captured'); btn.innerHTML = '📸 Foto del Comprobante / SMS'; }
@@ -6548,7 +6564,7 @@
             if (!ingRemisionesPendientes.length) { mostrarToast('⚠️ No hay remisiones pendientes'); return; }
             mostrarToast('☁️ Aplicando pago...');
             let restante = monto;
-            const fechaPago = new Date().toISOString();
+            const fechaPago = fechaLocalISO();
             const cubiertas = [];
             const parciales = [];
             try {
@@ -6622,7 +6638,7 @@
 
         async function gasInicializar() {
             const ahora = new Date();
-            document.getElementById('gas-fecha').value = ahora.toISOString().slice(0,10);
+            document.getElementById('gas-fecha').value = fechaLocalYMD(ahora);
             gasPoblarSelectAsesor();
             await gasCargarCategorias();
             if (accessToken) gasObtenerConsecutivo();
@@ -6752,7 +6768,7 @@
                 const docName = `Gasto-${numF}`;
                 const doc = {
                     tipo: 'gasto', numero: gasConsecutivo,
-                    fecha_registro: new Date().toISOString(),
+                    fecha_registro: fechaLocalISO(),
                     categoria: gasCategoriaActual, proveedor, descripcion,
                     monto, fecha_gasto: fecha, metodo_pago: metodo,
                     referencia: referencia || null, notas: notas || null, asesor,
@@ -6786,7 +6802,7 @@
             });
             document.getElementById('gas-numero-display').textContent =
                 `Gas-${String(gasConsecutivo).padStart(4,'0')}`;
-            document.getElementById('gas-fecha').value = new Date().toISOString().slice(0,10);
+            document.getElementById('gas-fecha').value = fechaLocalYMD();
             window.scrollTo(0,0);
         }
 
@@ -6970,7 +6986,7 @@
                 const docName = `BajaInv-${numF}`;
                 const doc = {
                     tipo: 'baja_inventario', numero: invConsecutivo,
-                    fecha_solicitud: new Date().toISOString(),
+                    fecha_solicitud: fechaLocalISO(),
                     estado: 'pendiente',
                     elemento: {
                         tipo_elemento: invTipoActual, descripcion, cantidad,
@@ -7068,7 +7084,7 @@
                 container.innerHTML = validos.map(({ fileId, fileName, doc }) => {
                     const el = doc.elemento || {};
                     const numNombre = fileName.replace('.json','');
-                    const fecha = doc.fecha_solicitud?.slice(0,10) || '-';
+                    const fecha = doc.fecha_solicitud ? formatearFechaCorta(doc.fecha_solicitud) : '-';
                     const est = doc.estado || 'pendiente';
                     return `
                         <div style="background:${bgColor[est]||'white'}; border:2px solid var(--gray-200); border-radius:10px; padding:0.85rem 1rem; margin-bottom:0.75rem;">
@@ -7085,7 +7101,7 @@
                                     <div style="font-size:0.8rem; color:var(--gray-700); margin-top:0.25rem; font-style:italic;">"${doc.motivo||''}"</div>
                                     ${doc.aprobacion ? `
                                         <div style="font-size:0.75rem; color:var(--gray-500); margin-top:0.25rem;">
-                                            ${semaforo[est]} ${doc.aprobacion.asesor} · ${doc.aprobacion.fecha?.slice(0,10)||''}<br>
+                                            ${semaforo[est]} ${doc.aprobacion.asesor} · ${doc.aprobacion.fecha ? formatearFechaCorta(doc.aprobacion.fecha) : ''}<br>
                                             <em>"${doc.aprobacion.nota}"</em>
                                         </div>` : ''}
                                 </div>
@@ -7128,7 +7144,7 @@
                         ${el.imei_referencia ? `<div><strong>Ref/IMEI:</strong> ${el.imei_referencia}</div>` : ''}
                         <div><strong>Motivo:</strong> ${doc.motivo||'-'}</div>
                         <div><strong>Disposición:</strong> ${doc.disposicion_final||'-'}</div>
-                        <div><strong>Solicitado por:</strong> ${doc.asesor_solicitante||'-'} · ${doc.fecha_solicitud?.slice(0,10)||'-'}</div>
+                        <div><strong>Solicitado por:</strong> ${doc.asesor_solicitante||'-'} · ${doc.fecha_solicitud ? formatearFechaCorta(doc.fecha_solicitud) : '-'}</div>
                     </div>`;
             })
             .catch(() => {
@@ -7151,7 +7167,7 @@
                 doc.estado = decision;
                 doc.aprobacion = {
                     asesor: invAsesorAdmin, decision, nota,
-                    fecha: new Date().toISOString()
+                    fecha: fechaLocalISO()
                 };
                 const form = new FormData();
                 form.append('metadata', new Blob([JSON.stringify({ name: invSolicitudActual.fileName })], { type: 'application/json' }));
