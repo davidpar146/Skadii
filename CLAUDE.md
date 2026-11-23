@@ -64,16 +64,19 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
 | Inventario / Gastos  | `inv…`, `gas…`   | Inventario y gastos con categorías y aprobaciones |
 | Buscar Remisión      | `bus…`           | Busca por número, cliente, NIT, teléfono o IMEI; detalle y reenvío por WhatsApp |
 | Índice de remisiones | `idx…`           | Resumen de cada remisión en IndexedDB del celular; solo lee de Drive lo nuevo o modificado |
-| Resumen del día      | `res…`           | Ventas de una fecha (sin anuladas): totales, por medio de pago y por asesor; compartir por WhatsApp |
+| Resumen del día      | `res…`           | Ventas de una fecha (sin anuladas): totales, por medio de pago y por asesor; compartir por WhatsApp. **Con clave** (ver Asesores) |
 
 ### Asesores
 - `ASESORES_FIJOS`: aparecen en todos los módulos.
 - `ASESORES_SOLO_REMISIONES` (hoy: Sandra): solo Asesor Principal y colaboradores de
   Remisiones; se filtran en Mantenimientos e Inventario aunque estén en Drive.
 - `ASESORES_INACTIVOS` (hoy: Male): se excluyen al cargar aunque sigan en Drive.
-- Claves de 4 dígitos y permisos (`autorizar_garantias`, `registrar_gastos`, `administrador`)
-  viven en **`CLAVES-ASESORES-V2`** en Drive (`CONFIG_FILES.clavesAsesores`), no en el código.
-  Garantías y Gastos listan a quien tenga el permiso en ese archivo.
+- Claves de 4 dígitos y permisos (`autorizar_garantias`, `registrar_gastos`, `administrador`,
+  `ver_resumen`) viven en **`CLAVES-ASESORES-V2`** en Drive (`CONFIG_FILES.clavesAsesores`), no en
+  el código. Garantías y Gastos listan a quien tenga el permiso en ese archivo.
+- **Resumen del día** pide asesor + clave y solo deja entrar a administradores o a quien tenga
+  `ver_resumen` (`resPuedeVer`). La sesión se cierra al salir del módulo, con "Salir" o tras más de
+  5 minutos con la app en segundo plano. Nunca poner una contraseña en el código (repo público).
 
 ### Accesorios
 - `ACCESORIOS_CATALOGO`: `{ codigo, nombre, categoria }`. El **código** (ACxx / V-x) es el

@@ -742,7 +742,7 @@
             <div id="dropdown-menu" class="dropdown-menu">
                 <button class="menu-item active" id="menu-remisiones" onclick="mostrarModulo('remisiones')">📝 Remisiones</button>
                 <button class="menu-item" id="menu-buscar" onclick="mostrarModulo('buscar')">🔎 Buscar Remisión</button>
-                <button class="menu-item" id="menu-resumen" onclick="mostrarModulo('resumen')">📊 Resumen del día</button>
+                <button class="menu-item" id="menu-resumen" onclick="mostrarModulo('resumen')">📊 Resumen del día 🔒</button>
                 <button class="menu-item" id="menu-mantenimientos" onclick="mostrarModulo('mantenimientos')">🔧 Mantenimientos</button>
                 <button class="menu-item" id="menu-garantias" onclick="mostrarModulo('garantias')">🔄 Garantías</button>
                 <button class="menu-item" id="menu-prestadores" onclick="mostrarModulo('prestadores')">💰 Pagar Prestadores</button>
@@ -2184,8 +2184,29 @@
 
     <!-- ============= MÓDULO RESUMEN DEL DÍA (res) ============= -->
     <div class="container" id="modulo-resumen" style="display:none;">
+        <!-- Acceso con clave: solo administración o quien tenga el permiso ver_resumen -->
+        <div class="card" id="res-auth-card">
+            <div class="card-title">🔒 Resumen del día</div>
+            <p style="font-size:0.85rem; color:var(--gray-600); margin-bottom:0.75rem;">
+                Solo para la administración. Seleccione su nombre e ingrese su clave.
+            </p>
+            <div class="form-group">
+                <label>Asesor</label>
+                <select id="res-auth-asesor"></select>
+            </div>
+            <div class="form-group">
+                <label>Clave</label>
+                <input type="password" id="res-auth-clave" placeholder="••••" maxlength="4" inputmode="numeric" autocomplete="off"
+                       onkeydown="if (event.key === 'Enter') resAutenticar()">
+            </div>
+            <button class="btn btn-primary" onclick="resAutenticar()">🔓 Entrar</button>
+        </div>
+        <div id="res-panel" style="display:none;">
         <div class="card">
-            <div class="card-title">📊 Resumen del día</div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+                <div class="card-title" style="margin-bottom:0.75rem;">📊 Resumen del día</div>
+                <button class="btn btn-secondary" onclick="resCerrarSesion()" style="width:auto; padding:0.4rem 0.75rem; font-size:0.8rem;">🔒 Salir</button>
+            </div>
             <div class="form-group" style="display:flex; gap:0.5rem; margin-bottom:0.25rem;">
                 <input type="date" id="res-fecha" style="flex:1;">
                 <button class="btn btn-primary" onclick="resCargar()" style="width:auto; padding:0.75rem 1rem;">Ver</button>
@@ -2193,6 +2214,7 @@
             <div id="res-estado" style="font-size:0.8rem; color:var(--gray-500);"></div>
         </div>
         <div id="res-contenido"></div>
+        </div>
     </div>
 
     <div id="bus-detalle-modal" class="modal">
@@ -4675,10 +4697,67 @@
         // ============= MÓDULO RESUMEN DEL DÍA (res) =============
         // Usa el índice de remisiones (idx…): solo lee de Drive lo nuevo. Las anuladas no se suman.
         let resUltimo = null;
+
+        // Acceso con clave (como la aprobación de Inventario): solo administración, o quien tenga el
+        // permiso 'ver_resumen' en CLAVES-ASESORES-V2. La sesión se cierra al salir del módulo, con
+        // "Salir" o si la app queda en segundo plano más de 5 minutos.
+        let resAutenticado = false;
+        let resOcultoDesde = null;
+        function resPuedeVer(nombre) { return tienePermiso(nombre, 'ver_resumen'); }   // los administradores siempre pueden
         function resInicializar() {
+            if (Object.keys(clavesAsesores).length === 0 && accessToken) cargarClavesAsesores().then(resPoblarAsesores);
+            resPoblarAsesores();
+            document.getElementById('res-auth-card').style.display = resAutenticado ? 'none' : 'block';
+            document.getElementById('res-panel').style.display = resAutenticado ? 'block' : 'none';
             const f = document.getElementById('res-fecha');
             if (!f.value) f.value = fechaLocalYMD();
         }
+        function resPoblarAsesores() {
+            const sel = document.getElementById('res-auth-asesor');
+            if (!sel) return;
+            const candidatos = [...new Set([...ASESORES_FIJOS, ...Object.keys(clavesAsesores)])].filter(resPuedeVer).sort();
+            sel.innerHTML = candidatos.length
+                ? '<option value="">Seleccione...</option>' + candidatos.map(n => `<option value="${escHtml(n)}">${escHtml(n)}</option>`).join('')
+                : '<option value="">Nadie tiene permiso (ver_resumen) en CLAVES-ASESORES-V2</option>';
+        }
+        function resAutenticar() {
+            const asesor = document.getElementById('res-auth-asesor').value;
+            const campoClave = document.getElementById('res-auth-clave');
+            const clave = campoClave.value;
+            if (faltaCampo([[asesor, 'res-auth-asesor', 'Asesor'], [clave, 'res-auth-clave', 'Clave']])) return;
+            if (!resPuedeVer(asesor)) { mostrarToast('❌ Este asesor no tiene acceso al resumen'); return; }
+            if (clavesAsesores[asesor] !== clave) {
+                campoClave.value = '';
+                marcarCampoFaltante('res-auth-clave', '❌ Clave incorrecta');
+                return;
+            }
+            resAutenticado = true;
+            campoClave.value = '';
+            document.getElementById('res-auth-card').style.display = 'none';
+            document.getElementById('res-panel').style.display = 'block';
+            mostrarToast(`✅ Bienvenido(a), ${asesor}`);
+            resCargar();
+        }
+        function resCerrarSesion() {
+            resAutenticado = false;
+            resUltimo = null;
+            const campoClave = document.getElementById('res-auth-clave');
+            if (campoClave) campoClave.value = '';
+            const cont = document.getElementById('res-contenido');
+            if (cont) cont.innerHTML = '';   // no dejar las cifras a la vista
+            const est = document.getElementById('res-estado');
+            if (est) est.textContent = '';
+            const card = document.getElementById('res-auth-card');
+            const panel = document.getElementById('res-panel');
+            if (card) card.style.display = 'block';
+            if (panel) panel.style.display = 'none';
+        }
+        // Celular compartido: si la app pasa más de 5 minutos en segundo plano, pedir la clave otra vez.
+        document.addEventListener('visibilitychange', () => {
+            if (document.visibilityState === 'hidden') { resOcultoDesde = Date.now(); return; }
+            if (resAutenticado && resOcultoDesde && Date.now() - resOcultoDesde > 5 * 60 * 1000) resCerrarSesion();
+            resOcultoDesde = null;
+        });
         function resCalcular(validas) {
             const t = { ventas: validas.length, vendido: 0, pagado: 0, saldo: 0, recargos: 0,
                         equipos: 0, accesorios: 0, obsequios: 0, medios: {}, asesores: {} };
@@ -4711,6 +4790,7 @@
                 </div>`).join('');
         }
         async function resCargar() {
+            if (!resAutenticado) { resInicializar(); return; }
             const dia = document.getElementById('res-fecha').value || fechaLocalYMD();
             const estado = document.getElementById('res-estado');
             const cont = document.getElementById('res-contenido');
@@ -5125,6 +5205,7 @@
         function mostrarModulo(modulo) {
             // Al salir de Inventario se cierra la sesión de aprobación (celular compartido).
             if (modulo !== 'gastos' && typeof invCerrarSesionAprobacion === 'function') invCerrarSesionAprobacion();
+            if (modulo !== 'resumen' && typeof resCerrarSesion === 'function') resCerrarSesion();
             document.getElementById('main-content').style.display = 'none';
             MODULOS.forEach(m => {
                 const el = document.getElementById(`modulo-${m}`);
