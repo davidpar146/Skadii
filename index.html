@@ -4651,6 +4651,8 @@
         const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores', 'ingresos', 'gastos'];
 
         function mostrarModulo(modulo) {
+            // Al salir de Inventario se cierra la sesión de aprobación (celular compartido).
+            if (modulo !== 'gastos' && typeof invCerrarSesionAprobacion === 'function') invCerrarSesionAprobacion();
             document.getElementById('main-content').style.display = 'none';
             MODULOS.forEach(m => {
                 const el = document.getElementById(`modulo-${m}`);
@@ -6651,40 +6653,50 @@
 
         function ingInicializar() { ingCargarResumen(); }
 
+        // ===== Ingresos: lo abonado y el saldo de un cobro =====
+        // Un cobro puede pagarse por partes: monto_recibido acumula lo abonado y el cobro sigue
+        // 'pendiente' por el saldo. (Antes quedaba 'parcial' y desaparecía de todas las listas.)
+        // Los cobros viejos en 'parcial' guardaban lo abonado en ingreso_registrado.monto_real.
+        function ingRecibido(doc) {
+            if (typeof doc.monto_recibido === 'number') return doc.monto_recibido;
+            if (doc.estado === 'parcial' || doc.estado === 'recibido') return doc.ingreso_registrado?.monto_real || 0;
+            return 0;
+        }
+        function ingSaldo(doc) { return Math.max(0, (doc.monto_esperado || 0) - ingRecibido(doc)); }
+        function ingEsPendiente(doc) { return !!doc && (doc.estado === 'pendiente' || doc.estado === 'parcial'); }
+        async function ingLeerCobros() {
+            const archivos = await driveListarTodo({
+                q: `'${FOLDER_IDS.ingresos}' in parents and trashed=false and name contains 'Cobro-' and mimeType='application/json'`,
+                fields: 'files(id,name)'
+            });
+            return driveLeerJSONs(archivos);
+        }
+
         async function ingCargarResumen() {
             const cont = document.getElementById('ing-resumen-empresas');
             cont.innerHTML = '<p style="text-align:center; color:var(--gray-500); padding:1.5rem;">⏳ Cargando...</p>';
             try {
-                const r = await gapi.client.drive.files.list({
-                    q: `'${FOLDER_IDS.ingresos}' in parents and trashed=false and name contains 'Cobro-'`,
-                    fields: 'files(id,name)', pageSize: 500
-                });
-                const archivos = r.result.files || [];
-                if (!archivos.length) {
+                const docs = await ingLeerCobros();
+                const fallidos = docs.filter(d => !d.doc).length;
+                if (!docs.length) {
                     cont.innerHTML = '<p style="text-align:center; color:var(--gray-500); padding:1.5rem;">No hay cobros registrados aún.<br><small>Se crean automáticamente al guardar remisiones con ADDI, Gora, Coordinadora o E-Credit.</small></p>';
                     return;
                 }
-                const docs = await Promise.all(archivos.map(async f => {
-                    try {
-                        const resp = await fetch(
-                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
-                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
-                        );
-                        return { fileId: f.id, fileName: f.name, doc: await resp.json() };
-                    } catch { return null; }
-                }));
-                const pendientes = docs.filter(d => d && d.doc?.estado === 'pendiente');
-                const recibidos  = docs.filter(d => d && d.doc?.estado === 'recibido');
+                const pendientes = docs.filter(d => ingEsPendiente(d.doc));
+                const recibidos  = docs.filter(d => d.doc?.estado === 'recibido');
                 const porEmpresa = {};
                 pendientes.forEach(({ fileId, fileName, doc }) => {
                     const emp = (doc.empresa || 'Otro').toLowerCase();
                     if (!porEmpresa[emp]) porEmpresa[emp] = { nombre: doc.empresa, total: 0, remisiones: [] };
-                    porEmpresa[emp].total += doc.monto_esperado || 0;
+                    porEmpresa[emp].total += ingSaldo(doc);
                     porEmpresa[emp].remisiones.push({ fileId, fileName, doc });
                 });
-                const totalRecibido  = recibidos.reduce((s, { doc }) => s + (doc.ingreso_registrado?.monto_real || 0), 0);
-                const totalPendiente = pendientes.reduce((s, { doc }) => s + (doc.monto_esperado || 0), 0);
-                let html = `
+                // Recibido = cobros completos + abonos de los que siguen pendientes por el saldo.
+                const totalRecibido  = recibidos.reduce((s, { doc }) => s + ingRecibido(doc), 0)
+                                     + pendientes.reduce((s, { doc }) => s + ingRecibido(doc), 0);
+                const totalPendiente = pendientes.reduce((s, { doc }) => s + ingSaldo(doc), 0);
+                let html = fallidos ? `<div style="background:#fef2f2; color:var(--danger); border-radius:8px; padding:0.6rem; margin-bottom:0.75rem; font-size:0.85rem;">⚠️ ${fallidos} cobro(s) no se pudieron leer: los totales pueden estar incompletos. Recargue.</div>` : '';
+                html += `
                     <div style="display:grid; grid-template-columns:1fr 1fr; gap:0.5rem; margin-bottom:1rem;">
                         <div style="background:linear-gradient(135deg,#d97706,#b45309); color:white; border-radius:10px; padding:0.85rem; text-align:center;">
                             <div style="font-size:0.75rem; opacity:0.85;">🟡 Pendiente</div>
@@ -6741,23 +6753,19 @@
             ingEmpresaActiva = empKey;
             document.getElementById('ing-detalle-titulo').textContent = empNombre + ' — Remisiones Pendientes';
             const diasPlazo = ING_DIAS_PLAZO[empKey] || 30;
-            const r = await gapi.client.drive.files.list({
-                q: `'${FOLDER_IDS.ingresos}' in parents and trashed=false and name contains 'Cobro-'`,
-                fields: 'files(id,name)', pageSize: 500
-            });
-            const todos = await Promise.all((r.result.files || []).map(async f => {
-                try {
-                    const resp = await fetch(
-                        `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
-                        { headers: { 'Authorization': 'Bearer ' + accessToken } }
-                    );
-                    return { fileId: f.id, fileName: f.name, doc: await resp.json() };
-                } catch { return null; }
-            }));
+            let todos;
+            try {
+                todos = await ingLeerCobros();
+            } catch (e) {
+                console.error('Error cargando cobros de la empresa:', e);
+                mostrarToast('❌ No se pudieron cargar los cobros. Intente de nuevo.');
+                return;
+            }
+            if (todos.some(d => !d.doc)) mostrarToast('⚠️ Algunos cobros no se pudieron leer: recargue antes de aplicar un pago.', 8000);
             ingRemisionesPendientes = todos
-                .filter(d => d && d.doc?.estado === 'pendiente' && (d.doc.empresa || '').toLowerCase() === empKey)
+                .filter(d => ingEsPendiente(d.doc) && (d.doc.empresa || '').toLowerCase() === empKey)
                 .sort((a, b) => new Date(a.doc.fecha_remision) - new Date(b.doc.fecha_remision));
-            const totalPend = ingRemisionesPendientes.reduce((s, r) => s + (r.doc.monto_esperado || 0), 0);
+            const totalPend = ingRemisionesPendientes.reduce((s, r) => s + ingSaldo(r.doc), 0);
             document.getElementById('ing-detalle-resumen').innerHTML = `
                 <div style="background:#fef3c7; border-radius:8px; padding:0.6rem 0.85rem; display:flex; justify-content:space-between; align-items:center;">
                     <div style="font-size:0.85rem; color:#92400e;">${ingRemisionesPendientes.length} remisión(es) · Plazo ${diasPlazo} días</div>
@@ -6783,8 +6791,9 @@
                                 </div>
                                 <div style="font-size:0.72rem; color:var(--gray-500);">👤 ${rem.doc.cliente || '-'}</div>
                             </div>
-                            <div style="font-weight:700; color:var(--warning); white-space:nowrap; margin-left:0.5rem;">
-                                ${formatMoney(rem.doc.monto_esperado || 0)}
+                            <div style="font-weight:700; color:var(--warning); white-space:nowrap; margin-left:0.5rem; text-align:right;">
+                                ${formatMoney(ingSaldo(rem.doc))}
+                                ${ingRecibido(rem.doc) > 0 ? `<div style="font-size:0.68rem; font-weight:500; color:var(--gray-500);">abonado ${formatMoney(ingRecibido(rem.doc))} de ${formatMoney(rem.doc.monto_esperado || 0)}</div>` : ''}
                             </div>
                         </div>`;
                 }).join('') || '<p style="text-align:center; color:var(--gray-500); font-size:0.85rem;">Sin remisiones pendientes</p>';
@@ -6806,7 +6815,7 @@
             const resultado = [];
             for (const rem of ingRemisionesPendientes) {
                 if (restante <= 0) break;
-                const esperado = rem.doc.monto_esperado || 0;
+                const esperado = ingSaldo(rem.doc);   // lo que falta de este cobro
                 const aplicado = Math.min(restante, esperado);
                 restante -= aplicado;
                 resultado.push({ remision: rem.doc.remision, esperado, aplicado, cubierto: aplicado >= esperado });
@@ -6842,15 +6851,30 @@
             try {
                 for (const rem of ingRemisionesPendientes) {
                     if (restante <= 0) break;
-                    const esperado = rem.doc.monto_esperado || 0;
-                    const aplicado = Math.min(restante, esperado);
-                    restante -= aplicado;
-                    const cubierto = aplicado >= esperado;
-                    const docActual = { ...rem.doc };
-                    docActual.estado = cubierto ? 'recibido' : 'parcial';
+                    // Leer el cobro fresco: otro celular pudo abonarle desde que se abrió la lista.
+                    const getResp = await fetch(
+                        `https://www.googleapis.com/drive/v3/files/${rem.fileId}?alt=media`,
+                        { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                    );
+                    if (!getResp.ok) throw new Error(`${rem.doc.remision || rem.fileName}: no se pudo leer (HTTP ${getResp.status})`);
+                    const docActual = await getResp.json();
+                    if (!ingEsPendiente(docActual) || ingSaldo(docActual) !== ingSaldo(rem.doc)) {
+                        throw new Error(`${rem.doc.remision || rem.fileName} cambió desde que abrió la lista; recárguela`);
+                    }
+                    const esperado = docActual.monto_esperado || 0;
+                    const aplicado = Math.min(restante, ingSaldo(docActual));
+                    const recibido = ingRecibido(docActual) + aplicado;
+                    const cubierto = recibido >= esperado;
+                    // Abono parcial: sigue 'pendiente' por el saldo (antes 'parcial' y desaparecía).
+                    docActual.estado = cubierto ? 'recibido' : 'pendiente';
+                    docActual.monto_recibido = recibido;
+                    docActual.abonos = (docActual.abonos || []).concat([{
+                        monto: aplicado, fecha_pago: fecha, cuenta_bancaria: cuenta,
+                        notas: notas || null, fecha_registro: fechaPago, pago_total_lote: monto
+                    }]);
                     docActual.ingreso_registrado = {
-                        monto_real: aplicado, monto_esperado: esperado,
-                        diferencia: aplicado - esperado,
+                        monto_real: recibido, monto_esperado: esperado,
+                        diferencia: recibido - esperado,
                         fecha_pago: fecha, cuenta_bancaria: cuenta,
                         notas: notas || null,
                         fecha_registro: fechaPago,
@@ -6860,19 +6884,21 @@
                     const form = new FormData();
                     form.append('metadata', new Blob([JSON.stringify({ name: rem.fileName })], { type: 'application/json' }));
                     form.append('file', new Blob([JSON.stringify(docActual, null, 2)], { type: 'application/json' }));
-                    await fetch(
+                    const patchResp = await fetch(
                         `https://www.googleapis.com/upload/drive/v3/files/${rem.fileId}?uploadType=multipart`,
                         { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
                     );
+                    if (!patchResp.ok) throw new Error(`${rem.doc.remision || rem.fileName}: Drive no guardó el abono (HTTP ${patchResp.status})`);
+                    restante -= aplicado;
                     if (cubierto) cubiertas.push(rem.doc.remision);
                     else parciales.push(rem.doc.remision);
                 }
+                let avisoFoto = '';
                 if (capturedPhotos['ingComprobante']) {
-                    await subirImagenDrive(
-                        capturedPhotos['ingComprobante'],
-                        'Pago-' + ingEmpresaActiva + '-' + Date.now() + '-Comprobante.jpg',
-                        FOLDER_IDS.ingresos
-                    );
+                    const foto = capturedPhotos['ingComprobante'];
+                    const nombreFoto = 'Pago-' + ingEmpresaActiva + '-' + Date.now() + '-Comprobante.jpg';
+                    try { await conReintentos(() => subirImagenDrive(foto, nombreFoto, FOLDER_IDS.ingresos)); }
+                    catch (e) { console.error('Error subiendo comprobante:', e); avisoFoto = ' · ⚠️ no se subió la foto del comprobante'; }
                 }
                 document.getElementById('ing-detalle-modal').classList.remove('active');
                 delete capturedPhotos['ingComprobante'];
@@ -6880,11 +6906,16 @@
                 if (cubiertas.length) msg += ' · ' + cubiertas.length + ' cubierta(s)';
                 if (parciales.length) msg += ' · ' + parciales.length + ' parcial(es)';
                 if (restante > 0) msg += ' · Sobran ' + formatMoney(restante);
-                mostrarToast(msg);
+                mostrarToast(msg + avisoFoto, avisoFoto ? 8000 : 3000);
                 setTimeout(() => ingCargarResumen(), 800);
             } catch(e) {
                 console.error('Error aplicando pago:', e);
-                mostrarToast('❌ Error al aplicar pago. Revisa consola.');
+                // Decir exactamente qué quedó aplicado antes del error (no volver a aplicarlo).
+                const hechas = cubiertas.concat(parciales);
+                mostrarToast('❌ Se detuvo: ' + (e.message || 'error') +
+                    (hechas.length ? '. Ya quedaron aplicadas: ' + hechas.join(', ') : '. No se aplicó nada'), 12000);
+                document.getElementById('ing-detalle-modal').classList.remove('active');
+                setTimeout(() => ingCargarResumen(), 800);
             }
         }
 
@@ -7223,8 +7254,8 @@
         async function invObtenerConsecutivo() {
             try {
                 const r = await gapi.client.drive.files.list({
-                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'BajaInv-'`,
-                    fields: 'files(name)', pageSize: 500
+                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'BajaInv-' and mimeType='application/json'`,
+                    fields: 'files(name)', orderBy: 'name desc', pageSize: 50
                 });
                 let maxNum = 0;
                 (r.result.files || []).forEach(f => {
@@ -7254,6 +7285,18 @@
             ])) return;
             mostrarToast('☁️ Enviando solicitud...');
             try {
+                // Releer el número y confirmar que no exista (otro celular pudo enviar una solicitud).
+                await invObtenerConsecutivo();
+                let numeroLibre = false;
+                for (let i = 0; i < 10 && !numeroLibre; i++) {
+                    const nombreArch = `BajaInv-${String(invConsecutivo).padStart(4,'0')}.json`;
+                    const existe = await gapi.client.drive.files.list({
+                        q: `name='${nombreArch}' and '${FOLDER_IDS.gastos}' in parents and trashed=false`,
+                        fields: 'files(id)'
+                    });
+                    if (existe.result.files.length === 0) numeroLibre = true; else invConsecutivo++;
+                }
+                if (!numeroLibre) { mostrarToast('❌ No se pudo reservar el número de la solicitud'); return; }
                 const numF = String(invConsecutivo).padStart(4,'0');
                 const docName = `BajaInv-${numF}`;
                 const doc = {
@@ -7272,11 +7315,19 @@
                     aprobacion: null
                 };
                 await subirArchivoDrive(JSON.stringify(doc, null, 2), `${docName}.json`, FOLDER_IDS.gastos);
-                if (capturedPhotos['invFoto']) await subirImagenDrive(capturedPhotos['invFoto'], `${docName}-Foto.jpg`, FOLDER_IDS.gastos);
-                if (capturedPhotos['invFoto2']) await subirImagenDrive(capturedPhotos['invFoto2'], `${docName}-Foto2.jpg`, FOLDER_IDS.gastos);
+                // La solicitud ya existe: una foto que falle no debe llevar a enviarla dos veces.
+                const fotosFallidas = [];
+                for (const [clave, sufijo] of [['invFoto', 'Foto'], ['invFoto2', 'Foto2']]) {
+                    if (!capturedPhotos[clave]) continue;
+                    const foto = capturedPhotos[clave];
+                    try { await conReintentos(() => subirImagenDrive(foto, `${docName}-${sufijo}.jpg`, FOLDER_IDS.gastos)); }
+                    catch (e) { console.error(`Error subiendo ${docName}-${sufijo}.jpg:`, e); fotosFallidas.push(sufijo); }
+                }
                 invConsecutivo++;
                 invLimpiarSolicitud();
-                mostrarToast(`✅ Solicitud ${docName} enviada — pendiente de aprobación`);
+                mostrarToast(fotosFallidas.length
+                    ? `⚠️ Solicitud ${docName} enviada, pero no se subió: ${fotosFallidas.join(', ')}`
+                    : `✅ Solicitud ${docName} enviada — pendiente de aprobación`, fotosFallidas.length ? 8000 : 3000);
             } catch(e) {
                 console.error('Error guardando solicitud:', e);
                 mostrarToast('❌ Error al enviar solicitud');
@@ -7304,6 +7355,17 @@
             window.scrollTo(0,0);
         }
 
+        function invCerrarSesionAprobacion() {
+            invAutenticado = false;
+            invAsesorAdmin = null;
+            const clave = document.getElementById('inv-auth-clave');
+            if (clave) clave.value = '';
+            const card = document.getElementById('inv-auth-card');
+            const panel = document.getElementById('inv-aprobacion-panel');
+            if (card) card.style.display = 'block';
+            if (panel) panel.style.display = 'none';
+        }
+
         function invAutenticar() {
             const asesor = document.getElementById('inv-auth-asesor').value;
             const clave  = document.getElementById('inv-auth-clave').value;
@@ -7316,6 +7378,7 @@
                 mostrarToast('❌ Solo la administradora puede acceder'); return;
             }
             invAutenticado = true; invAsesorAdmin = asesor;
+            document.getElementById('inv-auth-clave').value = '';
             document.getElementById('inv-auth-card').style.display = 'none';
             document.getElementById('inv-aprobacion-panel').style.display = 'block';
             invCargarSolicitudes('pendiente');
@@ -7326,25 +7389,18 @@
             const container = document.getElementById('inv-solicitudes-container');
             container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">⏳ Cargando...</p>';
             try {
-                const r = await gapi.client.drive.files.list({
-                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'BajaInv-'`,
-                    fields: 'files(id,name)', orderBy: 'name desc', pageSize: 200
+                // Solo los JSON (antes las fotos ocupaban la página y se descargaban completas).
+                const archivos = await driveListarTodo({
+                    q: `'${FOLDER_IDS.gastos}' in parents and trashed=false and name contains 'BajaInv-' and mimeType='application/json'`,
+                    fields: 'files(id,name)', orderBy: 'name desc'
                 });
-                const archivos = r.result.files || [];
                 if (!archivos.length) {
                     container.innerHTML = '<p style="text-align:center; color:var(--gray-500);">No hay solicitudes registradas</p>';
                     return;
                 }
-                const docs = await Promise.all(archivos.map(async f => {
-                    try {
-                        const resp = await fetch(
-                            `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
-                            { headers: { 'Authorization': 'Bearer ' + accessToken } }
-                        );
-                        return { fileId: f.id, fileName: f.name, doc: await resp.json() };
-                    } catch { return null; }
-                }));
-                let validos = docs.filter(d => d && d.doc?.tipo === 'baja_inventario');
+                const docs = await driveLeerJSONs(archivos);
+                if (docs.some(d => !d.doc)) mostrarToast('⚠️ Algunas solicitudes no se pudieron leer. Recargue.', 8000);
+                let validos = docs.filter(d => d.doc?.tipo === 'baja_inventario');
                 if (filtro !== 'todos') validos = validos.filter(d => d.doc.estado === filtro);
                 if (!validos.length) {
                     const labels = { pendiente:'pendientes', aprobada:'aprobadas', rechazada:'rechazadas' };
@@ -7406,7 +7462,7 @@
             document.getElementById('inv-decision-modal').classList.add('active');
             fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
                 { headers: { 'Authorization': 'Bearer ' + accessToken } })
-            .then(r => r.json())
+            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
             .then(doc => {
                 const el = doc.elemento || {};
                 document.getElementById('inv-decision-detalle').innerHTML = `
@@ -7435,7 +7491,11 @@
                     `https://www.googleapis.com/drive/v3/files/${invSolicitudActual.fileId}?alt=media`,
                     { headers: { 'Authorization': 'Bearer ' + accessToken } }
                 );
+                if (!getResp.ok) throw new Error(`No se pudo leer la solicitud (HTTP ${getResp.status})`);
                 const doc = await getResp.json();
+                // Nunca reescribir con una respuesta de error, ni decidir dos veces la misma solicitud.
+                if (!doc || doc.tipo !== 'baja_inventario') throw new Error('El archivo leído no es una solicitud de baja');
+                if (doc.estado !== 'pendiente') throw new Error(`La solicitud ya estaba ${doc.estado}`);
                 doc.estado = decision;
                 doc.aprobacion = {
                     asesor: invAsesorAdmin, decision, nota,
@@ -7444,10 +7504,11 @@
                 const form = new FormData();
                 form.append('metadata', new Blob([JSON.stringify({ name: invSolicitudActual.fileName })], { type: 'application/json' }));
                 form.append('file', new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
-                await fetch(
+                const patchResp = await fetch(
                     `https://www.googleapis.com/upload/drive/v3/files/${invSolicitudActual.fileId}?uploadType=multipart`,
                     { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form }
                 );
+                if (!patchResp.ok) throw new Error(`Drive no guardó la decisión (HTTP ${patchResp.status})`);
                 document.getElementById('inv-decision-modal').classList.remove('active');
                 invSolicitudActual = null;
                 const emoji = decision === 'aprobada' ? '✅' : '❌';
@@ -7455,7 +7516,7 @@
                 setTimeout(() => invCargarSolicitudes('pendiente'), 600);
             } catch(e) {
                 console.error('Error procesando decisión:', e);
-                mostrarToast('❌ Error al procesar.');
+                mostrarToast('❌ No se guardó la decisión: ' + (e.message || 'error'), 6000);
             }
         }
 
