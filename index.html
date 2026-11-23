@@ -4778,7 +4778,12 @@
                     fields: 'files(id)'
                 });
                 if (previa.result.files.length > 0) {
-                    mostrarToast(`⚠️ La Remisión-${numeroFormateado} ya estaba anulada`, 5000); return;
+                    // Ya anulada: solo completar lo que haya quedado sin marcar (reintento).
+                    const res = await anulMarcarRelacionados(numeroFormateado,
+                        { archivo: `${docName}.json`, asesor, motivo, fecha: fechaLocalISO() });
+                    cerrarAnulacion();
+                    mostrarToast(`⚠️ La Remisión-${numeroFormateado} ya estaba anulada` + anulTextoResultado(res), 8000);
+                    return;
                 }
                 // 3) Confirmar mostrando a quién y por cuánto (un número mal digitado anula otra venta).
                 const remResp = await fetch(
@@ -4800,19 +4805,72 @@
                 );
                 const filaOk = await agregarAnulacionExcel(anulacion, docName, jsonResult.id);
                 cerrarAnulacion();
-                // Avisar si la venta tenía registros pendientes en otros módulos (no se tocan solos).
-                const relacionados = await gapi.client.drive.files.list({
-                    q: `(name contains 'Prestado-Remision-${numeroFormateado}-' and '${FOLDER_IDS.prestamosPagos}' in parents) or (name contains 'Cobro-Remision-${numeroFormateado}-' and '${FOLDER_IDS.ingresos}' in parents)`,
-                    fields: 'files(name)'
-                }).then(r => r.result.files || []).catch(() => []);
+                // Préstamo y cobro de esta venta: dejan de salir como pendientes.
+                let res = { anulados: [], conPagos: [], fallidos: [] };
+                try {
+                    res = await anulMarcarRelacionados(numeroFormateado,
+                        { archivo: `${docName}.json`, asesor, motivo, fecha: anulacion.fechaAnulacion });
+                } catch (e) {
+                    console.error('Error buscando registros de la venta anulada:', e);
+                    res.fallidos.push('búsqueda de registros');
+                }
                 let aviso = `✅ Remisión-${numeroFormateado} anulada`;
                 if (!filaOk) aviso += ' · ⚠️ no se registró en Sheets';
-                if (relacionados.length) aviso += ` · ⚠️ Revise Pagar Prestadores / Ingresos: tiene ${relacionados.length} registro(s) que siguen pendientes`;
-                mostrarToast(aviso, relacionados.length || !filaOk ? 10000 : 3000);
+                aviso += anulTextoResultado(res);
+                const largo = !filaOk || res.conPagos.length || res.fallidos.length;
+                mostrarToast(aviso, largo ? 10000 : 4000);
             } catch (error) {
                 console.error('Error procesando anulación:', error);
                 mostrarToast('❌ Error al procesar anulación');
             }
+        }
+
+        // ===== Anulación: marcar como anulados el préstamo y el cobro de la venta =====
+        // Así dejan de salir como pendientes en Pagar Prestadores e Ingresos. Si ya tienen pagos o
+        // abonos, NO se tocan (hay dinero de por medio): se avisa para revisarlos a mano.
+        // Es idempotente: volver a anular la misma remisión reintenta lo que haya quedado pendiente.
+        async function anulMarcarRelacionados(numeroFormateado, info) {
+            const res = { anulados: [], conPagos: [], fallidos: [] };
+            const prefijos = [`Prestado-Remision-${numeroFormateado}-`, `Cobro-Remision-${numeroFormateado}-`];
+            const archivos = (await driveListarTodo({
+                q: `trashed=false and ((name contains '${prefijos[0]}' and '${FOLDER_IDS.prestamosPagos}' in parents) or (name contains '${prefijos[1]}' and '${FOLDER_IDS.ingresos}' in parents))`,
+                fields: 'files(id, name)'
+            })).filter(f => prefijos.some(pr => f.name.startsWith(pr)));
+            for (const f of archivos) {
+                try {
+                    const r = await fetch(`https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
+                        { headers: { 'Authorization': 'Bearer ' + accessToken } });
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    const doc = await r.json();
+                    if (doc.estado === 'anulado') continue;
+                    const esPrestado = f.name.startsWith('Prestado-');
+                    const conDinero = esPrestado
+                        ? (doc.estado !== 'pendiente' || (doc.pagos || []).length > 0 || (doc.equipos || []).some(e => e.pagado))
+                        : (!ingEsPendiente(doc) || ingRecibido(doc) > 0);
+                    if (conDinero) { res.conPagos.push(f.name); continue; }
+                    doc.estado_antes_anulacion = doc.estado;
+                    doc.estado = 'anulado';
+                    doc.anulacion = { ...info };
+                    const form = new FormData();
+                    form.append('metadata', new Blob([JSON.stringify({ name: f.name })], { type: 'application/json' }));
+                    form.append('file', new Blob([JSON.stringify(doc, null, 2)], { type: 'application/json' }));
+                    const patch = await fetch(`https://www.googleapis.com/upload/drive/v3/files/${f.id}?uploadType=multipart`,
+                        { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: form });
+                    if (!patch.ok) throw new Error('HTTP ' + patch.status);
+                    res.anulados.push(f.name);
+                } catch (e) {
+                    console.error(`No se pudo marcar ${f.name} como anulado:`, e);
+                    res.fallidos.push(f.name);
+                }
+            }
+            return res;
+        }
+        function anulTextoResultado(res) {
+            let t = '';
+            if (res.anulados.length) t += ` · ${res.anulados.length} registro(s) de préstamo/cobro marcados como anulados`;
+            if (res.conPagos.length) t += ` · ⚠️ ${res.conPagos.length} ya tenían pagos o abonos: revíselos a mano`;
+            if (res.fallidos.length) t += ` · ⚠️ ${res.fallidos.length} no se pudieron marcar: vuelva a anular la misma remisión para reintentar`;
+            return t;
         }
 
         // Devuelve true si la fila quedó en Sheets. Columnas iguales al encabezado A:R de remisiones:

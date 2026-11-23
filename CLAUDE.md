@@ -167,8 +167,11 @@ fresco y se verifica que sea del tipo y estado esperados (nunca reescribir con u
   `monto_recibido` y `abonos[]`; pasa a `recibido` al completarse. El saldo es
   `ingSaldo(doc)` (incluye los cobros viejos que quedaron en `'parcial'`).
 - **Anulación**: verifica que la remisión exista y no esté ya anulada, y confirma con cliente y total.
-  NO modifica los `Prestado-`/`Cobro-` de esa venta (solo avisa si hay pendientes): marcarlos es una
-  decisión de negocio pendiente con el usuario.
+  Luego `anulMarcarRelacionados` pone `estado: 'anulado'` (con `anulacion: {archivo, asesor, motivo,
+  fecha}`) a los `Prestado-Remision-NNNN-…` y `Cobro-Remision-NNNN-…` que sigan pendientes y **sin
+  pagos ni abonos**; los que tienen dinero de por medio no se tocan y se avisa. Volver a anular la
+  misma remisión reintenta lo que haya quedado sin marcar. Cualquier asesor con su clave puede anular
+  (decisión del usuario).
 
 ## Librerías externas (con verificación de integridad)
 
