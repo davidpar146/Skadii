@@ -6,7 +6,7 @@
     <title>Sistema Skadii v25</title>
     <!-- App instalable: ícono SKADIICELL en la pantalla del celular, abre sin barra del navegador -->
     <link rel="manifest" href="manifest.json">
-    <meta name="theme-color" content="#2563eb">
+    <meta name="theme-color" content="#000000">
     <link rel="icon" type="image/png" sizes="192x192" href="icons/icon-192.png">
     <link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
     <meta name="mobile-web-app-capable" content="yes">
@@ -45,7 +45,7 @@
         }
 
         .header {
-            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            background: #000;   /* barra negra con el logo SKADIICELL en blanco */
             color: white;
             padding: 1rem;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
@@ -54,6 +54,16 @@
             z-index: 100;
         }
         .header h1 { font-size: 1.25rem; font-weight: 600; }
+        .header-titulo { display: flex; align-items: center; gap: 0.6rem; }
+        /* Marca de agua: logo SKADIICELL en diagonal sobre toda la pantalla, muy tenue (~4 %).
+           Va encima del contenido (si no, las tarjetas la tapan), debajo de la barra (100) y de las
+           ventanas emergentes (1000+), y no bloquea toques ni clics. */
+        body::after {
+            content: ''; position: fixed; inset: 0; pointer-events: none; z-index: 50;
+            background: url('img/marca-agua.png') repeat; background-size: 300px 240px; opacity: 0.4;
+        }
+        @media print { body::after { display: none; } }
+        .header-logo { height: 34px; width: auto; display: block; flex-shrink: 0; }
         .header .subtitle { font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem; }
 
         .drive-status {
@@ -731,7 +741,7 @@
     </div>
 
     <div class="header">
-        <h1>📱 Sistema de Remisiones Skadii</h1>
+        <h1 class="header-titulo"><img src="img/logo-blanco.png" alt="SKADIICELL" class="header-logo"><span>Sistema de Remisiones</span></h1>
         <div class="subtitle">Gestión móvil con Google Drive + Sheets · v25</div>
         <div id="drive-status" class="drive-status">
             <span id="status-icon">⚪</span>
