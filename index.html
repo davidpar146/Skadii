@@ -4,8 +4,8 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Sistema Skadii v25</title>
-    <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous"></script>
-    <script src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js" integrity="sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F" crossorigin="anonymous"></script>
+    <script defer src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous"></script>
+    <script defer src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js" integrity="sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F" crossorigin="anonymous"></script>
     <script src="https://apis.google.com/js/api.js"></script>
     <script src="https://accounts.google.com/gsi/client" async defer></script>
     <style>
@@ -21,6 +21,8 @@
             --gray-100: #f3f4f6;
             --gray-200: #e5e7eb;
             --gray-300: #d1d5db;
+            --gray-400: #9ca3af;   /* se usaban sin estar definidos (p. ej. el botón "Procesando" quedaba invisible) */
+            --gray-500: #6b7280;
             --gray-600: #4b5563;
             --gray-700: #374151;
             --gray-800: #1f2937;
@@ -225,7 +227,7 @@
             position: fixed; bottom: 2rem; left: 1rem; right: 1rem;
             padding: 1rem; background: var(--gray-800); color: white;
             border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            transform: translateY(150%); transition: transform 0.3s; z-index: 1000;
+            transform: translateY(150%); transition: transform 0.3s; z-index: 4000;  /* encima de los modales */
         }
         .toast.show { transform: translateY(0); }
         .toast.long { font-size: 0.85rem; }
@@ -1075,6 +1077,7 @@
             <p style="font-size:0.75rem; color:var(--gray-500);">
                 Esto puede tomar unos segundos...
             </p>
+            <button class="btn btn-secondary" onclick="ocrCancelar()" style="margin-top:1rem;">Cancelar</button>
         </div>
     </div>
 
@@ -2603,6 +2606,14 @@
             } catch (error) { console.error('Error creando spreadsheet:', error); }
         }
 
+        // Celdas de texto para Sheets (USER_ENTERED): un texto que empieza por = + - @ se ejecutaba como
+        // fórmula o daba #ERROR!, y un IMEI/NIT solo con dígitos se volvía número (notación científica).
+        // El apóstrofo inicial lo guarda como texto y Sheets no lo muestra.
+        function celdaTexto(v) {
+            const t = String(v ?? '');
+            return /^[=+\-@]/.test(t) || /^\d{6,}$/.test(t) ? "'" + t : t;
+        }
+
         // fallas (opcional): si se pasa, un error se agrega ahí para reintentarlo (ver guardarDocumento).
         async function agregarFilaExcel(documento, docName, fileId, fallas) {
             if (!SPREADSHEET_ID) {
@@ -2631,21 +2642,21 @@
             const filas = documento.items.map(item => [
                 docName,
                 new Date(documento.fecha).toLocaleString('es-CO'),
-                documento.asesor,
-                colaboradores || '-',
-                documento.cliente,
-                documento.nit,
-                documento.telefono || '-',
-                `${item.descripcion} (${item.cantidad})`,
-                item.imei || '-',
-                item.estado === 'prestado' ? `Prestado por: ${item.prestadoPor || '-'}` : 'Propio',
+                celdaTexto(documento.asesor),
+                celdaTexto(colaboradores || '-'),
+                celdaTexto(documento.cliente),
+                celdaTexto(documento.nit),
+                celdaTexto(documento.telefono || '-'),
+                celdaTexto(`${item.descripcion} (${item.cantidad})`),
+                celdaTexto(item.imei || '-'),
+                celdaTexto(item.estado === 'prestado' ? `Prestado por: ${item.prestadoPor || '-'}` : 'Propio'),
                 item.valor || 0,
                 item.costo || 0,
                 item.total || 0,
                 pagos,
                 documento.totalPaid,
                 documento.totalItems - documento.totalPaid,
-                documento.observaciones || '-',
+                celdaTexto(documento.observaciones || '-'),
                 linkDrive
             ]);
 
@@ -3027,7 +3038,16 @@
             abrirCamara();
         }
 
+        // Si la descarga del motor o del idioma se queda colgada (mala señal), el asesor puede salir.
+        let ocrCancelado = false;
+        function ocrCancelar() {
+            ocrCancelado = true;
+            document.getElementById('ocr-processing-modal').classList.remove('active');
+            mostrarToast('OCR cancelado. Puede escribir el IMEI a mano.');
+        }
+
         async function procesarFotoOCR(dataUrl) {
+            ocrCancelado = false;
             cerrarCamara();
             document.getElementById('ocr-processing-modal').classList.add('active');
             document.getElementById('ocr-progress-bar').style.width = '0%';
@@ -3057,6 +3077,7 @@
                         }
                     }
                 );
+                if (ocrCancelado) return;   // el asesor canceló mientras se procesaba
 
                 document.getElementById('ocr-processing-modal').classList.remove('active');
 
@@ -3072,6 +3093,7 @@
 
             } catch (err) {
                 console.error('Error en OCR:', err);
+                if (ocrCancelado) return;
                 document.getElementById('ocr-processing-modal').classList.remove('active');
                 mostrarToast('❌ Error al procesar la imagen: ' + err.message, 5000);
             }
@@ -4734,12 +4756,41 @@
             if (clavesAsesores[asesor] !== clave) {
                 mostrarToast('❌ Clave incorrecta'); return;
             }
-            mostrarToast('☁️ Procesando anulación...');
+            const numeroInt = parseInt(numero, 10);
+            if (!(numeroInt > 0) || String(numeroInt) !== String(numero).trim().replace(/^0+(?=\d)/, '')) {
+                marcarCampoFaltante('anulacion-numero', '⚠️ Número de remisión inválido'); return;
+            }
+            mostrarToast('☁️ Verificando la remisión...');
             try {
-                const numeroFormateado = String(numero).padStart(4, '0');
+                const numeroFormateado = String(numeroInt).padStart(4, '0');
                 const docName = `Remision-${numeroFormateado}-ANULACION`;
+                // 1) Que la remisión exista (antes se podía anular un número inexistente o equivocado).
+                const encontrada = await gapi.client.drive.files.list({
+                    q: `name='Remision-${numeroFormateado}.json' and '${FOLDER_IDS.remisiones}' in parents and trashed=false`,
+                    fields: 'files(id)'
+                });
+                if (encontrada.result.files.length === 0) {
+                    mostrarToast(`❌ No existe la Remisión-${numeroFormateado}`, 5000); return;
+                }
+                // 2) Que no esté anulada ya.
+                const previa = await gapi.client.drive.files.list({
+                    q: `name='${docName}.json' and '${FOLDER_IDS.facturas}' in parents and trashed=false`,
+                    fields: 'files(id)'
+                });
+                if (previa.result.files.length > 0) {
+                    mostrarToast(`⚠️ La Remisión-${numeroFormateado} ya estaba anulada`, 5000); return;
+                }
+                // 3) Confirmar mostrando a quién y por cuánto (un número mal digitado anula otra venta).
+                const remResp = await fetch(
+                    `https://www.googleapis.com/drive/v3/files/${encontrada.result.files[0].id}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } }
+                );
+                if (!remResp.ok) throw new Error(`No se pudo leer la remisión (HTTP ${remResp.status})`);
+                const rem = await remResp.json();
+                if (!confirm(`¿Anular la Remisión-${numeroFormateado}?\n\nCliente: ${rem.cliente || '-'}\nTotal: ${formatMoney(rem.totalItems || 0)}\nFecha: ${rem.fecha ? formatearFechaCorta(rem.fecha) : '-'}`)) return;
                 const anulacion = {
                     tipo: 'anulacion', remisionAnulada: numeroFormateado,
+                    cliente: rem.cliente || null, total: rem.totalItems || 0,
                     asesor, motivo,
                     fechaAnulacion: fechaLocalISO(),
                     validadoPorClave: true
@@ -4747,30 +4798,42 @@
                 const jsonResult = await subirArchivoDrive(
                     JSON.stringify(anulacion, null, 2), `${docName}.json`, FOLDER_IDS.facturas
                 );
-                await agregarAnulacionExcel(anulacion, docName, jsonResult.id);
+                const filaOk = await agregarAnulacionExcel(anulacion, docName, jsonResult.id);
                 cerrarAnulacion();
-                mostrarToast('✅ Remisión anulada correctamente');
+                // Avisar si la venta tenía registros pendientes en otros módulos (no se tocan solos).
+                const relacionados = await gapi.client.drive.files.list({
+                    q: `(name contains 'Prestado-Remision-${numeroFormateado}-' and '${FOLDER_IDS.prestamosPagos}' in parents) or (name contains 'Cobro-Remision-${numeroFormateado}-' and '${FOLDER_IDS.ingresos}' in parents)`,
+                    fields: 'files(name)'
+                }).then(r => r.result.files || []).catch(() => []);
+                let aviso = `✅ Remisión-${numeroFormateado} anulada`;
+                if (!filaOk) aviso += ' · ⚠️ no se registró en Sheets';
+                if (relacionados.length) aviso += ` · ⚠️ Revise Pagar Prestadores / Ingresos: tiene ${relacionados.length} registro(s) que siguen pendientes`;
+                mostrarToast(aviso, relacionados.length || !filaOk ? 10000 : 3000);
             } catch (error) {
                 console.error('Error procesando anulación:', error);
                 mostrarToast('❌ Error al procesar anulación');
             }
         }
 
+        // Devuelve true si la fila quedó en Sheets. Columnas iguales al encabezado A:R de remisiones:
+        // el motivo va en Observaciones (Q) y el link en R (antes caían en Total Item y Métodos Pago).
         async function agregarAnulacionExcel(anulacion, docName, fileId) {
-            if (!SPREADSHEET_ID) return;
+            if (!SPREADSHEET_ID) return false;
             const linkDrive = `https://drive.google.com/file/d/${fileId}/view`;
             const fila = [
                 docName,
                 new Date(anulacion.fechaAnulacion).toLocaleString('es-CO'),
-                anulacion.asesor, '-', '-', '-', '-', '-', '-', '-', '-', '-',
-                anulacion.motivo, linkDrive
+                celdaTexto(anulacion.asesor), '-', celdaTexto(anulacion.cliente || '-'),
+                '-', '-', '-', '-', '-', '-', '-', '-', '-', '-', '-',
+                celdaTexto(anulacion.motivo), linkDrive
             ];
             try {
                 await gapi.client.sheets.spreadsheets.values.append({
-                    spreadsheetId: SPREADSHEET_ID, range: 'Remisiones!A:N',
+                    spreadsheetId: SPREADSHEET_ID, range: 'Remisiones!A:R',
                     valueInputOption: 'USER_ENTERED', resource: { values: [fila] }
                 });
-            } catch (error) { console.error('Error agregando anulación a Excel:', error); }
+                return true;
+            } catch (error) { console.error('Error agregando anulación a Excel:', error); return false; }
         }
 
         document.addEventListener('click', function(event) {
