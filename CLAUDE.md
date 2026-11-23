@@ -62,6 +62,8 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
 | Pagar Prestadores    | `prest…`, `prestadores…` | Agrupa equipos prestados pendientes y registra pagos |
 | Ingresos Pendientes  | `ing…`           | Cobros a empresas financieras |
 | Inventario / Gastos  | `inv…`, `gas…`   | Inventario y gastos con categorías y aprobaciones |
+| Buscar Remisión      | `bus…`           | Busca por número, cliente, NIT, teléfono o IMEI; detalle y reenvío por WhatsApp |
+| Índice de remisiones | `idx…`           | Resumen de cada remisión en IndexedDB del celular; solo lee de Drive lo nuevo o modificado |
 
 ### Asesores
 - `ASESORES_FIJOS`: aparecen en todos los módulos.
