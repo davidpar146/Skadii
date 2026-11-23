@@ -2280,6 +2280,14 @@
             return parseInt(soloDigitos, 10) || 0;
         }
 
+        // ===== Mostrar texto del usuario o de Drive sin que se interprete como HTML =====
+        // Todo dato que se pinta con innerHTML pasa por escHtml (un nombre como <img onerror=...>
+        // ya no se ejecuta). Si el dato va dentro de un onclick, por jsArg (apóstrofos incluidos).
+        function escHtml(t) {
+            return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+        }
+        function jsArg(v) { return escHtml(JSON.stringify(v ?? '')); }
+
         // ===== Anti doble toque en botones de guardado =====
         // Mientras la función corre, el botón queda bloqueado y un segundo toque se ignora
         // (evita documentos duplicados por tocar dos veces mientras sube a Drive).
@@ -2842,7 +2850,7 @@
                 else if (tenue) clases += ' tenue';
                 // Sin contador visible (CAMBIO solicitado)
                 return `<button type="button" class="${clases}"
-                    onclick="prestadoresSeleccionar('${p.nombre.replace(/'/g, "\\'")}')">${p.nombre}</button>`;
+                    onclick="prestadoresSeleccionar(${jsArg(p.nombre)})">${escHtml(p.nombre)}</button>`;
             }).join('');
 
             // Chip OTRO solo al final cuando ya no quedan más por mostrar
@@ -2899,7 +2907,7 @@
             if (existente) {
                 warning.innerHTML = `
                     <div class="prest-duplicado-warning">
-                        ⚠️ Ya existe: <strong>${existente.nombre}</strong> — Se seleccionará el existente al confirmar.
+                        ⚠️ Ya existe: <strong>${escHtml(existente.nombre)}</strong> — Se seleccionará el existente al confirmar.
                     </div>`;
             } else {
                 warning.innerHTML = '';
@@ -3321,9 +3329,9 @@
             cont.innerHTML = '<div class="acc-titulo-lista">Accesorios agregados</div>' +
                 accs.map(a => `<div class="acc-item">
                     <div class="acc-info">
-                        <div class="acc-item-title">🎁 ${a.descripcion}</div>
+                        <div class="acc-item-title">🎁 ${escHtml(a.descripcion)}</div>
                         <div class="acc-item-detail">${a.obsequio ? a.cantidad + ' × Obsequio' : a.cantidad + ' × ' + formatMoney(a.valor) + ' = ' + formatMoney(a.total)}</div>
-                        <span class="acc-cat-badge">${a.categoria}</span>${a.obsequio ? '<span class="acc-gift-badge">🎁 Obsequio</span>' : ''}
+                        <span class="acc-cat-badge">${escHtml(a.categoria)}</span>${a.obsequio ? '<span class="acc-gift-badge">🎁 Obsequio</span>' : ''}
                     </div>
                     <button class="acc-del" onclick="accEliminar('${a.id}')" title="Quitar accesorio">×</button>
                 </div>`).join('') +
@@ -3447,13 +3455,13 @@
             const yaAgregados = currentColaboradores.map(c => c.nombre);
             container.innerHTML = disponibles.map(nombre => {
                 const marcado = yaAgregados.includes(nombre);
-                return `<button type="button" onclick="toggleColaborador('${nombre}', ${!marcado})"
+                return `<button type="button" onclick="toggleColaborador(${jsArg(nombre)}, ${!marcado})"
                     style="padding:0.55rem 1rem; border-radius:20px; font-size:0.9rem; font-weight:600;
                            cursor:pointer; transition:all 0.15s; white-space:nowrap;
                            ${marcado
                                ? 'background:#2563eb; color:white; border:2px solid #1d4ed8; box-shadow:0 2px 6px rgba(37,99,235,0.35);'
                                : 'background:white; color:var(--gray-700); border:2px solid var(--gray-200); box-shadow:0 1px 3px rgba(0,0,0,0.08);'}">
-                    ${marcado ? '✓ ' : ''}${nombre}</button>`;
+                    ${marcado ? '✓ ' : ''}${escHtml(nombre)}</button>`;
             }).join('');
         }
 
@@ -3476,7 +3484,7 @@
             if (!lista) return;
             if (currentColaboradores.length === 0) { lista.innerHTML = ''; return; }
             lista.innerHTML = '<div style="margin-top:0.5rem; padding:0.5rem 0.75rem; background:var(--gray-50); border-radius:8px; font-size:0.85rem; color:var(--gray-700);">' +
-                '👥 Colaboradores: <strong>' + currentColaboradores.map(c => c.nombre).join(', ') + '</strong></div>';
+                '👥 Colaboradores: <strong>' + currentColaboradores.map(c => escHtml(c.nombre)).join(', ') + '</strong></div>';
         }
 
         function eliminarColaborador(id) {
@@ -3579,14 +3587,14 @@
                 <div class="item-card">
                     <div class="item-header">
                         <div style="flex: 1;">
-                            <div class="item-title">${item.descripcion}</div>
-                            ${item.imei ? `<div class="item-detail">📱 IMEI: ${item.imei}</div>` : ''}
+                            <div class="item-title">${escHtml(item.descripcion)}</div>
+                            ${item.imei ? `<div class="item-detail">📱 IMEI: ${escHtml(item.imei)}</div>` : ''}
                             <div class="item-detail">
                                 Cantidad: ${item.cantidad} × ${formatMoney(item.valor)} = ${formatMoney(item.total)}
                             </div>
                             ${item.costo > 0 ? `<div class="item-detail" style="color: var(--gray-500);">💰 Costo: ${formatMoney(item.costo)}</div>` : ''}
-                            ${item.prestadoPor ? `<div class="item-detail" style="color: #d97706;">🤝 Prestado por: ${item.prestadoPor}</div>` : ''}
-                            ${item.notas ? `<div class="item-detail">📝 ${item.notas}</div>` : ''}
+                            ${item.prestadoPor ? `<div class="item-detail" style="color: #d97706;">🤝 Prestado por: ${escHtml(item.prestadoPor)}</div>` : ''}
+                            ${item.notas ? `<div class="item-detail">📝 ${escHtml(item.notas)}</div>` : ''}
                             <span class="badge badge-${item.estado}">${item.estado === 'propio' ? '🏢 Propio' : '🤝 Prestado'}</span>
                         </div>
                         <div class="item-actions">
@@ -3825,13 +3833,13 @@
                     <div style="display: flex; justify-content: space-between; align-items: start;">
                         <div style="flex: 1;">
                             <div style="font-weight: 600;">${methodNames[pay.method]}</div>
-                            ${pay.reference ? `<div class="item-detail">Ref: ${pay.reference}</div>` : ''}
+                            ${pay.reference ? `<div class="item-detail">Ref: ${escHtml(pay.reference)}</div>` : ''}
                             ${pay.photos && Object.keys(pay.photos).length > 0 ? '<div class="item-detail">📷 Con fotos adjuntas</div>' : ''}
                             ${pay.retomaItem ? `
                                 <div style="margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 6px;">
-                                    <strong>📱 ${pay.retomaItem.descripcion}</strong>
-                                    <div class="item-detail">IMEI: ${pay.retomaItem.imei}</div>
-                                    <div class="item-detail">Estado: ${pay.retomaItem.estado}</div>
+                                    <strong>📱 ${escHtml(pay.retomaItem.descripcion)}</strong>
+                                    <div class="item-detail">IMEI: ${escHtml(pay.retomaItem.imei)}</div>
+                                    <div class="item-detail">Estado: ${escHtml(pay.retomaItem.estado)}</div>
                                 </div>` : ''}
                             <div style="font-size: 1.125rem; font-weight: 700; color: var(--success); margin-top: 0.5rem;">
                                 ${formatMoney(pay.amount)}
@@ -4296,8 +4304,8 @@
                 const itemsList = document.getElementById('success-items');
                 itemsList.innerHTML = modalItems.map(item => {
                     const showIMEI = item.imei && item.imei.length > 12;
-                    if (showIMEI) return `<li>${item.descripcion} - IMEI: ${item.imei}</li>`;
-                    return `<li>${item.descripcion}</li>`;
+                    if (showIMEI) return `<li>${escHtml(item.descripcion)} - IMEI: ${escHtml(item.imei)}</li>`;
+                    return `<li>${escHtml(item.descripcion)}</li>`;
                 }).join('');
 
                 const totalPagado = modalPayments.reduce((sum, p) => sum + p.amount, 0);
@@ -4333,7 +4341,7 @@
                 return;
             }
             document.getElementById('success-pendientes-lista').innerHTML =
-                pasos.map(p => `<li>${p.nombre}</li>`).join('');
+                pasos.map(p => `<li>${escHtml(p.nombre)}</li>`).join('');
             box.style.display = 'block';
             if (ok) ok.style.display = 'none';
         }
@@ -4862,7 +4870,7 @@
             container.innerHTML = todos.map(d => `
                 <div class="damage-list-item">
                     <div class="damage-dot" style="background:${d.color};"></div>
-                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
+                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${escHtml(d.descripcion)}</span>
                     <button onclick="mantEliminarDanoPorId(${d.id}, '${d.cara}')">×</button>
                 </div>`).join('');
         }
@@ -4943,13 +4951,13 @@
             const todos = [...new Set([...ASESORES_FIJOS, ...desdeDrive])].sort();
             container.innerHTML = todos.map(nombre => {
                 const marcado = mantAsesorActual === nombre;
-                return `<button type="button" onclick="mantSeleccionarAsesor('${nombre}')"
+                return `<button type="button" onclick="mantSeleccionarAsesor(${jsArg(nombre)})"
                     style="padding:0.55rem 1rem; border-radius:20px; font-size:0.9rem; font-weight:600;
                            cursor:pointer; transition:all 0.15s; white-space:nowrap;
                            ${marcado
                                ? 'background:#2563eb; color:white; border:2px solid #1d4ed8; box-shadow:0 2px 6px rgba(37,99,235,0.35);'
                                : 'background:white; color:var(--gray-700); border:2px solid var(--gray-200); box-shadow:0 1px 3px rgba(0,0,0,0.08);'}">
-                    ${marcado ? '✓ ' : ''}${nombre}</button>`;
+                    ${marcado ? '✓ ' : ''}${escHtml(nombre)}</button>`;
             }).join('');
         }
 
@@ -5106,16 +5114,16 @@
                             <div class="novedad-card">
                                 <div class="novedad-card-header">
                                     <span class="novedad-estado-tag ${ESTADO_CLASE[n.estado] || 'estado-recibido'}">
-                                        ${ESTADO_LABELS[n.estado] || n.estado}
+                                        ${ESTADO_LABELS[n.estado] || escHtml(n.estado)}
                                     </span>
                                     <span class="novedad-fecha">${new Date(n.fecha).toLocaleDateString('es-CO')}</span>
                                 </div>
-                                <div class="novedad-texto">${n.texto}</div>
+                                <div class="novedad-texto">${escHtml(n.texto)}</div>
                                 ${n.pago ? `<div class="novedad-pago">
                                     💰 Precio final: ${formatMoney(n.pago.precio_final || 0)} |
                                     Anticipo: ${formatMoney(n.pago.anticipo || 0)} |
                                     Saldo: ${formatMoney(n.pago.saldo || 0)} |
-                                    ${n.pago.metodo || '-'}
+                                    ${escHtml(n.pago.metodo || '-')}
                                 </div>` : ''}
                             </div>`).join('')
                         : '<p style="font-size:0.8rem; color:var(--gray-500);">Sin novedades registradas</p>';
@@ -5129,14 +5137,14 @@
                         <div class="mant-lista-card">
                             <div class="mant-lista-header" onclick="mantToggleCard(this)">
                                 <div>
-                                    <div style="font-weight:700; font-size:0.9rem;">${nombre}</div>
+                                    <div style="font-weight:700; font-size:0.9rem;">${escHtml(nombre)}</div>
                                     <div style="font-size:0.75rem; color:var(--gray-600);">
-                                        ${cliente} · ${equipo}
+                                        ${escHtml(cliente)} · ${escHtml(equipo)}
                                     </div>
                                     <div style="font-size:0.75rem; color:var(--gray-500);">${fecha}</div>
                                 </div>
                                 <div style="text-align:right;">
-                                    <span class="mant-estado-badge ${ESTADO_CLASE[estado]}">${ESTADO_LABELS[estado] || estado}</span>
+                                    <span class="mant-estado-badge ${ESTADO_CLASE[estado]}">${ESTADO_LABELS[estado] || escHtml(estado)}</span>
                                     <div style="font-size:0.7rem; color:var(--gray-400); margin-top:0.25rem;">▼</div>
                                 </div>
                             </div>
@@ -5189,9 +5197,9 @@
             const equipo  = mantNovedadDoc.equipo?.descripcion || '-';
             const imei    = mantNovedadDoc.equipo?.imei || '-';
             document.getElementById('mant-novedad-info').innerHTML = `
-                <strong>${mantNovedadDoc.fileName.replace('.json','')}</strong><br>
-                👤 ${cliente} · 📱 ${equipo}<br>
-                <span style="color:var(--gray-500);">IMEI: ${imei}</span>`;
+                <strong>${escHtml(mantNovedadDoc.fileName.replace('.json',''))}</strong><br>
+                👤 ${escHtml(cliente)} · 📱 ${escHtml(equipo)}<br>
+                <span style="color:var(--gray-500);">IMEI: ${escHtml(imei)}</span>`;
             document.querySelectorAll('#mant-novedad-estados .estado-mant-btn')
                 .forEach(b => b.classList.remove('active'));
             const anticipo = mantNovedadDoc.anticipo || 0;
@@ -5279,7 +5287,7 @@
             const listaDanos = todos.map(d => `
                 <div class="damage-list-item">
                     <div class="damage-dot" style="background:${d.color};"></div>
-                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
+                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${escHtml(d.descripcion)}</span>
                 </div>`).join('');
             container.innerHTML = `
                 <p style="font-size:0.8rem; color:var(--gray-600); margin-bottom:0.5rem; font-weight:600;">
@@ -5481,10 +5489,10 @@
                 resultado.innerHTML = `
                     <div class="gar-remision-encontrada">
                         <strong>✅ Remisión-${numeroFormateado} encontrada</strong>
-                        <span>Cliente: ${garRemisionOriginal.cliente || '-'}</span><br>
+                        <span>Cliente: ${escHtml(garRemisionOriginal.cliente || '-')}</span><br>
                         <span>Fecha: ${new Date(garRemisionOriginal.fecha).toLocaleDateString('es-CO')}</span><br>
-                        <span>Asesor: ${garRemisionOriginal.asesor || '-'}</span><br>
-                        ${primerItem ? `<span>Equipo: ${primerItem.descripcion}</span>` : ''}
+                        <span>Asesor: ${escHtml(garRemisionOriginal.asesor || '-')}</span><br>
+                        ${primerItem ? `<span>Equipo: ${escHtml(primerItem.descripcion)}</span>` : ''}
                     </div>`;
                 mostrarToast('✅ Remisión encontrada');
             } catch (e) {
@@ -5553,7 +5561,7 @@
             container.innerHTML = todos.map(d => `
                 <div class="damage-list-item">
                     <div class="damage-dot" style="background:${d.color};"></div>
-                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${d.descripcion}</span>
+                    <span>${d.cara === 'frente' ? '📱' : '🔄'} ${escHtml(d.descripcion)}</span>
                     <button onclick="garEliminarDanoPorId(${d.id},'${d.cara}')">×</button>
                 </div>`).join('');
         }
@@ -5664,7 +5672,7 @@
                 if (seleccionado) clases += ' selected';
                 else if (tenue) clases += ' tenue';
                 return `<button type="button" class="${clases}"
-                    onclick="garSalePrestadoresSeleccionar('${p.nombre.replace(/'/g, "\\'")}')">${p.nombre}</button>`;
+                    onclick="garSalePrestadoresSeleccionar(${jsArg(p.nombre)})">${escHtml(p.nombre)}</button>`;
             }).join('');
             const chipOtroHTML = mostrarOtroAlFinal ? `
                 <button type="button" class="prest-chip prest-chip-otro${garSalePrestadorSeleccionado === '__OTRO__' ? ' selected' : ''}"
@@ -5713,7 +5721,7 @@
             if (existente) {
                 warning.innerHTML = `
                     <div class="prest-duplicado-warning">
-                        ⚠️ Ya existe: <strong>${existente.nombre}</strong> — Se seleccionará el existente al confirmar.
+                        ⚠️ Ya existe: <strong>${escHtml(existente.nombre)}</strong> — Se seleccionará el existente al confirmar.
                     </div>`;
             } else {
                 warning.innerHTML = '';
@@ -5813,12 +5821,12 @@
             const diff = precioSale - precioEntra;
             document.getElementById('gar-resumen-autorizacion').innerHTML = `
                 <div class="gar-resumen-row"><span>Remisión original:</span><span>Remision-${numOriginal}</span></div>
-                <div class="gar-resumen-row"><span>Cliente:</span><span>${garRemisionOriginal.cliente || '-'}</span></div>
+                <div class="gar-resumen-row"><span>Cliente:</span><span>${escHtml(garRemisionOriginal.cliente || '-')}</span></div>
                 <div class="gar-resumen-row"><span>Tipo:</span><span>${garTipoActual.replace(/_/g,' ')}</span></div>
-                <div class="gar-resumen-row"><span>Equipo entra:</span><span>${entraDesc}</span></div>
-                <div class="gar-resumen-row"><span>IMEI entra:</span><span>${entraImei}</span></div>
-                <div class="gar-resumen-row"><span>Equipo sale:</span><span>${saleDesc}</span></div>
-                <div class="gar-resumen-row"><span>IMEI sale:</span><span>${saleImei}</span></div>
+                <div class="gar-resumen-row"><span>Equipo entra:</span><span>${escHtml(entraDesc)}</span></div>
+                <div class="gar-resumen-row"><span>IMEI entra:</span><span>${escHtml(entraImei)}</span></div>
+                <div class="gar-resumen-row"><span>Equipo sale:</span><span>${escHtml(saleDesc)}</span></div>
+                <div class="gar-resumen-row"><span>IMEI sale:</span><span>${escHtml(saleImei)}</span></div>
                 <div class="gar-resumen-row"><span>Diferencia:</span>
                     <span style="font-weight:700; color:${diff > 0 ? 'var(--warning)' : diff < 0 ? 'var(--success)' : 'var(--gray-700)'};">
                         ${diff > 0 ? 'Cobrar ' : diff < 0 ? 'Devolver ' : 'Sin diferencia '}${diff !== 0 ? formatMoney(Math.abs(diff)) : ''}
@@ -5826,7 +5834,7 @@
                 </div>
                 <div class="gar-resumen-row"><span>Destino equipo:</span><span>${garDestinoActual}</span></div>
                 ${garSaleEstado === 'prestado' && salePrestadoPor
-                    ? `<div class="gar-resumen-row"><span>Equipo sale (prestado):</span><span style="color:#d97706; font-weight:700;">🤝 ${salePrestadoPor}${parsearValor(document.getElementById('gar-sale-costo').value) > 0 ? ' · ' + formatMoney(parsearValor(document.getElementById('gar-sale-costo').value)) : ''}</span></div>`
+                    ? `<div class="gar-resumen-row"><span>Equipo sale (prestado):</span><span style="color:#d97706; font-weight:700;">🤝 ${escHtml(salePrestadoPor)}${parsearValor(document.getElementById('gar-sale-costo').value) > 0 ? ' · ' + formatMoney(parsearValor(document.getElementById('gar-sale-costo').value)) : ''}</span></div>`
                     : ''}`;
             garPoblarAutorizadores();
             const select = document.getElementById('gar-auth-asesor');
@@ -6089,7 +6097,7 @@
             }
             lista.innerHTML = Object.entries(grupos).map(([nombre, equipos]) => {
                 const subtotal = equipos.reduce((s, eq) => s + Number(eq.costo || 0), 0);
-                const nombreEncoded = encodeURIComponent(nombre);
+                const nombreEncoded = encodeURIComponent(nombre).replace(/'/g, '%27');
                 const DIAS_ALERTA = 15;
                 const filas = equipos.map((eq, idx) => {
                     const imei  = eq.imei || eq.IMEI || '-';
@@ -6110,19 +6118,19 @@
                                    onchange="prestToggleEquipoCheck('${eqId}', ${costo}, '${nombreEncoded}')"
                                    onclick="event.stopPropagation()">
                             <div class="equipo-info">
-                                <div class="equipo-nombre">${alerta ? '⚠️ ' : ''}${desc}</div>
-                                ${imei !== '-' ? `<div class="equipo-imei">IMEI: ${imei}</div>` : ''}
-                                ${rem ? `<div class="equipo-imei">📄 ${rem}</div>` : ''}
+                                <div class="equipo-nombre">${alerta ? '⚠️ ' : ''}${escHtml(desc)}</div>
+                                ${imei !== '-' ? `<div class="equipo-imei">IMEI: ${escHtml(imei)}</div>` : ''}
+                                ${rem ? `<div class="equipo-imei">📄 ${escHtml(rem)}</div>` : ''}
                                 ${dias !== null ? `<div class="equipo-imei">🕐 ${dias} día${dias !== 1 ? 's' : ''}</div>` : ''}
                             </div>
                             <div class="equipo-costo">${formatMoney(costo)}</div>
                         </div>`;
                 }).join('');
                 return `
-                    <div class="prestador-card" id="pcard-${nombreEncoded}" data-prestador="${nombre}" data-subtotal="${subtotal}">
+                    <div class="prestador-card" id="pcard-${nombreEncoded}" data-prestador="${escHtml(nombre)}" data-subtotal="${subtotal}">
                         <div class="prestador-header" style="cursor:pointer;" onclick="prestToggleBody('${nombreEncoded}')">
                             <div style="flex:1;">
-                                <div class="prestador-nombre">👤 ${nombre}</div>
+                                <div class="prestador-nombre">👤 ${escHtml(nombre)}</div>
                                 <div style="font-size:0.75rem; color:var(--gray-500);">
                                     ${equipos.length} equipo${equipos.length !== 1 ? 's' : ''}
                                 </div>
@@ -6234,7 +6242,7 @@
 
         function prestSeleccionarTodos() {
             Object.keys(prestGrupos).forEach(nombre => {
-                const nombreEncoded = encodeURIComponent(nombre);
+                const nombreEncoded = encodeURIComponent(nombre).replace(/'/g, '%27');
                 const body = document.getElementById(`pbody-${nombreEncoded}`);
                 if (body && !body.classList.contains('open')) {
                     body.classList.add('open');
@@ -6247,7 +6255,7 @@
 
         function prestDeseleccionarTodos() {
             Object.keys(prestGrupos).forEach(nombre => {
-                prestDeseleccionarEquiposTodos(encodeURIComponent(nombre));
+                prestDeseleccionarEquiposTodos(encodeURIComponent(nombre).replace(/'/g, '%27'));
             });
         }
 
@@ -6301,7 +6309,7 @@
                 resumenHTML = Object.entries(porPrestador).map(([nom, eqs]) => {
                     const sub = eqs.reduce((s, eq) => s + Number(eq.costo || 0), 0);
                     return `<div class="gar-resumen-row">
-                        <span>👤 ${nom} (${eqs.length} eq.)</span>
+                        <span>👤 ${escHtml(nom)} (${eqs.length} eq.)</span>
                         <span>${formatMoney(sub)}</span>
                     </div>`;
                 }).join('');
@@ -6310,7 +6318,7 @@
                     const desc  = eq.descripcion || eq.equipo || 'Sin descripción';
                     const imei  = eq.imei || '';
                     return `<div class="gar-resumen-row">
-                        <span>${desc}${imei ? `<br><small style="color:var(--gray-500);">IMEI: ${imei}</small>` : ''}</span>
+                        <span>${escHtml(desc)}${imei ? `<br><small style="color:var(--gray-500);">IMEI: ${escHtml(imei)}</small>` : ''}</span>
                         <span>${formatMoney(eq.costo || 0)}</span>
                     </div>`;
                 }).join('');
@@ -6318,7 +6326,7 @@
             document.getElementById('prest-pago-resumen').innerHTML = `
                 <div class="gar-resumen-row">
                     <span><strong>Prestador(es)</strong></span>
-                    <span><strong>${nombrePrestador}</strong></span>
+                    <span><strong>${escHtml(nombrePrestador)}</strong></span>
                 </div>
                 ${resumenHTML}
                 <div class="gar-resumen-row">
@@ -6582,7 +6590,7 @@
                 if (errores.length > 0) {
                     detalleHTML += `<p style="margin-top:0.5rem;"><strong>Errores:</strong></p>
                         <ul style="margin: 0.25rem 0 0 1.25rem; padding:0; font-size:0.8rem;">
-                        ${errores.slice(0, 5).map(e => `<li>${e}</li>`).join('')}
+                        ${errores.slice(0, 5).map(e => `<li>${escHtml(e)}</li>`).join('')}
                         ${errores.length > 5 ? `<li>...y ${errores.length - 5} más</li>` : ''}
                         </ul>`;
                 }
@@ -6606,21 +6614,21 @@
                     <div style="display:flex; justify-content:space-between; align-items:center;
                                 padding:0.35rem 0; border-bottom:1px solid var(--gray-200);
                                 font-size:0.82rem; gap:0.5rem;">
-                        <span style="flex:1; font-weight:600; color:var(--gray-800);">${desc}</span>
-                        <span style="flex:1.2; color:var(--gray-500); font-size:0.75rem;">${imei}</span>
+                        <span style="flex:1; font-weight:600; color:var(--gray-800);">${escHtml(desc)}</span>
+                        <span style="flex:1.2; color:var(--gray-500); font-size:0.75rem;">${escHtml(imei)}</span>
                         <span style="white-space:nowrap; font-weight:700; color:var(--success);">${formatMoney(costo)}</span>
                     </div>`;
             }).join('');
 
             document.getElementById('prest-exito-detalle').innerHTML = `
                 <div style="margin-bottom:0.5rem;">
-                    <strong>Prestador(es):</strong> ${nombrePrestador}
+                    <strong>Prestador(es):</strong> ${escHtml(nombrePrestador)}
                 </div>
                 <div style="margin-bottom:0.5rem;">
-                    <strong>Método:</strong> ${metodo.charAt(0).toUpperCase() + metodo.slice(1)}
-                    ${ref ? ` · <strong>Ref:</strong> ${ref}` : ''}
+                    <strong>Método:</strong> ${escHtml(metodo.charAt(0).toUpperCase() + metodo.slice(1))}
+                    ${ref ? ` · <strong>Ref:</strong> ${escHtml(ref)}` : ''}
                 </div>
-                ${nota ? `<div style="margin-bottom:0.5rem;"><strong>Nota:</strong> ${nota}</div>` : ''}
+                ${nota ? `<div style="margin-bottom:0.5rem;"><strong>Nota:</strong> ${escHtml(nota)}</div>` : ''}
                 <div style="margin:0.5rem 0 0.25rem; font-weight:600; font-size:0.82rem; color:var(--gray-600);">
                     Equipos (${todosEquipos.length}):
                 </div>
@@ -6726,7 +6734,7 @@
                         <div class="card" style="border-left:4px solid ${color}; margin-bottom:0.75rem;">
                             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:0.5rem;">
                                 <div>
-                                    <div style="font-weight:700; font-size:1rem;">${icono} ${data.nombre}</div>
+                                    <div style="font-weight:700; font-size:1rem;">${icono} ${escHtml(data.nombre)}</div>
                                     <div style="font-size:0.75rem; color:var(--gray-500);">
                                         ${data.remisiones.length} remisión(es) · Plazo: ${diasPlazo} días
                                         ${vencidos.length > 0 ? '<span style="color:var(--danger); font-weight:600;"> · ⚠️ ' + vencidos.length + ' vencida(s)</span>' : ''}
@@ -6734,7 +6742,7 @@
                                 </div>
                                 <div style="font-weight:700; font-size:1.1rem; color:var(--warning);">${formatMoney(data.total)}</div>
                             </div>
-                            <button class="btn btn-primary" onclick="ingAbrirEmpresa('${empKey}', '${data.nombre}')" style="padding:0.65rem; font-size:0.85rem;">
+                            <button class="btn btn-primary" onclick="ingAbrirEmpresa(${jsArg(empKey)}, ${jsArg(data.nombre)})" style="padding:0.65rem; font-size:0.85rem;">
                                 📋 Ver remisiones y registrar pago
                             </button>
                         </div>`;
@@ -6784,12 +6792,12 @@
                     return `
                         <div style="display:flex; justify-content:space-between; align-items:center; padding:0.5rem 0.6rem; border-radius:6px; margin-bottom:0.3rem; background:${bg};">
                             <div>
-                                <div style="font-weight:600; font-size:0.85rem;">#${idx+1} ${rem.doc.remision || rem.fileName.replace('.json','')}</div>
+                                <div style="font-weight:600; font-size:0.85rem;">#${idx+1} ${escHtml(rem.doc.remision || rem.fileName.replace('.json',''))}</div>
                                 <div style="font-size:0.72rem; color:var(--gray-500);">
                                     Venta: ${rem.doc.fecha_remision ? formatearFechaCorta(rem.doc.fecha_remision) : '-'} → Pago esperado: ${fechaPago.toLocaleDateString('es-CO')}
                                     ${vencida ? '<span style="color:var(--danger); font-weight:600;"> ⚠️ VENCIDA</span>' : urgente ? '<span style="color:#d97706; font-weight:600;"> ⏰ ' + diasRestantes + 'd</span>' : ''}
                                 </div>
-                                <div style="font-size:0.72rem; color:var(--gray-500);">👤 ${rem.doc.cliente || '-'}</div>
+                                <div style="font-size:0.72rem; color:var(--gray-500);">👤 ${escHtml(rem.doc.cliente || '-')}</div>
                             </div>
                             <div style="font-weight:700; color:var(--warning); white-space:nowrap; margin-left:0.5rem; text-align:right;">
                                 ${formatMoney(ingSaldo(rem.doc))}
@@ -6822,7 +6830,7 @@
             }
             const filas = resultado.map(r =>
                 '<div style="display:flex; justify-content:space-between; font-size:0.78rem; padding:0.25rem 0; border-bottom:1px solid var(--gray-200);">' +
-                '<span>' + (r.cubierto ? '✅' : '🟡') + ' ' + r.remision + '</span>' +
+                '<span>' + (r.cubierto ? '✅' : '🟡') + ' ' + escHtml(r.remision) + '</span>' +
                 '<span style="color:' + (r.cubierto ? 'var(--success)' : 'var(--warning)') + '; font-weight:600;">' +
                 formatMoney(r.aplicado) + ' / ' + formatMoney(r.esperado) + '</span></div>'
             ).join('');
@@ -7020,7 +7028,7 @@
             if (!cont) return;
             cont.innerHTML = gasCategorias.map((cat, idx) => `
                 <button class="empresa-btn ${gasCategoriaActual === cat ? 'active' : ''}"
-                        onclick="gasSeleccionarCategoriaIdx(this, ${idx})">${cat}</button>
+                        onclick="gasSeleccionarCategoriaIdx(this, ${idx})">${escHtml(cat)}</button>
             `).join('') || '<p style="color:var(--gray-500);font-size:0.85rem;">Sin categorías</p>';
         }
 
@@ -7157,14 +7165,14 @@
                         <div class="gasto-card">
                             <div style="display:flex; justify-content:space-between; align-items:start; gap:0.5rem;">
                                 <div style="flex:1;">
-                                    <div style="font-weight:700; font-size:0.9rem;">${nombre}</div>
-                                    <div style="font-size:0.78rem; color:var(--gray-600);">🏷️ ${doc.categoria||'-'} · 📅 ${doc.fecha_gasto||'-'}</div>
-                                    <div style="font-size:0.78rem; color:var(--gray-600);">👤 ${doc.proveedor||'-'}</div>
-                                    <div style="font-size:0.75rem; color:var(--gray-500);">${doc.descripcion||''}</div>
+                                    <div style="font-weight:700; font-size:0.9rem;">${escHtml(nombre)}</div>
+                                    <div style="font-size:0.78rem; color:var(--gray-600);">🏷️ ${escHtml(doc.categoria||'-')} · 📅 ${escHtml(doc.fecha_gasto||'-')}</div>
+                                    <div style="font-size:0.78rem; color:var(--gray-600);">👤 ${escHtml(doc.proveedor||'-')}</div>
+                                    <div style="font-size:0.75rem; color:var(--gray-500);">${escHtml(doc.descripcion||'')}</div>
                                 </div>
                                 <div style="text-align:right; flex-shrink:0;">
                                     <div style="font-weight:700; color:var(--danger); font-size:1rem;">${formatMoney(doc.monto||0)}</div>
-                                    <div style="font-size:0.72rem; color:var(--gray-500);">${doc.metodo_pago||''}</div>
+                                    <div style="font-size:0.72rem; color:var(--gray-500);">${escHtml(doc.metodo_pago||'')}</div>
                                     <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank" style="font-size:0.75rem; color:var(--primary);">Ver →</a>
                                 </div>
                             </div>
@@ -7418,26 +7426,26 @@
                         <div style="background:${bgColor[est]||'white'}; border:2px solid var(--gray-200); border-radius:10px; padding:0.85rem 1rem; margin-bottom:0.75rem;">
                             <div style="display:flex; justify-content:space-between; align-items:start; gap:0.5rem;">
                                 <div style="flex:1;">
-                                    <div style="font-weight:700; font-size:0.9rem;">${numNombre}</div>
+                                    <div style="font-weight:700; font-size:0.9rem;">${escHtml(numNombre)}</div>
                                     <div style="font-size:0.8rem; color:var(--gray-600);">
-                                        ${el.tipo_elemento === 'dispositivo' ? '📱' : '🔌'} ${el.descripcion||'-'} · Cant: ${el.cantidad||1}
+                                        ${el.tipo_elemento === 'dispositivo' ? '📱' : '🔌'} ${escHtml(el.descripcion||'-')} · Cant: ${escHtml(el.cantidad||1)}
                                     </div>
-                                    ${el.imei_referencia ? `<div style="font-size:0.75rem; color:var(--gray-500);">Ref: ${el.imei_referencia}</div>` : ''}
+                                    ${el.imei_referencia ? `<div style="font-size:0.75rem; color:var(--gray-500);">Ref: ${escHtml(el.imei_referencia)}</div>` : ''}
                                     <div style="font-size:0.75rem; color:var(--gray-600);">
-                                        📋 ${doc.disposicion_final||'-'} · 👤 ${doc.asesor_solicitante||'-'} · 📅 ${fecha}
+                                        📋 ${escHtml(doc.disposicion_final||'-')} · 👤 ${escHtml(doc.asesor_solicitante||'-')} · 📅 ${fecha}
                                     </div>
-                                    <div style="font-size:0.8rem; color:var(--gray-700); margin-top:0.25rem; font-style:italic;">"${doc.motivo||''}"</div>
+                                    <div style="font-size:0.8rem; color:var(--gray-700); margin-top:0.25rem; font-style:italic;">"${escHtml(doc.motivo||'')}"</div>
                                     ${doc.aprobacion ? `
                                         <div style="font-size:0.75rem; color:var(--gray-500); margin-top:0.25rem;">
-                                            ${semaforo[est]} ${doc.aprobacion.asesor} · ${doc.aprobacion.fecha ? formatearFechaCorta(doc.aprobacion.fecha) : ''}<br>
-                                            <em>"${doc.aprobacion.nota}"</em>
+                                            ${semaforo[est]} ${escHtml(doc.aprobacion.asesor)} · ${doc.aprobacion.fecha ? formatearFechaCorta(doc.aprobacion.fecha) : ''}<br>
+                                            <em>"${escHtml(doc.aprobacion.nota)}"</em>
                                         </div>` : ''}
                                 </div>
                                 <div style="text-align:right; flex-shrink:0;">
-                                    <div style="font-size:0.82rem; font-weight:700;">${semaforo[est]} ${est}</div>
+                                    <div style="font-size:0.82rem; font-weight:700;">${semaforo[est]} ${escHtml(est)}</div>
                                     ${el.valor_unitario ? `<div style="font-size:0.8rem; color:var(--danger);">${formatMoney(el.valor_unitario * (el.cantidad||1))}</div>` : ''}
                                     ${est === 'pendiente' ? `
-                                        <button class="btn btn-primary" onclick="invAbrirDecision('${fileId}','${fileName}')"
+                                        <button class="btn btn-primary" onclick="invAbrirDecision(${jsArg(fileId)}, ${jsArg(fileName)})"
                                                 style="margin-top:0.4rem; padding:0.4rem 0.75rem; font-size:0.8rem; width:auto;">
                                             📋 Decidir
                                         </button>` : ''}
@@ -7467,12 +7475,12 @@
                 const el = doc.elemento || {};
                 document.getElementById('inv-decision-detalle').innerHTML = `
                     <div style="display:grid; gap:0.3rem;">
-                        <div><strong>Elemento:</strong> ${el.tipo_elemento==='dispositivo'?'📱':'🔌'} ${el.descripcion||'-'}</div>
-                        <div><strong>Cantidad:</strong> ${el.cantidad||1} · <strong>Valor:</strong> ${el.valor_unitario ? formatMoney(el.valor_unitario * (el.cantidad||1)) : 'N/A'}</div>
-                        ${el.imei_referencia ? `<div><strong>Ref/IMEI:</strong> ${el.imei_referencia}</div>` : ''}
-                        <div><strong>Motivo:</strong> ${doc.motivo||'-'}</div>
-                        <div><strong>Disposición:</strong> ${doc.disposicion_final||'-'}</div>
-                        <div><strong>Solicitado por:</strong> ${doc.asesor_solicitante||'-'} · ${doc.fecha_solicitud ? formatearFechaCorta(doc.fecha_solicitud) : '-'}</div>
+                        <div><strong>Elemento:</strong> ${el.tipo_elemento==='dispositivo'?'📱':'🔌'} ${escHtml(el.descripcion||'-')}</div>
+                        <div><strong>Cantidad:</strong> ${escHtml(el.cantidad||1)} · <strong>Valor:</strong> ${el.valor_unitario ? formatMoney(el.valor_unitario * (el.cantidad||1)) : 'N/A'}</div>
+                        ${el.imei_referencia ? `<div><strong>Ref/IMEI:</strong> ${escHtml(el.imei_referencia)}</div>` : ''}
+                        <div><strong>Motivo:</strong> ${escHtml(doc.motivo||'-')}</div>
+                        <div><strong>Disposición:</strong> ${escHtml(doc.disposicion_final||'-')}</div>
+                        <div><strong>Solicitado por:</strong> ${escHtml(doc.asesor_solicitante||'-')} · ${doc.fecha_solicitud ? formatearFechaCorta(doc.fecha_solicitud) : '-'}</div>
                     </div>`;
             })
             .catch(() => {
@@ -7629,11 +7637,11 @@
 
             const entra = doc.equipo_que_entra || {};
             document.getElementById('gar-success-entra').innerHTML =
-                `${entra.descripcion || '-'}${entra.imei ? `<br><span style="font-size:0.8rem; color:var(--gray-500);">IMEI: ${entra.imei}</span>` : ''}`;
+                `${escHtml(entra.descripcion || '-')}${entra.imei ? `<br><span style="font-size:0.8rem; color:var(--gray-500);">IMEI: ${escHtml(entra.imei)}</span>` : ''}`;
 
             const sale = doc.equipo_que_sale || {};
             document.getElementById('gar-success-sale').innerHTML =
-                `${sale.descripcion || '-'}${sale.imei ? `<br><span style="font-size:0.8rem; color:var(--gray-500);">IMEI: ${sale.imei}</span>` : ''}`;
+                `${escHtml(sale.descripcion || '-')}${sale.imei ? `<br><span style="font-size:0.8rem; color:var(--gray-500);">IMEI: ${escHtml(sale.imei)}</span>` : ''}`;
 
             // Pago adicional (diferencia de precios)
             const adicionalBox = document.getElementById('gar-success-adicional-box');
