@@ -152,6 +152,16 @@
         .btn-photo { padding: 0.75rem; border: 2px solid var(--gray-300); background: white; color: var(--gray-700); }
         .btn-photo.captured { background: #dcfce7; border-color: var(--success); color: var(--success); }
         .btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none !important; }
+        /* Resumen del día: fila de indicadores y barras de un solo color (magnitud) */
+        .res-kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.5rem; margin-bottom: 0.75rem; }
+        .res-kpi { background: white; border: 1px solid var(--gray-200); border-radius: 10px; padding: 0.75rem; }
+        .res-kpi-label { font-size: 0.75rem; color: var(--gray-500); }
+        .res-kpi-valor { font-size: 1.25rem; font-weight: 700; color: var(--gray-800); margin-top: 0.15rem; }
+        .res-fila { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 0.15rem 0.75rem; padding: 0.4rem 0; align-items: center; }
+        .res-fila-nombre { font-size: 0.85rem; color: var(--gray-700); }
+        .res-fila-cifra { font-size: 0.85rem; font-weight: 600; color: var(--gray-800); text-align: right; }
+        .res-barra { grid-column: 1 / -1; height: 6px; background: var(--gray-100); border-radius: 4px; overflow: hidden; }
+        .res-barra > div { height: 100%; background: var(--primary); border-radius: 4px; }
         .campo-faltante { outline: 2px solid var(--danger) !important; outline-offset: 2px; border-radius: 8px; }
 
         .input-with-button { display: flex; gap: 0.5rem; }
@@ -236,7 +246,8 @@
             position: fixed; bottom: 2rem; left: 1rem; right: 1rem;
             padding: 1rem; background: var(--gray-800); color: white;
             border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-            transform: translateY(150%); transition: transform 0.3s; z-index: 4000;  /* encima de los modales */
+            /* Oculto: bajarlo su alto + su margen inferior (con 150% se asomaba una franja oscura abajo) */
+            transform: translateY(calc(100% + 3rem)); transition: transform 0.3s; z-index: 4000;  /* encima de los modales */
         }
         .toast.show { transform: translateY(0); }
         .toast.long { font-size: 0.85rem; }
@@ -731,6 +742,7 @@
             <div id="dropdown-menu" class="dropdown-menu">
                 <button class="menu-item active" id="menu-remisiones" onclick="mostrarModulo('remisiones')">📝 Remisiones</button>
                 <button class="menu-item" id="menu-buscar" onclick="mostrarModulo('buscar')">🔎 Buscar Remisión</button>
+                <button class="menu-item" id="menu-resumen" onclick="mostrarModulo('resumen')">📊 Resumen del día</button>
                 <button class="menu-item" id="menu-mantenimientos" onclick="mostrarModulo('mantenimientos')">🔧 Mantenimientos</button>
                 <button class="menu-item" id="menu-garantias" onclick="mostrarModulo('garantias')">🔄 Garantías</button>
                 <button class="menu-item" id="menu-prestadores" onclick="mostrarModulo('prestadores')">💰 Pagar Prestadores</button>
@@ -2168,6 +2180,19 @@
             </div>
         </div>
         <div id="bus-resultados"></div>
+    </div>
+
+    <!-- ============= MÓDULO RESUMEN DEL DÍA (res) ============= -->
+    <div class="container" id="modulo-resumen" style="display:none;">
+        <div class="card">
+            <div class="card-title">📊 Resumen del día</div>
+            <div class="form-group" style="display:flex; gap:0.5rem; margin-bottom:0.25rem;">
+                <input type="date" id="res-fecha" style="flex:1;">
+                <button class="btn btn-primary" onclick="resCargar()" style="width:auto; padding:0.75rem 1rem;">Ver</button>
+            </div>
+            <div id="res-estado" style="font-size:0.8rem; color:var(--gray-500);"></div>
+        </div>
+        <div id="res-contenido"></div>
     </div>
 
     <div id="bus-detalle-modal" class="modal">
@@ -4647,6 +4672,118 @@
             remEnviarWhatsApp();
         }
 
+        // ============= MÓDULO RESUMEN DEL DÍA (res) =============
+        // Usa el índice de remisiones (idx…): solo lee de Drive lo nuevo. Las anuladas no se suman.
+        let resUltimo = null;
+        function resInicializar() {
+            const f = document.getElementById('res-fecha');
+            if (!f.value) f.value = fechaLocalYMD();
+        }
+        function resCalcular(validas) {
+            const t = { ventas: validas.length, vendido: 0, pagado: 0, saldo: 0, recargos: 0,
+                        equipos: 0, accesorios: 0, obsequios: 0, medios: {}, asesores: {} };
+            validas.forEach(({ r }) => {
+                t.vendido += r.totalItems; t.pagado += r.totalPaid;
+                t.saldo += Math.max(0, r.totalItems - r.totalPaid);
+                r.items.forEach(i => {
+                    if (i.tipo !== 'accesorio') t.equipos += i.cantidad;
+                    else if (i.obsequio) t.obsequios += i.cantidad;
+                    else t.accesorios += i.cantidad;
+                });
+                r.pagos.forEach(p => {
+                    t.medios[p.method] = (t.medios[p.method] || 0) + p.amount;
+                    t.recargos += p.recargoMonto;
+                });
+                const a = r.asesor || 'Sin asesor';
+                t.asesores[a] = t.asesores[a] || { ventas: 0, total: 0 };
+                t.asesores[a].ventas++; t.asesores[a].total += r.totalItems;
+            });
+            return t;
+        }
+        // Lista de barras (nombre, barra de un solo color, cifra), de mayor a menor.
+        function resFilas(pares) {
+            const max = Math.max(1, ...pares.map(p => p.valor));
+            return pares.map(p => `
+                <div class="res-fila" title="${escHtml(p.nombre)}: ${escHtml(p.cifra)}">
+                    <div class="res-fila-nombre">${escHtml(p.nombre)}</div>
+                    <div class="res-fila-cifra">${escHtml(p.cifra)}</div>
+                    <div class="res-barra"><div style="width:${Math.max(2, Math.round(p.valor * 100 / max))}%;"></div></div>
+                </div>`).join('');
+        }
+        async function resCargar() {
+            const dia = document.getElementById('res-fecha').value || fechaLocalYMD();
+            const estado = document.getElementById('res-estado');
+            const cont = document.getElementById('res-contenido');
+            if (!(await asegurarSesionGoogle())) return;
+            estado.textContent = '⏳ Revisando remisiones nuevas...';
+            cont.innerHTML = '';
+            let datos;
+            try {
+                datos = await idxActualizar((n, total) => { estado.textContent = `⏳ Leyendo remisiones ${n}/${total}...`; });
+            } catch (e) {
+                console.error('Error cargando el resumen:', e);
+                estado.textContent = '❌ No se pudo consultar Drive. Revise la conexión e intente de nuevo.';
+                return;
+            }
+            const delDia = datos.lista.filter(({ r }) => r.fecha && fechaLocalYMD(new Date(r.fecha)) === dia)
+                .sort((a, b) => a.r.numero.localeCompare(b.r.numero));
+            const validas = delDia.filter(({ r }) => !datos.anuladas.has(r.numero));
+            const anuladas = delDia.filter(({ r }) => datos.anuladas.has(r.numero));
+            const t = resCalcular(validas);
+            const fechaTxt = formatearFechaCorta(dia + 'T12:00:00');
+            resUltimo = { fechaTxt, t, anuladas };
+            estado.textContent = `${fechaTxt} · ${t.ventas} venta(s)` + (anuladas.length ? ` · ${anuladas.length} anulada(s) no incluida(s)` : '') +
+                (datos.fallidos ? ` · ⚠️ ${datos.fallidos} remisión(es) no se pudieron leer` : '');
+            if (!delDia.length) {
+                cont.innerHTML = '<p style="text-align:center; color:var(--gray-500); padding:1rem;">No hay remisiones en esta fecha</p>';
+                return;
+            }
+            const medios = Object.entries(t.medios).sort((a, b) => b[1] - a[1])
+                .map(([m, v]) => ({ nombre: REM_NOMBRES_MEDIOS[m] || m, valor: v, cifra: formatMoney(v) }));
+            const asesores = Object.entries(t.asesores).sort((a, b) => b[1].total - a[1].total)
+                .map(([n, v]) => ({ nombre: `${n} · ${v.ventas} venta${v.ventas !== 1 ? 's' : ''}`, valor: v.total, cifra: formatMoney(v.total) }));
+            cont.innerHTML = `
+                <div class="res-kpis">
+                    <div class="res-kpi"><div class="res-kpi-label">Ventas</div><div class="res-kpi-valor">${t.ventas}</div></div>
+                    <div class="res-kpi"><div class="res-kpi-label">Total vendido</div><div class="res-kpi-valor">${formatMoney(t.vendido)}</div></div>
+                    <div class="res-kpi"><div class="res-kpi-label">Pagado</div><div class="res-kpi-valor">${formatMoney(t.pagado)}</div></div>
+                    <div class="res-kpi"><div class="res-kpi-label">Saldo por cobrar</div><div class="res-kpi-valor">${formatMoney(t.saldo)}</div></div>
+                </div>
+                <div class="card" style="padding:0.75rem 1rem;">
+                    <div style="font-size:0.85rem; color:var(--gray-700);">📱 ${t.equipos} equipo(s) · 🎧 ${t.accesorios} accesorio(s) · 🎁 ${t.obsequios} obsequio(s)${t.recargos ? ` · 💠 recargos ${formatMoney(t.recargos)}` : ''}</div>
+                </div>
+                ${medios.length ? `<div class="card" style="padding:0.75rem 1rem;"><div class="card-title" style="font-size:0.95rem;">Por medio de pago</div>${resFilas(medios)}</div>` : ''}
+                ${asesores.length ? `<div class="card" style="padding:0.75rem 1rem;"><div class="card-title" style="font-size:0.95rem;">Por asesor (principal)</div>${resFilas(asesores)}</div>` : ''}
+                <div class="card" style="padding:0.75rem 1rem;">
+                    <div class="card-title" style="font-size:0.95rem;">Remisiones</div>
+                    ${delDia.map(({ fileId, r }) => {
+                        const anulada = datos.anuladas.has(r.numero);
+                        return `<div onclick="busVerDetalle(${jsArg(fileId)})" style="display:flex; justify-content:space-between; gap:0.5rem; padding:0.4rem 0; border-bottom:1px solid var(--gray-100); cursor:pointer; font-size:0.85rem; ${anulada ? 'color:var(--gray-500); text-decoration:line-through;' : ''}">
+                            <span>#${escHtml(r.numero)} · ${escHtml(r.cliente || '-')}${anulada ? ' (anulada)' : ''}</span>
+                            <span style="white-space:nowrap; font-weight:600;">${formatMoney(r.totalItems)}</span>
+                        </div>`;
+                    }).join('')}
+                </div>
+                <button class="btn" onclick="resCompartirWhatsApp()" style="background:#25D366; color:white;">📲 Compartir resumen por WhatsApp</button>`;
+        }
+        function resCompartirWhatsApp() {
+            if (!resUltimo) return;
+            const { fechaTxt, t, anuladas } = resUltimo;
+            const lineas = [
+                `*SKADIICELL · Resumen del día ${fechaTxt}*`,
+                `Ventas: ${t.ventas} · Total vendido: ${formatMoney(t.vendido)}`,
+                `Pagado: ${formatMoney(t.pagado)} · Saldo por cobrar: ${formatMoney(t.saldo)}`,
+                `Equipos: ${t.equipos} · Accesorios: ${t.accesorios} · Obsequios: ${t.obsequios}`,
+                '', '*Por medio de pago:*',
+                ...Object.entries(t.medios).sort((a, b) => b[1] - a[1]).map(([m, v]) => `• ${REM_NOMBRES_MEDIOS[m] || m}: ${formatMoney(v)}`),
+                ...(t.recargos ? [`• Recargos: ${formatMoney(t.recargos)}`] : []),
+                '', '*Por asesor:*',
+                ...Object.entries(t.asesores).sort((a, b) => b[1].total - a[1].total).map(([n, v]) => `• ${n}: ${v.ventas} venta(s) · ${formatMoney(v.total)}`),
+                ...(anuladas.length ? ['', `Anuladas (no incluidas): ${anuladas.length}`] : [])
+            ];
+            window.open(`https://wa.me/?text=${encodeURIComponent(lineas.join('\n'))}`, '_blank');
+        }
+
         // ===== Remisión: pasos pendientes tras guardar (reintento parcial) =====
         let remPendientes = { docName: null, pasos: [] };
         function remMostrarPendientes(docName, pasos) {
@@ -4983,7 +5120,7 @@
             document.getElementById('dropdown-menu').classList.toggle('show');
         }
 
-        const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores', 'ingresos', 'gastos', 'buscar'];
+        const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores', 'ingresos', 'gastos', 'buscar', 'resumen'];
 
         function mostrarModulo(modulo) {
             // Al salir de Inventario se cierra la sesión de aprobación (celular compartido).
@@ -5009,6 +5146,7 @@
             if (modulo === 'garantias') setTimeout(() => garIniciarFirma(), 100);
             if (modulo === 'ingresos') ingInicializar();
             if (modulo === 'buscar') setTimeout(() => document.getElementById('bus-texto').focus(), 100);
+            if (modulo === 'resumen') resInicializar();
             if (modulo === 'gastos') {
                 gasInicializar();
                 setTimeout(() => gasPoblarSelectAsesor(), 300);

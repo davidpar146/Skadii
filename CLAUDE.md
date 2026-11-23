@@ -64,6 +64,7 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
 | Inventario / Gastos  | `inv…`, `gas…`   | Inventario y gastos con categorías y aprobaciones |
 | Buscar Remisión      | `bus…`           | Busca por número, cliente, NIT, teléfono o IMEI; detalle y reenvío por WhatsApp |
 | Índice de remisiones | `idx…`           | Resumen de cada remisión en IndexedDB del celular; solo lee de Drive lo nuevo o modificado |
+| Resumen del día      | `res…`           | Ventas de una fecha (sin anuladas): totales, por medio de pago y por asesor; compartir por WhatsApp |
 
 ### Asesores
 - `ASESORES_FIJOS`: aparecen en todos los módulos.
