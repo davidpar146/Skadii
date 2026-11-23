@@ -64,7 +64,6 @@
         }
         @media print { body::after { display: none; } }
         .header-logo { height: 34px; width: auto; display: block; flex-shrink: 0; }
-        .header .subtitle { font-size: 0.875rem; opacity: 0.9; margin-top: 0.25rem; }
 
         .drive-status {
             position: absolute; top: 1rem; right: 1rem;
@@ -94,14 +93,13 @@
         @media (min-width: 641px) {
             .header { display: grid; grid-template-columns: 1fr auto auto; column-gap: 0.75rem; align-items: center; }
             .header h1 { grid-column: 1; grid-row: 1; }
-            .header .subtitle { grid-column: 1; grid-row: 2; }
-            .drive-status { position: static; grid-column: 2; grid-row: 1 / span 2; }
-            .menu-gestion { position: relative; bottom: auto; right: auto; grid-column: 3; grid-row: 1 / span 2; }
+            .drive-status { position: static; grid-column: 2; grid-row: 1; }
+            .menu-gestion { position: relative; bottom: auto; right: auto; grid-column: 3; grid-row: 1; }
         }
         /* Celular: estado de conexión y menú en una fila debajo del título (antes se montaban encima) */
         @media (max-width: 640px) {
             .header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
-            .header h1, .header .subtitle { flex-basis: 100%; }
+            .header h1 { flex-basis: 100%; }
             .drive-status { position: static; padding: 0.35rem 0.85rem; }
             .menu-gestion { position: relative; bottom: auto; right: auto; margin-left: auto; }
         }
@@ -737,12 +735,12 @@
             <p style="font-size: 0.875rem; color: var(--gray-500); margin-top: 1rem;">
                 Se subirán automáticamente todos los documentos y fotos a tu Google Drive
             </p>
+            <button class="btn btn-secondary" id="inst-btn-login" onclick="instInstalar()" style="display: none; margin-top: 1rem;">📲 Instalar la app en este celular</button>
         </div>
     </div>
 
     <div class="header">
         <h1 class="header-titulo"><img src="img/logo-blanco.png" alt="SKADIICELL" class="header-logo"><span>Sistema de Remisiones</span></h1>
-        <div class="subtitle">Gestión móvil con Google Drive + Sheets · v25</div>
         <div id="drive-status" class="drive-status">
             <span id="status-icon">⚪</span>
             <span id="status-text">Desconectado</span>
@@ -760,6 +758,7 @@
                 <button class="menu-item" id="menu-gastos" onclick="mostrarModulo('gastos')">📦 Inventario</button>
                 <hr style="margin: 0.25rem 0; border-color: var(--gray-200);">
                 <button class="menu-item" id="menu-anular" onclick="mostrarAnular()">❌ Anular Remisión</button>
+                <button class="menu-item" id="menu-instalar" onclick="instInstalar()" style="display: none;">📲 Instalar app</button>
             </div>
         </div>
     </div>
@@ -2224,6 +2223,18 @@
             <div id="res-estado" style="font-size:0.8rem; color:var(--gray-500);"></div>
         </div>
         <div id="res-contenido"></div>
+        </div>
+    </div>
+
+    <!-- Pasos para instalar la app cuando el navegador no lo hace solo (iPhone) -->
+    <div id="inst-modal" class="modal" style="z-index: 3500;">
+        <div class="modal-content" style="max-width: 420px;">
+            <div class="modal-header">
+                <h3>📲 Instalar la app</h3>
+                <button class="modal-close" onclick="instCerrarPasos()">×</button>
+            </div>
+            <div id="inst-pasos" style="font-size: 0.95rem; line-height: 1.6;"></div>
+            <button class="btn btn-primary" onclick="instCerrarPasos()" style="margin-top: 1rem;">Entendido</button>
         </div>
     </div>
 
@@ -5090,6 +5101,63 @@
             await borradorBorrar();
             mostrarToast('🗑️ Borrador descartado');
         }
+
+        // ============= INSTALAR COMO APP (inst) =============
+        // Android / Chrome / Edge avisan con beforeinstallprompt y se instala con un toque.
+        // iPhone (Safari) no lo permite desde la página: se muestran los pasos.
+        // Si la app ya está instalada (abre sin barra del navegador), el botón no aparece.
+        let instAviso = null;
+        function instYaInstalada() {
+            return window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+        }
+        function instEsIOS() {
+            return /iphone|ipad|ipod/i.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+        }
+        function instActualizarBotones() {
+            const mostrar = !instYaInstalada();
+            ['inst-btn-login', 'menu-instalar'].forEach(id => {
+                const el = document.getElementById(id);
+                if (el) el.style.display = mostrar ? '' : 'none';
+            });
+        }
+        window.addEventListener('beforeinstallprompt', (e) => {
+            e.preventDefault();      // guardarlo para mostrarlo con nuestro botón
+            instAviso = e;
+            instActualizarBotones();
+        });
+        window.addEventListener('appinstalled', () => {
+            instAviso = null;
+            instActualizarBotones();
+            mostrarToast('✅ App instalada: búsquela en la pantalla de inicio del celular', 6000);
+        });
+        async function instInstalar() {
+            document.getElementById('dropdown-menu').classList.remove('show');
+            if (instAviso) {
+                const aviso = instAviso;
+                instAviso = null;    // el navegador solo deja usarlo una vez
+                aviso.prompt();
+                try { await aviso.userChoice; } catch (e) {}
+                return;
+            }
+            document.getElementById('inst-pasos').innerHTML = instEsIOS()
+                ? `<ol style="margin-left: 1.25rem;">
+                       <li>Abra esta página en <strong>Safari</strong>.</li>
+                       <li>Toque el botón <strong>Compartir</strong> (el cuadro con la flecha hacia arriba).</li>
+                       <li>Elija <strong>"Agregar a inicio"</strong> y luego <strong>"Agregar"</strong>.</li>
+                   </ol>
+                   <p style="margin-top: 0.5rem; color: var(--gray-600);">Aparecerá el ícono de SKADIICELL en la pantalla de inicio.</p>`
+                : `<ol style="margin-left: 1.25rem;">
+                       <li>Abra esta página en <strong>Chrome</strong>.</li>
+                       <li>Toque el menú <strong>⋮</strong> (arriba a la derecha).</li>
+                       <li>Elija <strong>"Instalar aplicación"</strong> o <strong>"Agregar a la pantalla principal"</strong>.</li>
+                   </ol>
+                   <p style="margin-top: 0.5rem; color: var(--gray-600);">Si no aparece la opción, recargue la página y vuelva a intentar.</p>`;
+            document.getElementById('inst-modal').classList.add('active');
+        }
+        function instCerrarPasos() {
+            document.getElementById('inst-modal').classList.remove('active');
+        }
+        instActualizarBotones();
 
         // App instalable: registrar el service worker mínimo (sin caché, ver sw.js).
         if ('serviceWorker' in navigator) {
