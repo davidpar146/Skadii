@@ -1156,7 +1156,8 @@
             <p id="success-drive-ok" style="font-size: 0.875rem; color: var(--gray-500);">
                 ✅ Datos guardados en Google Drive
             </p>
-            <button class="btn btn-primary" onclick="cerrarExito()" style="margin-top: 1.5rem;">Aceptar</button>
+            <button class="btn" onclick="remEnviarWhatsApp()" style="margin-top: 1rem; background: #25D366; color: white;">📲 Enviar comprobante por WhatsApp</button>
+            <button class="btn btn-primary" onclick="cerrarExito()" style="margin-top: 0.75rem;">Aceptar</button>
         </div>
     </div>
 
@@ -4314,6 +4315,15 @@
                     modalAsesores = `${asesor}, ${colabNombres}`;
                 }
 
+                // Datos para el comprobante por WhatsApp (el formulario se limpia a continuación).
+                remUltimoComprobante = {
+                    numero: numeroFormateado, fecha: modalFecha, cliente: modalCliente,
+                    telefono: modalTelefono, asesores: modalAsesores,
+                    items: modalItems.map(i => ({ ...i })),
+                    pagos: modalPayments.map(p => ({ method: p.method, amount: p.amount, recargoMonto: p.recargoMonto || 0 })),
+                    total: modalItems.reduce((s, i) => s + (i.total || 0), 0)
+                };
+
                 limpiarTodo();
 
                 document.getElementById('success-doc-number').textContent = numeroFormateado;
@@ -4347,6 +4357,52 @@
                     mostrarToast('❌ Error al subir. Intente de nuevo.');
                 }
             }
+        }
+
+        // ===== Comprobante por WhatsApp (mensaje de finalización de Remisiones) =====
+        let remUltimoComprobante = null;
+        const REM_NOMBRES_MEDIOS = {
+            efectivo: 'Efectivo', transferencia: 'Transferencia', tarjeta: 'Tarjeta',
+            credito: 'Crédito Banco de Bogotá', addi: 'ADDI', gora: 'Gora', coordinadora: 'Coordinadora',
+            ecredit: 'E-Credit', retoma: 'Retoma', otro: 'Otro'
+        };
+        function remTextoComprobante(c) {
+            const detalle = c.items.map(i => {
+                const cant = i.cantidad > 1 ? ` x${i.cantidad}` : '';
+                if (i.tipo === 'accesorio') return `• ${i.descripcion}${cant}${i.obsequio ? ' (obsequio)' : ' — ' + formatMoney(i.total)}`;
+                const imei = i.imei && String(i.imei).length > 12 ? `\n   IMEI: ${i.imei}` : '';
+                return `• ${i.descripcion}${cant} — ${formatMoney(i.total)}${imei}`;
+            });
+            const pagos = c.pagos.map(p => `${REM_NOMBRES_MEDIOS[p.method] || p.method} ${formatMoney(p.amount)}` +
+                (p.recargoMonto > 0 ? ` (+ recargo ${formatMoney(p.recargoMonto)})` : ''));
+            return [
+                '*SKADIICELL* · 📞 317 146 5168',
+                `Remisión #${c.numero} · ${formatearFechaCorta(c.fecha)}`,
+                `Cliente: ${c.cliente}`,
+                `Asesor: ${c.asesores}`,
+                '',
+                '*Detalle:*',
+                ...detalle,
+                '',
+                `*Total:* ${formatMoney(c.total)}`,
+                `*Pagos:* ${pagos.join(' · ')}`,
+                '',
+                '¡Gracias por su compra! 🙌'
+            ].join('\n');
+        }
+        // Celular colombiano → formato de wa.me (573XXXXXXXXX). Si no se reconoce, WhatsApp abre
+        // sin destinatario para que el asesor elija el contacto.
+        function remTelefonoWhatsApp(tel) {
+            let d = String(tel || '').replace(/\D/g, '');
+            if (d.length === 10 && d.startsWith('3')) d = '57' + d;
+            return /^573\d{9}$/.test(d) ? d : '';
+        }
+        function remEnviarWhatsApp() {
+            const c = remUltimoComprobante;
+            if (!c) { mostrarToast('⚠️ No hay comprobante para enviar'); return; }
+            const numero = remTelefonoWhatsApp(c.telefono);
+            window.open(`https://wa.me/${numero}?text=${encodeURIComponent(remTextoComprobante(c))}`, '_blank');
+            if (!numero) mostrarToast('El teléfono del cliente no es un celular colombiano: elija el contacto en WhatsApp.', 6000);
         }
 
         // ===== Remisión: pasos pendientes tras guardar (reintento parcial) =====
