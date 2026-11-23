@@ -2503,6 +2503,13 @@
                     await gapi.client.sheets.spreadsheets.get({ spreadsheetId: SPREADSHEET_ID });
                     return;
                 } catch (error) {
+                    // Solo si la hoja ya no existe o no hay acceso; un corte de red o un
+                    // límite de uso no debe hacer que este celular empiece una hoja nueva.
+                    const codigo = error && (error.status || (error.result && error.result.error && error.result.error.code));
+                    if (codigo !== 404 && codigo !== 403) {
+                        console.error('No se pudo verificar la hoja de Sheets:', error);
+                        return;
+                    }
                     SPREADSHEET_ID = null;
                     localStorage.removeItem('spreadsheet_id');
                 }
@@ -2533,7 +2540,17 @@
 
         // fallas (opcional): si se pasa, un error se agrega ahí para reintentarlo (ver guardarDocumento).
         async function agregarFilaExcel(documento, docName, fileId, fallas) {
-            if (!SPREADSHEET_ID) return;
+            if (!SPREADSHEET_ID) {
+                // Sin hoja disponible: dejarlo pendiente (antes se omitía sin avisar).
+                if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', fn: async () => {
+                    await verificarOCrearSpreadsheet();
+                    if (!SPREADSHEET_ID) throw new Error('Hoja de Sheets no disponible');
+                    const sub = [];
+                    await agregarFilaExcel(documento, docName, fileId, sub);
+                    if (sub.length) throw new Error('No se pudo agregar la fila');
+                } });
+                return;
+            }
             const linkDrive = `https://drive.google.com/file/d/${fileId}/view`;
             const colaboradores = documento.colaboradores.map(c => c.nombre).join(', ');
             const pagos = documento.payments.map(p => {
@@ -2585,7 +2602,7 @@
             try {
                 const response = await gapi.client.drive.files.list({
                     q: `'${FOLDER_IDS.remisiones}' in parents and trashed=false and name contains 'Remision-' and mimeType='application/json'`,
-                    fields: 'files(name)', pageSize: 500
+                    fields: 'files(name)', orderBy: 'name desc', pageSize: 50
                 });
                 if (response.result.files.length > 0) {
                     let maxNum = 0;
@@ -3363,6 +3380,10 @@
             const asesorPrincipal = document.getElementById('asesor-principal').value;
             const container = document.getElementById('colaboradores-checkboxes');
             if (!container) return;
+            if (asesorPrincipal && currentColaboradores.some(c => c.nombre === asesorPrincipal)) {
+                currentColaboradores = currentColaboradores.filter(c => c.nombre !== asesorPrincipal);
+                actualizarListaColaboradores();
+            }
             const desdeDrive = Object.keys(clavesAsesores);
             const todos = [...new Set([...ASESORES_FIJOS, ...ASESORES_SOLO_REMISIONES, ...desdeDrive])].sort();
             const disponibles = todos.filter(n => n !== asesorPrincipal);
@@ -3409,13 +3430,14 @@
 
         function agregarItem() {
             const descripcion = document.getElementById('item-descripcion').value.trim();
-            const cantidad = parseInt(document.getElementById('item-cantidad').value) || 1;
+            const cantidad = Math.max(1, parseInt(document.getElementById('item-cantidad').value) || 1);
             const valor = parsearValor(document.getElementById('item-valor').value);
             const imei = document.getElementById('item-imei').value.trim();
             const notas = document.getElementById('item-notas').value.trim();
 
             if (!descripcion) { marcarCampoFaltante('item-descripcion', '⚠️ Ingrese una descripción'); return; }
             if (!imei) { marcarCampoFaltante('item-imei', '⚠️ El IMEI es obligatorio'); return; }
+            if (valor <= 0) { marcarCampoFaltante('item-valor', '⚠️ Ingrese el precio unitario'); return; }
             if (!currentEstado) {
                 mostrarToast('⚠️ Seleccione el estado del equipo');
                 document.getElementById('estado-warning').style.display = 'block';
@@ -3432,7 +3454,15 @@
 
             if (itemEditandoId !== null) {
                 const idx = currentItems.findIndex(i => i.id === itemEditandoId);
-                if (idx !== -1) {
+                if (idx === -1) {
+                    // El dispositivo en edición ya no está (se eliminó): agregarlo como nuevo.
+                    currentItems.push({
+                        id: Date.now(), descripcion, cantidad, valor, costo, imei,
+                        estado: currentEstado,
+                        prestadoPor: currentEstado === 'prestado' ? prestadoPor : '',
+                        notas, total: cantidad * valor
+                    });
+                } else {
                     currentItems[idx] = {
                         ...currentItems[idx],
                         descripcion, cantidad, valor, costo, imei,
@@ -3483,7 +3513,9 @@
             const lista = document.getElementById('items-list');
             const summary = document.getElementById('summary-items');
             if (currentItems.length === 0) {
-                lista.innerHTML = ''; summary.style.display = 'none'; return;
+                lista.innerHTML = ''; summary.style.display = 'none';
+                actualizarResumenPagos();
+                return;
             }
             const subtotal = currentItems.reduce((sum, item) => sum + item.total, 0);
             lista.innerHTML = currentItems.filter(item => item.tipo !== 'accesorio').map(item => `
@@ -3513,6 +3545,7 @@
 
         function eliminarItem(id) {
             currentItems = currentItems.filter(item => item.id !== id);
+            if (id === itemEditandoId) limpiarFormularioItem();
             actualizarListaItems();
         }
 
@@ -3531,7 +3564,7 @@
             document.getElementById('estado-prestado').classList.remove('active');
             document.getElementById('estado-warning').style.display = 'none';
             const btnAgregar = document.querySelector('button[onclick="agregarItem()"]');
-            if (btnAgregar) btnAgregar.innerHTML = '➕ Agregar Ítem';
+            if (btnAgregar) btnAgregar.innerHTML = '➕ Agregar Dispositivo';
         }
 
         // === Listeners para método de pago (cambia formularios visibles) ===
@@ -3663,6 +3696,9 @@
             if ((method === 'transferencia' || method === 'coordinadora') && !reference) {
                 marcarCampoFaltante('payment-reference', '⚠️ Debe ingresar el banco'); return;
             }
+            if (['addi', 'gora', 'ecredit'].includes(method) && !reference) {
+                marcarCampoFaltante('payment-reference', '⚠️ Ingrese el número de aprobación'); return;
+            }
             if ((method === 'transferencia' || method === 'tarjeta' || method === 'addi' || method === 'gora' || method === 'coordinadora') && !capturedPhotos.soporte) {
                 marcarCampoFaltante('btn-soporte', '⚠️ Debe capturar foto del comprobante'); return;
             }
@@ -3678,7 +3714,9 @@
                 marcarCampoFaltante('btn-' + fotoFaltante, `⚠️ Debe capturar las 3 fotos para ${nombreMedioFotos[method]}`); return;
             }
 
-            const payment = { id: Date.now(), method, amount, reference, photos: { ...capturedPhotos } };
+            const fotosPago = {};
+            REM_FOTOS.forEach(t => { if (capturedPhotos[t]) fotosPago[t] = capturedPhotos[t]; });
+            const payment = { id: Date.now(), method, amount, reference, photos: fotosPago };
             if (method === 'retoma') {
                 const retomaDesc = document.getElementById('retoma-descripcion').value.trim();
                 const retomaImei = document.getElementById('retoma-imei').value.trim();
@@ -3688,7 +3726,7 @@
                 if (!confirmarImeiDudoso(retomaImei, 'retoma-imei')) return;
                 payment.retomaItem = {
                     descripcion: retomaDesc,
-                    cantidad: parseInt(document.getElementById('retoma-cantidad').value) || 1,
+                    cantidad: Math.max(1, parseInt(document.getElementById('retoma-cantidad').value) || 1),
                     valor: parsearValor(document.getElementById('retoma-valor').value),
                     imei: retomaImei,
                     estado: document.getElementById('retoma-estado').value
@@ -3800,14 +3838,22 @@
             document.getElementById('retoma-cantidad').value = '1';
             document.getElementById('retoma-valor').value = '';
             document.getElementById('retoma-imei').value = '';
-            capturedPhotos = {};
+            document.getElementById('retoma-estado').value = 'excelente';
+            remLimpiarFotos();
             resetPhotoButtons();
         }
 
-        function resetPhotoButtons() {
-            ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato',
+        // Fotos que pertenecen a Remisiones. capturedPhotos es compartido con otros módulos
+        // (mantGeneral, garEntra, gasSoporte, invFoto...): Remisiones solo toca estas claves.
+        const REM_FOTOS = ['soporte', 'cedulaFrontal', 'cedulaPosterior', 'contrato',
              'ecreditCedulaFrontal', 'ecreditCedulaPosterior', 'ecreditContrato',
-             'retomaCedulaFrontal', 'retomaCedulaPosterior', 'retomaContrato'].forEach(type => {
+             'retomaCedulaFrontal', 'retomaCedulaPosterior', 'retomaContrato'];
+        function remLimpiarFotos() {
+            REM_FOTOS.forEach(t => { delete capturedPhotos[t]; });
+        }
+
+        function resetPhotoButtons() {
+            REM_FOTOS.forEach(type => {
                 const btn = document.getElementById(`btn-${type}`);
                 if (btn) {
                     btn.classList.remove('captured');
@@ -4019,6 +4065,9 @@
             let jsonGuardado = false;
 
             try {
+                // Releer el último número justo antes de guardar: otro celular pudo haber guardado
+                // varias remisiones desde que este inició sesión.
+                await obtenerConsecutivos();
                 let numero = consecutivo;
                 const folderId = FOLDER_IDS.remisiones;
                 let intentos = 0;
@@ -4044,11 +4093,17 @@
                             lockFileId = lockResult.id;
                             consecutivoReservado = true;
                             await new Promise(resolve => setTimeout(resolve, 500));
+                            // Doble verificación: que no exista ya el JSON y que ningún otro celular
+                            // haya reservado este mismo número antes (gana el .lock más antiguo).
                             const doubleCheck = await gapi.client.drive.files.list({
-                                q: `name='${docName}.json' and '${folderId}' in parents and trashed=false`,
-                                fields: 'files(id, name)'
+                                q: `(name='${docName}.json' or name='${docName}.lock') and '${folderId}' in parents and trashed=false`,
+                                fields: 'files(id, name, createdTime)', orderBy: 'createdTime'
                             });
-                            if (doubleCheck.result.files.length > 0) {
+                            const archivos = doubleCheck.result.files;
+                            const hayJson = archivos.some(f => f.name === `${docName}.json`);
+                            const locks = archivos.filter(f => f.name === `${docName}.lock`);
+                            const reservadoPorOtro = locks.length > 0 && locks[0].id !== lockFileId;
+                            if (hayJson || reservadoPorOtro) {
                                 await gapi.client.drive.files.delete({ fileId: lockFileId });
                                 lockFileId = null;
                                 consecutivoReservado = false;
@@ -4056,7 +4111,13 @@
                             } else { break; }
                         } catch (lockError) {
                             console.error('Error creando lock:', lockError);
-                            numero++; intentos++;
+                            // No guardar con un número que no se alcanzó a verificar.
+                            if (lockFileId) {
+                                try { await gapi.client.drive.files.delete({ fileId: lockFileId }); } catch (e) {}
+                            }
+                            lockFileId = null;
+                            consecutivoReservado = false;
+                            intentos++;   // reintentar el mismo número (no dejar huecos)
                         }
                     } else {
                         numero++; intentos++;
@@ -4250,8 +4311,9 @@
             currentItems = [];
             currentPayments = [];
             currentColaboradores = [];
-            capturedPhotos = {};
-            currentEstado = null;
+            remLimpiarFotos();
+            limpiarFormularioItem();     // estado, prestador y edición en curso
+            limpiarFormularioPago();     // método, secciones, recargo, retoma y botones de foto
             setColaborativa(false);
             actualizarListaItems();
             accResetSelector();
@@ -4340,7 +4402,11 @@
             clearTimeout(borradorTimer);
             borradorTimer = null;
             const e = borradorEstado();
-            if (!borradorHayDatos(e)) return;
+            if (!borradorHayDatos(e)) {
+                // Se vació a mano una remisión que ya tenía borrador: no ofrecerla después.
+                if (borradorFirma) { borradorFirma = ''; await borradorOperar('borrar'); }
+                return;
+            }
             const firma = borradorFirmaDe(e);
             if (firma === borradorFirma) return;
             borradorFirma = firma;
