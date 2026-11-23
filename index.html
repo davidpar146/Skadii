@@ -730,6 +730,7 @@
             <button class="btn-menu" onclick="toggleMenu()">⚙️ Módulos ▼</button>
             <div id="dropdown-menu" class="dropdown-menu">
                 <button class="menu-item active" id="menu-remisiones" onclick="mostrarModulo('remisiones')">📝 Remisiones</button>
+                <button class="menu-item" id="menu-buscar" onclick="mostrarModulo('buscar')">🔎 Buscar Remisión</button>
                 <button class="menu-item" id="menu-mantenimientos" onclick="mostrarModulo('mantenimientos')">🔧 Mantenimientos</button>
                 <button class="menu-item" id="menu-garantias" onclick="mostrarModulo('garantias')">🔄 Garantías</button>
                 <button class="menu-item" id="menu-prestadores" onclick="mostrarModulo('prestadores')">💰 Pagar Prestadores</button>
@@ -2153,6 +2154,36 @@
         </div>
     </div>
 
+    <!-- ============= MÓDULO BUSCAR REMISIÓN (bus) ============= -->
+    <div class="container" id="modulo-buscar" style="display:none;">
+        <div class="card">
+            <div class="card-title">🔎 Buscar Remisión</div>
+            <div class="form-group" style="display:flex; gap:0.5rem; margin-bottom:0.25rem;">
+                <input type="text" id="bus-texto" placeholder="Número, cliente, NIT, teléfono o IMEI" style="flex:1;"
+                       onkeydown="if (event.key === 'Enter') busBuscar()">
+                <button class="btn btn-primary" onclick="busBuscar()" style="width:auto; padding:0.75rem 1rem;">Buscar</button>
+            </div>
+            <div id="bus-estado" style="font-size:0.8rem; color:var(--gray-500);">
+                La primera búsqueda en este celular lee todas las remisiones; las siguientes solo las nuevas.
+            </div>
+        </div>
+        <div id="bus-resultados"></div>
+    </div>
+
+    <div id="bus-detalle-modal" class="modal">
+        <div class="modal-content" style="max-width:480px; max-height:90vh; overflow-y:auto;">
+            <div class="modal-header">
+                <h3 id="bus-detalle-titulo">Remisión</h3>
+                <button class="modal-close" onclick="busCerrarDetalle()">×</button>
+            </div>
+            <div id="bus-detalle-contenido"></div>
+            <div style="display:flex; gap:0.5rem; margin-top:1rem;">
+                <button class="btn" onclick="busEnviarWhatsApp()" style="flex:1; background:#25D366; color:white;">📲 WhatsApp</button>
+                <button class="btn btn-secondary" onclick="busCerrarDetalle()" style="flex:1;">Cerrar</button>
+            </div>
+        </div>
+    </div>
+
     <div id="inv-decision-modal" class="modal">
         <div class="modal-content" style="max-width:480px;">
             <div class="modal-header">
@@ -2346,9 +2377,9 @@
         }
         // Lee el JSON de cada archivo, de a `lote` en paralelo (no cientos a la vez) y con
         // reintento ante 429/5xx. Devuelve [{ fileId, fileName, doc }]; doc = null si no se pudo leer.
-        async function driveLeerJSONs(archivos, lote = 10) {
+        async function driveLeerJSONs(archivos, lote = 10, alAvanzar = null) {
             const salida = new Array(archivos.length);
-            let siguiente = 0;
+            let siguiente = 0, leidos = 0;
             const trabajador = async () => {
                 while (siguiente < archivos.length) {
                     const i = siguiente++;
@@ -2364,6 +2395,8 @@
                         if (resp.ok) doc = await resp.json();
                     } catch (e) { console.error(`No se pudo leer ${f.name}:`, e); }
                     salida[i] = { fileId: f.id, fileName: f.name, doc };
+                    leidos++;
+                    if (alAvanzar) alAvanzar(leidos, archivos.length);
                 }
             };
             await Promise.all(Array.from({ length: Math.min(lote, archivos.length) }, trabajador));
@@ -4414,6 +4447,206 @@
             if (!numero) mostrarToast('El teléfono del cliente no es un celular colombiano: elija el contacto en WhatsApp.', 6000);
         }
 
+        // ============= ÍNDICE DE REMISIONES (para Buscar y Resumen del día) =============
+        // Cada celular guarda en IndexedDB un resumen de cada remisión (cliente, NIT, teléfono, IMEI,
+        // ítems, pagos, totales) y en cada uso solo lee de Drive las remisiones nuevas o modificadas.
+        const IDX_DB = 'skadii-indice', IDX_STORE = 'remisiones';
+        let idxDBPromesa = null;
+        function idxAbrirDB() {
+            if (!idxDBPromesa) {
+                idxDBPromesa = new Promise((resolve, reject) => {
+                    const req = indexedDB.open(IDX_DB, 1);
+                    req.onupgradeneeded = () => req.result.createObjectStore(IDX_STORE);
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+                idxDBPromesa.catch(() => { idxDBPromesa = null; });
+            }
+            return idxDBPromesa;
+        }
+        async function idxLeerTodo() {
+            try {
+                const db = await idxAbrirDB();
+                return await new Promise((resolve, reject) => {
+                    const tx = db.transaction(IDX_STORE, 'readonly');
+                    const st = tx.objectStore(IDX_STORE);
+                    const mapa = new Map();
+                    const req = st.openCursor();
+                    req.onsuccess = () => { const c = req.result; if (c) { mapa.set(c.key, c.value); c.continue(); } else resolve(mapa); };
+                    req.onerror = () => reject(req.error);
+                });
+            } catch (e) { console.warn('Índice de remisiones no disponible:', e); return new Map(); }
+        }
+        async function idxGuardar(cambios, borrar) {
+            try {
+                const db = await idxAbrirDB();
+                await new Promise((resolve, reject) => {
+                    const tx = db.transaction(IDX_STORE, 'readwrite');
+                    const st = tx.objectStore(IDX_STORE);
+                    cambios.forEach(([k, v]) => st.put(v, k));
+                    borrar.forEach(k => st.delete(k));
+                    tx.oncomplete = resolve; tx.onerror = () => reject(tx.error);
+                });
+            } catch (e) { console.warn('No se pudo guardar el índice:', e); }
+        }
+        // Lo que se guarda de cada remisión (suficiente para buscar y para el resumen del día).
+        function idxResumen(fileName, doc) {
+            const num = (fileName.match(/^Remision-(\d+)\.json$/) || [])[1] || String(doc.numero || '');
+            return {
+                numero: num.padStart(4, '0'), fecha: doc.fecha || null,
+                cliente: doc.cliente || '', nit: String(doc.nit ?? ''), telefono: String(doc.telefono ?? ''),
+                asesor: doc.asesor || '', colaboradores: (doc.colaboradores || []).map(c => c.nombre),
+                items: (doc.items || []).map(i => ({ descripcion: i.descripcion || '', imei: i.imei || '', tipo: i.tipo || 'dispositivo',
+                    cantidad: i.cantidad || 1, total: i.total || 0, obsequio: !!i.obsequio, estado: i.estado || '' })),
+                pagos: (doc.payments || []).map(p => ({ method: p.method, amount: p.amount || 0, recargoMonto: p.recargoMonto || 0 })),
+                totalItems: doc.totalItems || 0, totalPaid: doc.totalPaid || 0
+            };
+        }
+        // Pone al día el índice y devuelve { lista: [{ fileId, r }], anuladas: Set de números, fallidos }.
+        async function idxActualizar(alAvanzar) {
+            const [archivos, anulArch] = await Promise.all([
+                driveListarTodo({
+                    q: `'${FOLDER_IDS.remisiones}' in parents and trashed=false and name contains 'Remision-' and mimeType='application/json'`,
+                    fields: 'files(id, name, modifiedTime)'
+                }),
+                driveListarTodo({
+                    q: `'${FOLDER_IDS.facturas}' in parents and trashed=false and name contains 'Remision-'`,
+                    fields: 'files(name)'
+                })
+            ]);
+            const remisiones = archivos.filter(f => /^Remision-\d+\.json$/.test(f.name));
+            const indice = await idxLeerTodo();
+            const porLeer = remisiones.filter(f => { const e = indice.get(f.id); return !e || e.modifiedTime !== f.modifiedTime; });
+            const leidos = porLeer.length ? await driveLeerJSONs(porLeer, 10, alAvanzar) : [];
+            const cambios = [];
+            leidos.forEach((d, i) => {
+                if (!d.doc) return;
+                const valor = { modifiedTime: porLeer[i].modifiedTime, r: idxResumen(d.fileName, d.doc) };
+                indice.set(d.fileId, valor); cambios.push([d.fileId, valor]);
+            });
+            const vigentes = new Set(remisiones.map(f => f.id));
+            const borrar = [...indice.keys()].filter(k => !vigentes.has(k));
+            borrar.forEach(k => indice.delete(k));
+            if (cambios.length || borrar.length) await idxGuardar(cambios, borrar);
+            const anuladas = new Set(anulArch.map(f => (f.name.match(/^Remision-(\d+)-ANULACION\.json$/) || [])[1]).filter(Boolean));
+            return { lista: [...indice.entries()].map(([fileId, v]) => ({ fileId, r: v.r })), anuladas, fallidos: leidos.filter(d => !d.doc).length };
+        }
+
+        // ============= MÓDULO BUSCAR REMISIÓN (bus) =============
+        let busDetalleActual = null;
+        function busNormalizar(t) {
+            return String(t ?? '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+        }
+        async function busBuscar() {
+            const texto = document.getElementById('bus-texto').value.trim();
+            const estado = document.getElementById('bus-estado');
+            const cont = document.getElementById('bus-resultados');
+            if (!texto) { marcarCampoFaltante('bus-texto', '⚠️ Escriba un número, cliente, NIT, teléfono o IMEI'); return; }
+            if (!(await asegurarSesionGoogle())) return;
+            estado.textContent = '⏳ Revisando remisiones nuevas...';
+            cont.innerHTML = '';
+            let datos;
+            try {
+                datos = await idxActualizar((n, total) => { estado.textContent = `⏳ Leyendo remisiones ${n}/${total}...`; });
+            } catch (e) {
+                console.error('Error actualizando el índice:', e);
+                estado.textContent = '❌ No se pudo consultar Drive. Revise la conexión e intente de nuevo.';
+                return;
+            }
+            const q = busNormalizar(texto);
+            const digitos = texto.replace(/\D/g, '');
+            const soloNumero = /^\d{1,5}$/.test(texto);   // número corto = número de remisión exacto
+            const resultados = datos.lista.filter(({ r }) => {
+                if (soloNumero) return parseInt(r.numero, 10) === parseInt(texto, 10) || r.nit.replace(/\D/g, '') === digitos;
+                if (busNormalizar(r.cliente).includes(q)) return true;
+                if (digitos.length >= 4) {
+                    if (r.nit.replace(/\D/g, '').includes(digitos)) return true;
+                    if (r.telefono.replace(/\D/g, '').includes(digitos)) return true;
+                    if (r.items.some(i => String(i.imei).replace(/\D/g, '').includes(digitos))) return true;
+                }
+                return false;
+            }).sort((a, b) => b.r.numero.localeCompare(a.r.numero));
+            const MAX = 50;
+            estado.textContent = `${resultados.length} resultado(s)` + (resultados.length > MAX ? ` · se muestran los ${MAX} más recientes` : '') +
+                (datos.fallidos ? ` · ⚠️ ${datos.fallidos} remisión(es) no se pudieron leer` : '');
+            if (!resultados.length) {
+                cont.innerHTML = '<p style="text-align:center; color:var(--gray-500); padding:1rem;">Sin resultados</p>';
+                return;
+            }
+            cont.innerHTML = resultados.slice(0, MAX).map(({ fileId, r }) => {
+                const anulada = datos.anuladas.has(r.numero);
+                const imeis = r.items.filter(i => i.tipo !== 'accesorio' && i.imei && i.imei !== '-').map(i => i.imei);
+                return `
+                    <div class="card" style="padding:0.85rem 1rem; margin-bottom:0.6rem; cursor:pointer; ${anulada ? 'opacity:0.7;' : ''}"
+                         onclick="busVerDetalle(${jsArg(fileId)})">
+                        <div style="display:flex; justify-content:space-between; align-items:start; gap:0.5rem;">
+                            <div>
+                                <div style="font-weight:700;">#${escHtml(r.numero)} ${anulada ? '<span style="color:var(--danger); font-size:0.75rem;">· ANULADA</span>' : ''}</div>
+                                <div style="font-size:0.85rem;">${escHtml(r.cliente || '-')}</div>
+                                <div style="font-size:0.75rem; color:var(--gray-500);">📅 ${r.fecha ? formatearFechaCorta(r.fecha) : '-'} · 👤 ${escHtml(r.asesor || '-')}</div>
+                                ${imeis.length ? `<div style="font-size:0.72rem; color:var(--gray-500);">📱 ${imeis.map(escHtml).join(' · ')}</div>` : ''}
+                            </div>
+                            <div style="font-weight:700; white-space:nowrap;">${formatMoney(r.totalItems)}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+        }
+        async function busVerDetalle(fileId) {
+            const cont = document.getElementById('bus-detalle-contenido');
+            cont.innerHTML = '<p style="color:var(--gray-500);">⏳ Cargando...</p>';
+            document.getElementById('bus-detalle-modal').classList.add('active');
+            try {
+                const r = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
+                    { headers: { 'Authorization': 'Bearer ' + accessToken } });
+                if (!r.ok) throw new Error('HTTP ' + r.status);
+                const doc = await r.json();
+                const numero = String(doc.numero ?? '').padStart(4, '0');
+                busDetalleActual = { fileId, doc, numero };
+                document.getElementById('bus-detalle-titulo').textContent = `Remisión #${numero}`;
+                const asesores = [doc.asesor, ...(doc.colaboradores || []).map(c => c.nombre)].filter(Boolean).join(', ');
+                const items = (doc.items || []).map(i => `
+                    <li>${escHtml(i.descripcion)}${i.cantidad > 1 ? ' x' + escHtml(i.cantidad) : ''} — ${i.obsequio ? 'obsequio' : formatMoney(i.total || 0)}
+                        ${i.imei && i.imei !== '-' ? `<br><small>IMEI: ${escHtml(i.imei)}</small>` : ''}
+                        ${i.estado === 'prestado' ? `<br><small>🤝 Prestado por: ${escHtml(i.prestadoPor || '-')}</small>` : ''}</li>`).join('');
+                const pagos = (doc.payments || []).map(p => `
+                    <li>${escHtml(REM_NOMBRES_MEDIOS[p.method] || p.method)}: ${formatMoney(p.amount || 0)}
+                        ${p.reference ? ` · Ref: ${escHtml(p.reference)}` : ''}${p.recargoMonto > 0 ? ` · recargo ${formatMoney(p.recargoMonto)}` : ''}</li>`).join('');
+                cont.innerHTML = `
+                    <div style="font-size:0.9rem; line-height:1.6;">
+                        <div><strong>Fecha:</strong> ${doc.fecha ? formatearFechaCorta(doc.fecha) : '-'}</div>
+                        <div><strong>Cliente:</strong> ${escHtml(doc.cliente || '-')} · <strong>NIT/CC:</strong> ${escHtml(doc.nit || '-')}</div>
+                        <div><strong>Teléfono:</strong> ${escHtml(doc.telefono || '-')}</div>
+                        <div><strong>Asesor(es):</strong> ${escHtml(asesores || '-')}</div>
+                        <div style="margin-top:0.5rem;"><strong>Ítems:</strong><ul style="margin:0.25rem 0 0 1.25rem;">${items}</ul></div>
+                        <div style="margin-top:0.5rem;"><strong>Pagos:</strong><ul style="margin:0.25rem 0 0 1.25rem;">${pagos}</ul></div>
+                        <div style="margin-top:0.5rem;"><strong>Total:</strong> ${formatMoney(doc.totalItems || 0)} · <strong>Pagado:</strong> ${formatMoney(doc.totalPaid || 0)}</div>
+                        ${doc.observaciones ? `<div><strong>Observaciones:</strong> ${escHtml(doc.observaciones)}</div>` : ''}
+                        <div style="margin-top:0.5rem;"><a href="https://drive.google.com/file/d/${encodeURIComponent(fileId)}/view" target="_blank" rel="noopener">📄 Abrir en Drive</a></div>
+                    </div>`;
+            } catch (e) {
+                console.error('Error cargando la remisión:', e);
+                busDetalleActual = null;
+                cont.innerHTML = '<p style="color:var(--danger);">❌ No se pudo cargar la remisión. Intente de nuevo.</p>';
+            }
+        }
+        function busCerrarDetalle() {
+            document.getElementById('bus-detalle-modal').classList.remove('active');
+            busDetalleActual = null;
+        }
+        // Reenviar el comprobante de una venta anterior (mismo texto que el mensaje final).
+        function busEnviarWhatsApp() {
+            if (!busDetalleActual) return;
+            const { doc, numero } = busDetalleActual;
+            remUltimoComprobante = {
+                numero, fecha: doc.fecha, cliente: doc.cliente || '', telefono: doc.telefono || '',
+                asesores: [doc.asesor, ...(doc.colaboradores || []).map(c => c.nombre)].filter(Boolean).join(', '),
+                items: doc.items || [],
+                pagos: (doc.payments || []).map(p => ({ method: p.method, amount: p.amount || 0, recargoMonto: p.recargoMonto || 0 })),
+                total: doc.totalItems || 0
+            };
+            remEnviarWhatsApp();
+        }
+
         // ===== Remisión: pasos pendientes tras guardar (reintento parcial) =====
         let remPendientes = { docName: null, pasos: [] };
         function remMostrarPendientes(docName, pasos) {
@@ -4750,7 +4983,7 @@
             document.getElementById('dropdown-menu').classList.toggle('show');
         }
 
-        const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores', 'ingresos', 'gastos'];
+        const MODULOS = ['remisiones', 'mantenimientos', 'garantias', 'prestadores', 'ingresos', 'gastos', 'buscar'];
 
         function mostrarModulo(modulo) {
             // Al salir de Inventario se cierra la sesión de aprobación (celular compartido).
@@ -4775,6 +5008,7 @@
             }
             if (modulo === 'garantias') setTimeout(() => garIniciarFirma(), 100);
             if (modulo === 'ingresos') ingInicializar();
+            if (modulo === 'buscar') setTimeout(() => document.getElementById('bus-texto').focus(), 100);
             if (modulo === 'gastos') {
                 gasInicializar();
                 setTimeout(() => gasPoblarSelectAsesor(), 300);
