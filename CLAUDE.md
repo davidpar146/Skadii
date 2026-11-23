@@ -25,6 +25,10 @@ Otros archivos:
   hash PBKDF2 con sal (`admin-pass-hash` en `localStorage`).
 - **`netlify.toml`**: la entrada `/` abre `index.html`, permite la cámara solo en la app y
   agrega encabezados de seguridad. Solo lo lee Netlify (GitHub Pages lo ignora).
+- **App instalable**: `manifest.json` (nombre "Skadii", `display: standalone`, rutas relativas para que
+  sirva en Netlify y en GitHub Pages), `icons/` (192, 512, maskable y apple-touch, hechos del logo) y
+  `sw.js`. El service worker **no usa caché a propósito** (cada apertura carga la versión publicada);
+  no agregarle caché sin una estrategia de actualización.
 
 ---
 
