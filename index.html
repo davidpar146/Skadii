@@ -4781,7 +4781,7 @@
                     // Ya anulada: solo completar lo que haya quedado sin marcar (reintento).
                     const res = await anulMarcarRelacionados(numeroFormateado,
                         { archivo: `${docName}.json`, asesor, motivo, fecha: fechaLocalISO() });
-                    cerrarAnulacion();
+                    // El formulario queda abierto (como antes) por si el número estaba mal digitado.
                     mostrarToast(`⚠️ La Remisión-${numeroFormateado} ya estaba anulada` + anulTextoResultado(res), 8000);
                     return;
                 }
