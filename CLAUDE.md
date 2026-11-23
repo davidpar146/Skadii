@@ -104,6 +104,18 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
     **Nunca `fecha.slice(0, 10)`**: los registros viejos están en UTC.
 - `parsearValor`, `formatMoney`, `formatearInput` para dinero; los campos de dinero llevan
   `inputmode="numeric"` (no el NIT ni el IMEI, que pueden llevar guión o letras).
+- **Pintar datos — `escHtml(t)` y `jsArg(v)`**: todo dato del usuario o de Drive que se pinte con
+  `innerHTML` va con `escHtml(...)`; si va como argumento de un `onclick`, con `jsArg(...)`
+  (`onclick="fn(${jsArg(nombre)})"`). Nunca `'${nombre}'` dentro de un onclick: un apóstrofo lo rompe
+  y un `<img onerror>` se ejecuta con el token de Drive. Los avisos (`mostrarToast`) usan textContent.
+- **`conReintentos(fn, intentos)`**: reintenta subidas que fallan por un momento (1 s, 2 s…).
+- **`driveListarTodo(params)`** (pagina con `nextPageToken`) y **`driveLeerJSONs(archivos)`** (lee de a 10,
+  reintenta 429/5xx, `doc = null` si falló): usarlos para listar carpetas completas; contar los `null`
+  y avisar en vez de mostrar "todo al día".
+- **`celdaTexto(v)`**: todo texto del usuario que va a Sheets (USER_ENTERED) pasa por aquí: lo que
+  empieza por `= + - @` o es solo dígitos (IMEI, NIT) se guarda como texto.
+- **Fotos — `capturedPhotos` es compartido por todos los módulos.** Cada módulo borra y copia solo sus
+  claves (Remisiones: `REM_FOTOS` / `remLimpiarFotos()`). Nunca `capturedPhotos = {}`.
 
 ---
 
@@ -119,7 +131,16 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
 4. El modal de éxito lista lo pendiente y "Reintentar lo pendiente" (`remReintentarPendientes`)
    repite solo eso. La frecuencia de prestadores y la popularidad de accesorios son informativas:
    si fallan no tumban la remisión.
-5. `limpiarTodo()` limpia el formulario y borra el borrador del celular.
+5. `limpiarTodo()` limpia el formulario (también el de dispositivo y el de pago) y borra el borrador.
+6. El consecutivo se relee justo antes de guardar y la doble verificación también mira `.lock`
+   rivales (gana el más antiguo); si la verificación falla se reintenta el mismo número.
+
+Mismo principio en los demás módulos: **una vez subido el JSON, nada lo hace repetir**.
+Mantenimientos e Inventario releen y verifican su número antes de guardar y las fotos que fallan
+se avisan; Garantías usa el siguiente sufijo libre (`Garantia-0042-01`, `-02`…) y lo que falla
+queda en "Reintentar lo pendiente" de su modal (`gar-success-pendientes`).
+Toda lectura o PATCH con `fetch` revisa `response.ok`; si se va a reescribir un archivo, se lee
+fresco y se verifica que sea del tipo y estado esperados (nunca reescribir con una respuesta de error).
 
 ---
 
@@ -138,6 +159,16 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
   empieza por `Prestado-` en la carpeta `prestamosPagos`, con `estado: 'pendiente'` y un array
   `equipos[]`. Cualquier registro nuevo de equipo prestado DEBE seguir ese mismo formato para que
   el reporte de pagos lo recoja. (Ver `registrarPrestadosEnDrive` y `garRegistrarPrestadoEntregado`.)
+  - **Pago por equipo**: al pagar, cada equipo pagado lleva `pagado: true` y `fecha_pago`, el archivo
+    acumula `pagos[]` (`monto` de ese archivo, `monto_lote`, `equipos`: posiciones pagadas) y pasa a
+    `estado: 'pagado'` solo cuando todos sus equipos lo están. `prestCargar` omite los ya pagados.
+  - Antes de pagar se verifica que el archivo siga `pendiente` (no pagar dos veces).
+- **Cobros a financieras (`Cobro-…` en `ingresos`)**: un abono parcial deja el cobro `pendiente` con
+  `monto_recibido` y `abonos[]`; pasa a `recibido` al completarse. El saldo es
+  `ingSaldo(doc)` (incluye los cobros viejos que quedaron en `'parcial'`).
+- **Anulación**: verifica que la remisión exista y no esté ya anulada, y confirma con cliente y total.
+  NO modifica los `Prestado-`/`Cobro-` de esa venta (solo avisa si hay pendientes): marcarlos es una
+  decisión de negocio pendiente con el usuario.
 
 ## Librerías externas (con verificación de integridad)
 
@@ -197,6 +228,8 @@ Antes de declarar terminado cualquier ajuste a `index.html`, verificar:
 - [ ] **No se rompió otro módulo**: confirmar que los IDs/funciones de los demás prefijos siguen intactos.
 - [ ] **Reset de formularios**: si se añaden campos, agregarlos a la función de limpieza del módulo.
 - [ ] **Botones de guardar nuevos** pasan por `sinDobleToque`; **fechas nuevas** usan `fechaLocalISO()`.
+- [ ] **Datos pintados** con `escHtml` (y `jsArg` en onclick); **texto a Sheets** con `celdaTexto`;
+      **fetch** con `response.ok` revisado.
 - [ ] **Prueba en navegador** cuando el cambio tiene comportamiento: Chromium headless
       (Playwright) con `gapi`/Drive simulados. La app está detrás del login: en la prueba,
       ocultar `#login-screen` y mostrar `#main-content`.
