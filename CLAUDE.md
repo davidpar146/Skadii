@@ -29,6 +29,11 @@ Otros archivos:
   sirva en Netlify y en GitHub Pages), `icons/` (192, 512, maskable y apple-touch, hechos del logo) y
   `sw.js`. El service worker **no usa caché a propósito** (cada apertura carga la versión publicada);
   no agregarle caché sin una estrategia de actualización.
+- **Imagen de marca**: barra superior negra (`.header`, `theme-color` y `theme_color` en `#000000`)
+  con `img/logo-blanco.png`; marca de agua `img/marca-agua.png` (logo en diagonal, a 2x) como capa
+  `body::after` sobre el contenido, muy tenue, `pointer-events: none` y `z-index: 50` (debajo de la
+  barra y de los modales). Ambas imágenes se generan del logo original; no subir su opacidad sin
+  revisar la lectura de los formularios.
 
 ---
 
