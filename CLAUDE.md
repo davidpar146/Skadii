@@ -72,6 +72,7 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
 | Buscar Remisión      | `bus…`           | Busca por número, cliente, NIT, teléfono o IMEI; detalle y reenvío por WhatsApp |
 | Índice de remisiones | `idx…`           | Resumen de cada remisión en IndexedDB del celular; solo lee de Drive lo nuevo o modificado |
 | Resumen del día      | `res…`           | Ventas de una fecha (sin anuladas): totales, por medio de pago y por asesor; compartir por WhatsApp. **Con clave** (ver Asesores) |
+| Sesión de Google     | `ses…`, `menu-cerrar-sesion` | Recuerda la cuenta y el permiso vigente en este celular para no pedir la cuenta en cada ingreso; "Cerrar sesión de Google" en el menú |
 
 ### Asesores
 - `ASESORES_FIJOS`: aparecen en todos los módulos.
@@ -166,6 +167,17 @@ fresco y se verifica que sea del tipo y estado esperados (nunca reescribir con u
 - **OAuth**: `gapi` (Google API) + `google.accounts` (GIS). La inicialización está al final
   del script, en `window.addEventListener('load', …)`. No tocar el flujo de auth salvo necesidad.
   `handleAuthClick` registra cuándo vence el permiso (`tokenVenceEn`).
+- **Ingreso sin pedir la cuenta cada vez (`ses…`)**: nunca usar `prompt: 'consent'` (obligaba a elegir
+  cuenta y aceptar permisos en cada ingreso). `sesOpcionesPermiso()` pide `prompt: ''` con
+  `login_hint` = la cuenta recordada (`skadii-cuenta-google` en `localStorage`, se toma de
+  `drive.about.get`); sin cuenta recordada, el ingreso usa `select_account` y la renovación `''`.
+  El permiso vigente y su vencimiento se guardan en `skadii-sesion-google` (al entrar y al renovar,
+  `sesGuardarPermiso`); al abrir la app, `sesRestaurar` lo usa si le quedan más de 5 minutos, lo
+  comprueba con `drive.about.get` y entra directo (`sesEntrar`, la misma carga que el ingreso normal).
+  Si Google lo rechaza (401/403) se borra; sin internet se conserva y se muestra el botón. La ventana
+  de Google solo se puede abrir con un toque, así que pasada la hora hay que tocar "Continuar con
+  Google" (ya sin elegir cuenta). `sesCerrar` (menú) borra permiso y cuenta de este celular y recarga;
+  **no** revoca en Google a propósito: cerraría la sesión de los demás celulares con la misma cuenta.
 - **Carpetas de Drive**: definidas en el objeto `FOLDER_IDS`. Cada tipo de documento tiene su carpeta.
   No cambiar estos IDs sin confirmar con el usuario; apuntan a carpetas reales en producción.
 - **Subida de archivos**: helpers `subirArchivoDrive(...)` y `subirImagenDrive(...)`.

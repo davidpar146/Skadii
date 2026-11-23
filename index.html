@@ -759,6 +759,7 @@
                 <hr style="margin: 0.25rem 0; border-color: var(--gray-200);">
                 <button class="menu-item" id="menu-anular" onclick="mostrarAnular()">❌ Anular Remisión</button>
                 <button class="menu-item" id="menu-instalar" onclick="instInstalar()" style="display: none;">📲 Instalar app</button>
+                <button class="menu-item" id="menu-cerrar-sesion" onclick="sesCerrar()">🚪 Cerrar sesión de Google</button>
             </div>
         </div>
     </div>
@@ -2510,11 +2511,12 @@
                     const tok = gapi.client.getToken();
                     accessToken = (tok && tok.access_token) || resp.access_token;
                     tokenVenceEn = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
+                    sesGuardarPermiso();
                     updateDriveStatus(true);
                     fin();
                 };
                 tokenClient.error_callback = (err) => fin(err || new Error('Error de Google'));
-                tokenClient.requestAccessToken({ prompt: '' });
+                tokenClient.requestAccessToken(sesOpcionesPermiso(false));
             });
         }
 
@@ -2633,6 +2635,7 @@
                     <button class="btn btn-primary" onclick="handleAuthClick()" style="padding: 1rem 2rem;">
                         🔐 Continuar con Google
                     </button>`;
+                sesRestaurar();
             } else {
                 document.getElementById('google-signin-button').innerHTML = `
                     <div style="padding: 1rem; color: var(--gray-600);">⏳ Cargando...</div>`;
@@ -2641,24 +2644,120 @@
 
         function handleAuthClick() {
             tokenClient.callback = async (resp) => {
-                if (resp.error !== undefined) throw (resp);
+                if (!resp || resp.error !== undefined) {
+                    console.error('Ingreso con Google no completado:', resp);
+                    mostrarToast('⚠️ No se completó el ingreso con Google. Toque de nuevo el botón.', 5000);
+                    return;
+                }
                 accessToken = gapi.client.getToken().access_token;
                 tokenVenceEn = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
-                document.getElementById('login-screen').classList.add('hidden');
-                document.getElementById('main-content').style.display = 'block';
-                updateDriveStatus(true);
-                await obtenerConsecutivos();
-                await verificarOCrearSpreadsheet();
-                await cargarClavesAsesores();
-                await prestadoresCargarLista();  // CAMBIO #2: cargar lista de prestadores
-                await accCargarPopularidad();     // Popularidad de accesorios (para el modo contraído)
-                mostrarToast('✅ Conectado a Google Drive + Sheets');
+                sesGuardarPermiso();
+                sesRecordarCuenta();   // no bloquea la entrada
+                await sesEntrar();
             };
-            if (gapi.client.getToken() === null) {
-                tokenClient.requestAccessToken({prompt: 'consent'});
-            } else {
-                tokenClient.requestAccessToken({prompt: ''});
+            tokenClient.error_callback = (err) => {
+                console.warn('Ventana de Google cerrada o bloqueada:', err);
+                mostrarToast('⚠️ No se completó el ingreso con Google. Toque de nuevo el botón.', 5000);
+            };
+            // Antes se pedía siempre 'consent' (elegir cuenta y aceptar permisos en cada ingreso).
+            tokenClient.requestAccessToken(sesOpcionesPermiso(true));
+        }
+
+        // ===== Sesión guardada en este celular (ses…) =====
+        // - Se recuerda la cuenta usada (correo) y se le pasa a Google: no vuelve a pedir elegirla.
+        // - Se guarda el permiso vigente (~1 hora) y su vencimiento: si la app se vuelve a abrir antes
+        //   de que venza, entra directo sin tocar nada. Si venció, basta tocar "Continuar con Google".
+        // - "Cerrar sesión de Google" (menú) borra ambas cosas de este celular. No revoca el permiso
+        //   en Google, porque eso cerraría la sesión de los demás celulares que usan la misma cuenta.
+        const SES_CLAVE_PERMISO = 'skadii-sesion-google';
+        const SES_CLAVE_CUENTA = 'skadii-cuenta-google';
+        let sesRestauracionIntentada = false;
+
+        function sesCuenta() {
+            try { return localStorage.getItem(SES_CLAVE_CUENTA) || ''; } catch (e) { return ''; }
+        }
+        // Ingreso: con cuenta conocida, Google no muestra nada (solo pide aceptar la primera vez);
+        // sin cuenta conocida, deja elegirla. Renovación: nunca obliga a elegir cuenta.
+        function sesOpcionesPermiso(esIngreso) {
+            const cuenta = sesCuenta();
+            if (cuenta) return { prompt: '', login_hint: cuenta };
+            return { prompt: esIngreso ? 'select_account' : '' };
+        }
+        function sesGuardarPermiso() {
+            try {
+                if (accessToken && tokenVenceEn) {
+                    localStorage.setItem(SES_CLAVE_PERMISO, JSON.stringify({ token: accessToken, vence: tokenVenceEn }));
+                }
+            } catch (e) { console.warn('No se pudo guardar la sesión en este celular:', e); }
+        }
+        function sesBorrarPermiso() {
+            try { localStorage.removeItem(SES_CLAVE_PERMISO); } catch (e) {}
+        }
+        // Devuelve el permiso guardado solo si le quedan más de 5 minutos; si no, lo borra.
+        function sesLeerPermiso() {
+            try {
+                const s = JSON.parse(localStorage.getItem(SES_CLAVE_PERMISO) || 'null');
+                if (s && typeof s.token === 'string' && s.token && Number(s.vence) > Date.now() + 5 * 60 * 1000) return s;
+            } catch (e) {}
+            sesBorrarPermiso();
+            return null;
+        }
+        function sesAnotarCuenta(resultado) {
+            const correo = resultado && resultado.result && resultado.result.user && resultado.result.user.emailAddress;
+            if (correo) { try { localStorage.setItem(SES_CLAVE_CUENTA, correo); } catch (e) {} }
+        }
+        async function sesRecordarCuenta() {
+            try { sesAnotarCuenta(await gapi.client.drive.about.get({ fields: 'user(emailAddress)' })); }
+            catch (e) { console.warn('No se pudo leer la cuenta de Google:', e); }
+        }
+
+        // Lo que se hace al entrar (igual con ingreso nuevo o con la sesión guardada).
+        async function sesEntrar() {
+            document.getElementById('login-screen').classList.add('hidden');
+            document.getElementById('main-content').style.display = 'block';
+            updateDriveStatus(true);
+            await obtenerConsecutivos();
+            await verificarOCrearSpreadsheet();
+            await cargarClavesAsesores();
+            await prestadoresCargarLista();  // CAMBIO #2: cargar lista de prestadores
+            await accCargarPopularidad();     // Popularidad de accesorios (para el modo contraído)
+            mostrarToast('✅ Conectado a Google Drive + Sheets');
+        }
+
+        // Al abrir la app: si hay un permiso guardado vigente, se comprueba con Google y se entra directo.
+        async function sesRestaurar() {
+            if (sesRestauracionIntentada) return;
+            sesRestauracionIntentada = true;
+            const guardado = sesLeerPermiso();
+            if (!guardado) return;
+            document.getElementById('google-signin-button').innerHTML = `
+                <div style="padding: 1rem; color: var(--gray-600);">⏳ Entrando con la sesión guardada...</div>`;
+            gapi.client.setToken({ access_token: guardado.token });
+            try {
+                sesAnotarCuenta(await gapi.client.drive.about.get({ fields: 'user(emailAddress)' }));
+            } catch (e) {
+                // Google ya no acepta ese permiso (o no hay internet): ingreso normal con el botón.
+                console.warn('La sesión guardada no se pudo usar:', e);
+                gapi.client.setToken('');
+                if (e && (e.status === 401 || e.status === 403)) sesBorrarPermiso();
+                maybeEnableButtons();
+                return;
             }
+            accessToken = guardado.token;
+            tokenVenceEn = Number(guardado.vence);
+            await sesEntrar();
+        }
+
+        async function sesCerrar() {
+            document.getElementById('dropdown-menu').classList.remove('show');
+            if (!confirm('¿Cerrar la sesión de Google en este celular?\n\nLa próxima vez habrá que tocar "Continuar con Google" y elegir la cuenta.')) return;
+            try { await borradorGuardarAhora(); } catch (e) {}   // lo que se esté escribiendo no se pierde
+            sesBorrarPermiso();
+            try { localStorage.removeItem(SES_CLAVE_CUENTA); } catch (e) {}
+            try { gapi.client.setToken(''); } catch (e) {}
+            accessToken = null;
+            tokenVenceEn = 0;
+            location.reload();
         }
 
         function updateDriveStatus(connected) {
