@@ -237,7 +237,8 @@
         }
         .success-modal.show { display: flex; }
         /* Remisiones: con encabezado y pendientes el modal puede pasar el alto del celular */
-        #success-modal .success-content { max-height: calc(100vh - 2rem); overflow-y: auto; }
+        #success-modal .success-content,
+        #gar-success-modal .success-content { max-height: calc(100vh - 2rem); overflow-y: auto; }
         .success-content {
             background: white; padding: 2rem; border-radius: 16px;
             text-align: center; max-width: 400px; animation: bounce 0.5s;
@@ -1198,6 +1199,11 @@
             <p style="font-size: 0.875rem; color: var(--gray-500);">
                 ✅ Datos guardados en Google Drive
             </p>
+            <div id="gar-success-pendientes" style="display: none; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.75rem; margin-top: 1rem; text-align: left;">
+                <strong style="color: #92400e;">⚠️ La garantía quedó guardada, pero faltó subir:</strong>
+                <ul id="gar-success-pendientes-lista" style="margin: 0.5rem 0 0.75rem 1.25rem; padding: 0; list-style: disc; color: #92400e;"></ul>
+                <button class="btn btn-primary" onclick="sinDobleToque(this, 'gar-pendientes', garReintentarPendientes)">🔄 Reintentar lo pendiente</button>
+            </div>
             <button class="btn btn-primary" onclick="cerrarExitoGarantia()" style="margin-top: 1.5rem;">Aceptar</button>
         </div>
     </div>
@@ -2289,6 +2295,18 @@
             } finally {
                 guardadosEnCurso.delete(clave);
                 if (boton) { boton.disabled = false; boton.innerHTML = htmlOriginal; }
+            }
+        }
+
+        // ===== Reintentos automáticos para subidas que fallan por un momento =====
+        // Reintenta fn hasta `intentos` veces (espera 1 s, 2 s...). Si sigue fallando, lanza el error.
+        async function conReintentos(fn, intentos = 3) {
+            for (let i = 1; ; i++) {
+                try { return await fn(); }
+                catch (e) {
+                    if (i >= intentos) throw e;
+                    await new Promise(r => setTimeout(r, 1000 * i));
+                }
             }
         }
 
@@ -4914,8 +4932,22 @@
                 [falla, 'mant-falla', 'Falla reportada'],
                 [asesor, 'mant-asesor-chips', 'Asesor']
             ])) return;
+            if (!confirmarImeiDudoso(imei, 'mant-equipo-imei')) return;
             mostrarToast('☁️ Guardando mantenimiento...');
             try {
+                // Releer el último número y confirmar que no exista: otro celular pudo guardar
+                // desde que se abrió el módulo (antes podía repetirse el número).
+                await mantObtenerConsecutivo();
+                let numeroLibre = false;
+                for (let i = 0; i < 10 && !numeroLibre; i++) {
+                    const nombreArch = `Mantenimiento-${String(mantConsecutivo).padStart(4, '0')}.json`;
+                    const existe = await gapi.client.drive.files.list({
+                        q: `name='${nombreArch}' and '${FOLDER_IDS.mantenimientos}' in parents and trashed=false`,
+                        fields: 'files(id)'
+                    });
+                    if (existe.result.files.length === 0) numeroLibre = true; else mantConsecutivo++;
+                }
+                if (!numeroLibre) { mostrarToast('❌ No se pudo reservar el número del mantenimiento'); return; }
                 const numeroFormateado = String(mantConsecutivo).padStart(4, '0');
                 const docName = `Mantenimiento-${numeroFormateado}`;
                 const canvas = document.getElementById('mant-firma-canvas');
@@ -4937,15 +4969,23 @@
                     firma_cliente: firmaBase64
                 };
                 await subirArchivoDrive(JSON.stringify(doc, null, 2), `${docName}.json`, FOLDER_IDS.mantenimientos);
-                if (capturedPhotos['mantGeneral']) {
-                    await subirImagenDrive(capturedPhotos['mantGeneral'], `${docName}-General.jpg`, FOLDER_IDS.fotosMantenimientos);
-                }
-                if (capturedPhotos['mantFalla']) {
-                    await subirImagenDrive(capturedPhotos['mantFalla'], `${docName}-Falla.jpg`, FOLDER_IDS.fotosMantenimientos);
+                // El JSON ya existe: desde aquí no repetir el guardado completo (duplicaría el número).
+                const fotosFallidas = [];
+                for (const [clave, sufijo] of [['mantGeneral', 'General'], ['mantFalla', 'Falla']]) {
+                    if (!capturedPhotos[clave]) continue;
+                    const foto = capturedPhotos[clave];
+                    try {
+                        await conReintentos(() => subirImagenDrive(foto, `${docName}-${sufijo}.jpg`, FOLDER_IDS.fotosMantenimientos));
+                    } catch (e) {
+                        console.error(`Error subiendo foto ${docName}-${sufijo}.jpg:`, e);
+                        fotosFallidas.push(`foto ${sufijo}`);
+                    }
                 }
                 mantConsecutivo++;
                 mantLimpiarFormulario();
-                mostrarToast(`✅ ${docName} guardado en Drive`);
+                mostrarToast(fotosFallidas.length
+                    ? `⚠️ ${docName} guardado, pero no se subió la ${fotosFallidas.join(' ni la ')}`
+                    : `✅ ${docName} guardado en Drive`, fotosFallidas.length ? 8000 : 3000);
             } catch (error) {
                 console.error('Error guardando mantenimiento:', error);
                 mostrarToast('❌ Error al guardar. Revisa consola.');
@@ -5000,6 +5040,7 @@
                             `https://www.googleapis.com/drive/v3/files/${f.id}?alt=media`,
                             { headers: { 'Authorization': 'Bearer ' + accessToken } }
                         );
+                        if (!r.ok) return { fileId: f.id, fileName: f.name, doc: null };
                         return { fileId: f.id, fileName: f.name, doc: await r.json() };
                     } catch { return { fileId: f.id, fileName: f.name, doc: null }; }
                 }));
@@ -5042,7 +5083,7 @@
                         cliente: doc?.cliente, equipo: doc?.equipo,
                         inspeccion_visual: doc?.inspeccion_visual,
                         novedades: doc?.novedades || []
-                    }));
+                    })).replace(/'/g, '%27');   // encodeURIComponent no codifica el apóstrofo
                     return `
                         <div class="mant-lista-card">
                             <div class="mant-lista-header" onclick="mantToggleCard(this)">
@@ -5064,11 +5105,11 @@
                                 </div>
                                 ${novedadesHTML}
                                 <div style="display:flex; gap:0.5rem; margin-top:0.75rem;">
-                                    <button class="btn btn-primary"
+                                    ${doc ? `<button class="btn btn-primary"
                                         style="flex:1; padding:0.65rem; font-size:0.85rem;"
                                         onclick="mantAbrirNovedad('${docResumen}')">
                                         ➕ Agregar Novedad
-                                    </button>
+                                    </button>` : `<div style="flex:1; font-size:0.8rem; color:var(--danger);">⚠️ No se pudo leer este mantenimiento. Recargue la lista.</div>`}
                                     <a href="https://drive.google.com/file/d/${fileId}/view" target="_blank"
                                        class="btn btn-secondary"
                                        style="flex:0.5; padding:0.65rem; font-size:0.85rem; text-align:center; text-decoration:none;">
@@ -5289,7 +5330,12 @@
                     `https://www.googleapis.com/drive/v3/files/${mantNovedadDoc.fileId}?alt=media`,
                     { headers: { 'Authorization': 'Bearer ' + accessToken } }
                 );
+                if (!getResp.ok) throw new Error(`No se pudo leer el mantenimiento (HTTP ${getResp.status})`);
                 const docOriginal = await getResp.json();
+                // Nunca reescribir el archivo con una respuesta de error en vez del mantenimiento.
+                if (!docOriginal || docOriginal.error || !docOriginal.cliente) {
+                    throw new Error('El archivo leído no es un mantenimiento válido');
+                }
                 const novedad = {
                     fecha: fechaLocalISO(),
                     estado: mantNovedadEstado, texto,
@@ -5307,28 +5353,39 @@
                 const patchForm = new FormData();
                 patchForm.append('metadata', new Blob([JSON.stringify({ name: mantNovedadDoc.fileName })], { type: 'application/json' }));
                 patchForm.append('file', new Blob([JSON.stringify(docOriginal, null, 2)], { type: 'application/json' }));
-                await fetch(
+                const patchResp = await fetch(
                     `https://www.googleapis.com/upload/drive/v3/files/${mantNovedadDoc.fileId}?uploadType=multipart`,
                     { method: 'PATCH', headers: { 'Authorization': 'Bearer ' + accessToken }, body: patchForm }
                 );
-                if (capturedPhotos['mantSoportePago']) {
-                    await subirImagenDrive(capturedPhotos['mantSoportePago'], `${docName}-Soporte-Pago.jpg`, FOLDER_IDS.fotosMantenimientos);
+                if (!patchResp.ok) throw new Error(`Drive no guardó la novedad (HTTP ${patchResp.status})`);
+                // La novedad ya quedó: una foto que falle no debe hacer que se repita.
+                const fotosFallidas = [];
+                for (const [clave, sufijo] of [['mantSoportePago', 'Soporte-Pago'], ['mantSoporteAnticipo', 'Soporte-Anticipo']]) {
+                    if (!capturedPhotos[clave]) continue;
+                    const foto = capturedPhotos[clave];
+                    try {
+                        await conReintentos(() => subirImagenDrive(foto, `${docName}-${sufijo}.jpg`, FOLDER_IDS.fotosMantenimientos));
+                    } catch (e) {
+                        console.error(`Error subiendo ${docName}-${sufijo}.jpg:`, e);
+                        fotosFallidas.push(sufijo.replace('-', ' de ').toLowerCase());
+                    }
                 }
-                if (capturedPhotos['mantSoporteAnticipo']) {
-                    await subirImagenDrive(capturedPhotos['mantSoporteAnticipo'], `${docName}-Soporte-Anticipo.jpg`, FOLDER_IDS.fotosMantenimientos);
-                }
+                const estadoGuardado = mantNovedadEstado;   // mantCerrarNovedad lo deja en null
                 mantCerrarNovedad();
-                mostrarToast(`✅ Novedad guardada — Estado: ${mantNovedadEstado}`);
+                mostrarToast(fotosFallidas.length
+                    ? `⚠️ Novedad guardada (${estadoGuardado}), pero no se subió: ${fotosFallidas.join(', ')}`
+                    : `✅ Novedad guardada — Estado: ${estadoGuardado}`, fotosFallidas.length ? 8000 : 3000);
                 setTimeout(() => mantCargarLista(), 800);
             } catch (err) {
                 console.error('Error guardando novedad:', err);
-                mostrarToast('❌ Error al guardar novedad. Revisa consola.');
+                mostrarToast('❌ No se guardó la novedad: ' + (err.message || 'error') + '. Intente de nuevo.', 6000);
             }
         }
 
         // ============= MÓDULO GARANTÍAS =============
 
         let garRemisionOriginal = null;
+        let garRemisionNumero = null;   // número de la remisión buscada, ya formateado (0042)
         let garTipoActual = 'falla_fabrica';
         let garDestinoActual = 'inventario';
         let garDanos = { frente: [], posterior: [] };
@@ -5342,9 +5399,12 @@
         let garSalePrestadoresMostrados = 5;
 
         async function garBuscarRemision() {
-            const numero = document.getElementById('gar-remision-numero').value;
-            if (!numero) { mostrarToast('⚠️ Ingrese el número de remisión'); return; }
+            const numero = parseInt(document.getElementById('gar-remision-numero').value, 10);
+            if (!(numero > 0)) { marcarCampoFaltante('gar-remision-numero', '⚠️ Ingrese el número de remisión'); return; }
             const numeroFormateado = String(numero).padStart(4, '0');
+            // Una búsqueda nueva nunca debe quedarse con los datos de la anterior.
+            garRemisionOriginal = null;
+            garRemisionNumero = null;
             const resultado = document.getElementById('gar-remision-resultado');
             resultado.innerHTML = '<p style="font-size:0.85rem; color:var(--gray-500);">⏳ Buscando...</p>';
             try {
@@ -5362,8 +5422,13 @@
                     `https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`,
                     { headers: { 'Authorization': 'Bearer ' + accessToken } }
                 );
-                garRemisionOriginal = await fileResp.json();
-                const primerItem = garRemisionOriginal.items && garRemisionOriginal.items[0];
+                if (!fileResp.ok) throw new Error(`HTTP ${fileResp.status}`);
+                const docRem = await fileResp.json();
+                if (!docRem || !Array.isArray(docRem.items)) throw new Error('Archivo de remisión inválido');
+                garRemisionOriginal = docRem;
+                garRemisionNumero = numeroFormateado;
+                // El equipo es el primer dispositivo (no un accesorio agregado antes).
+                const primerItem = garRemisionOriginal.items.find(i => i.tipo !== 'accesorio') || garRemisionOriginal.items[0];
                 if (primerItem) {
                     document.getElementById('gar-entra-descripcion').value = primerItem.descripcion || '';
                     document.getElementById('gar-entra-imei').value = primerItem.imei || '';
@@ -5683,6 +5748,12 @@
             if (!entraDesc || !entraImei || !saleDesc || !saleImei || !motivo) {
                 mostrarToast('⚠️ Complete todos los campos obligatorios (*)'); return;
             }
+            // Sin el precio del equipo que sale, la diferencia salía como devolución del precio completo.
+            if (faltaCampo([
+                [parsearValor(document.getElementById('gar-entra-precio').value) > 0, 'gar-entra-precio', 'Precio original de venta'],
+                [parsearValor(document.getElementById('gar-sale-precio').value) > 0, 'gar-sale-precio', 'Precio del equipo nuevo']
+            ])) return;
+            if (!confirmarImeiDudoso(saleImei, 'gar-sale-imei')) return;
             if (!garSaleEstado) {
                 mostrarToast('⚠️ Seleccione si el equipo que sale es propio o prestado');
                 document.getElementById('gar-sale-estado-warning').style.display = 'block';
@@ -5744,8 +5815,17 @@
             garCerrarAutorizacion();
             mostrarToast('☁️ Guardando garantía autorizada...');
             try {
-                const numOriginal = String(garRemisionOriginal.numero).padStart(4, '0');
-                const docName = `Garantia-${numOriginal}-01`;
+                const numOriginal = garRemisionNumero || String(garRemisionOriginal.numero).padStart(4, '0');
+                // Una remisión puede tener varios cambios: usar el siguiente sufijo libre (-01, -02...).
+                const previas = await gapi.client.drive.files.list({
+                    q: `name contains 'Garantia-${numOriginal}-' and '${FOLDER_IDS.garantias}' in parents and trashed=false`,
+                    fields: 'files(name)', pageSize: 100
+                });
+                const usados = previas.result.files
+                    .map(f => (f.name.match(new RegExp(`^Garantia-${numOriginal}-(\\d{2})\\.json$`)) || [])[1])
+                    .filter(Boolean).map(Number);
+                const sufijo = String((usados.length ? Math.max(...usados) : 0) + 1).padStart(2, '0');
+                const docName = `Garantia-${numOriginal}-${sufijo}`;
                 const precioEntra = parsearValor(document.getElementById('gar-entra-precio').value);
                 const precioSale  = parsearValor(document.getElementById('gar-sale-precio').value);
                 const diff = precioSale - precioEntra;
@@ -5776,23 +5856,32 @@
                     diferencia: {
                         monto: Math.abs(diff),
                         tipo: diff > 0 ? 'cobro' : diff < 0 ? 'devolucion' : 'sin_diferencia',
-                        metodo_pago: document.getElementById('gar-metodo-pago').value || null
+                        metodo_pago: diff > 0 ? (document.getElementById('gar-metodo-pago').value || null) : null
                     },
                     autorizacion: { autorizado_por: autorizador, fecha: fechaLocalISO(), nota },
                     firma_cliente: canvas.toDataURL('image/png')
                 };
                 await subirArchivoDrive(JSON.stringify(doc, null, 2), `${docName}.json`, FOLDER_IDS.garantias);
+                // El JSON ya existe: lo que falle desde aquí queda pendiente (no repetir la garantía).
+                const fallas = [];
                 if (capturedPhotos['garEntra']) {
-                    await subirImagenDrive(capturedPhotos['garEntra'], `${docName}-Equipo-Entra.jpg`, FOLDER_IDS.fotosGarantias);
+                    const foto = capturedPhotos['garEntra'];
+                    const subir = () => subirImagenDrive(foto, `${docName}-Equipo-Entra.jpg`, FOLDER_IDS.fotosGarantias);
+                    try { await conReintentos(subir); }
+                    catch (e) { console.error('Error subiendo foto de garantía:', e); fallas.push({ nombre: 'Foto del equipo que entra', fn: subir }); }
                 }
                 // Si el equipo que SALE fue prestado, registrarlo para el reporte de pago a prestadores
                 if (doc.equipo_que_sale.estado === 'prestado' && doc.equipo_que_sale.prestadoPor) {
-                    await garRegistrarPrestadoEntregado(doc, docName, autorizador);
-                    await prestadoresIncrementarFrecuencia(doc.equipo_que_sale.prestadoPor);
+                    await garRegistrarPrestadoEntregado(doc, docName, autorizador, fallas);
+                    try { await prestadoresIncrementarFrecuencia(doc.equipo_que_sale.prestadoPor); }
+                    catch (e) { console.error('Error actualizando frecuencia de prestador:', e); }
                 }
                 garLimpiarFormulario();
-                mostrarToast(`✅ ${docName} guardada y autorizada por ${autorizador}`);
+                mostrarToast(fallas.length
+                    ? `⚠️ ${docName} guardada, pero faltó subir ${fallas.length} cosa(s)`
+                    : `✅ ${docName} guardada y autorizada por ${autorizador}`);
                 mostrarExitoGarantia(doc, docName);
+                garMostrarPendientes(docName, fallas);
             } catch (error) {
                 console.error('Error guardando garantía:', error);
                 mostrarToast('❌ Error al guardar. Revisa consola.');
@@ -5801,6 +5890,8 @@
 
         function garLimpiarFormulario() {
             garRemisionOriginal = null;
+            garRemisionNumero = null;
+            document.getElementById('gar-metodo-pago').value = '';
             garDanos = { frente: [], posterior: [] };
             garRenderizarMarcadores();
             garActualizarListaDanos();
@@ -7338,7 +7429,8 @@
         // Registra el equipo que SALE en una garantía cuando fue prestado.
         // Usa EXACTAMENTE el mismo formato que registrarPrestadosEnDrive y nombre 'Prestado-...'
         // para que el módulo "Pagar Prestadores" lo recoja automáticamente.
-        async function garRegistrarPrestadoEntregado(doc, docName, asesor) {
+        // fallas (opcional): si la subida falla, se agrega ahí para reintentarla.
+        async function garRegistrarPrestadoEntregado(doc, docName, asesor, fallas) {
             const sale = doc.equipo_que_sale;
             if (!sale || sale.estado !== 'prestado' || !sale.prestadoPor) return;
             const prestador = sale.prestadoPor.trim();
@@ -7357,9 +7449,15 @@
                 total_costo: sale.costo || 0,
                 pago: null
             };
+            const contenido = JSON.stringify(registro, null, 2);
+            const subir = () => subirArchivoDrive(contenido, nombreArchivo, FOLDER_IDS.prestamosPagos);
             try {
-                await subirArchivoDrive(JSON.stringify(registro, null, 2), nombreArchivo, FOLDER_IDS.prestamosPagos);
-            } catch (e) { console.error(`Error registrando prestado de garantía ${nombreArchivo}:`, e); }
+                await conReintentos(subir);
+            } catch (e) {
+                console.error(`Error registrando prestado de garantía ${nombreArchivo}:`, e);
+                if (fallas) fallas.push({ nombre: `Equipo prestado de ${prestador} (Pagar Prestadores)`, fn: subir });
+                else mostrarToast(`❌ No se registró el equipo prestado de ${prestador} en Pagar Prestadores`, 8000);
+            }
         }
 
         // Cuadro de éxito de garantía: cliente, equipo que entra/sale, pago adicional,
@@ -7415,7 +7513,33 @@
             document.getElementById('gar-success-modal').classList.add('show');
         }
 
+        // ===== Garantía: pasos pendientes tras guardar (reintento parcial) =====
+        let garPendientes = { docName: null, pasos: [] };
+        function garMostrarPendientes(docName, pasos) {
+            garPendientes = { docName, pasos };
+            const box = document.getElementById('gar-success-pendientes');
+            if (!box) return;
+            document.getElementById('gar-success-pendientes-lista').innerHTML =
+                pasos.map(p => `<li>${borradorEsc(p.nombre)}</li>`).join('');
+            box.style.display = pasos.length ? 'block' : 'none';
+        }
+        async function garReintentarPendientes() {
+            const fallas = [];
+            for (const paso of garPendientes.pasos) {
+                try { await paso.fn(); }
+                catch (e) { console.error(`Reintento fallido (${paso.nombre}):`, e); fallas.push(paso); }
+            }
+            garMostrarPendientes(garPendientes.docName, fallas);
+            mostrarToast(fallas.length
+                ? `⚠️ Aún faltan ${fallas.length} paso(s). Revise la conexión e intente de nuevo.`
+                : '✅ Todo quedó subido');
+        }
+
         function cerrarExitoGarantia() {
+            const n = garPendientes.pasos.length;
+            if (n && !confirm(`⚠️ Quedan ${n} paso(s) sin subir de la ${garPendientes.docName}.\n\nSi cierra, no se reintentarán y habrá que avisar al administrador.\n\n¿Cerrar de todas formas?`)) return;
+            if (n) console.warn(`Pasos sin subir de ${garPendientes.docName}:`, garPendientes.pasos.map(p => p.nombre));
+            garPendientes = { docName: null, pasos: [] };
             document.getElementById('gar-success-modal').classList.remove('show');
         }
 
