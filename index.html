@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Sistema Skaoll v25</title>
+    <title>Sistema Skadii v25</title>
     <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js" integrity="sha384-c9d8RFSL+u3exBOJ4Yp3HUJXS4znl9f+z66d1y54ig+ea249SpqR+w1wyvXz/lk+" crossorigin="anonymous"></script>
     <script src="https://unpkg.com/tesseract.js@5.1.1/dist/tesseract.min.js" integrity="sha384-GJqSu7vueQ9qN0E9yLPb3Wtpd7OrgK8KmYzC8T1IysG1bcvxvIO4qtYR/D3A991F" crossorigin="anonymous"></script>
     <script src="https://apis.google.com/js/api.js"></script>
@@ -68,6 +68,22 @@
             min-width: 200px; overflow: hidden;
         }
         .dropdown-menu.show { display: block; }
+        /* Computador: título a la izquierda; estado de conexión y menú a la derecha, uno al lado
+           del otro (antes iban fijos en la misma esquina y se montaban entre sí). */
+        @media (min-width: 641px) {
+            .header { display: grid; grid-template-columns: 1fr auto auto; column-gap: 0.75rem; align-items: center; }
+            .header h1 { grid-column: 1; grid-row: 1; }
+            .header .subtitle { grid-column: 1; grid-row: 2; }
+            .drive-status { position: static; grid-column: 2; grid-row: 1 / span 2; }
+            .menu-gestion { position: relative; bottom: auto; right: auto; grid-column: 3; grid-row: 1 / span 2; }
+        }
+        /* Celular: estado de conexión y menú en una fila debajo del título (antes se montaban encima) */
+        @media (max-width: 640px) {
+            .header { display: flex; flex-wrap: wrap; align-items: center; gap: 0.5rem; }
+            .header h1, .header .subtitle { flex-basis: 100%; }
+            .drive-status { position: static; padding: 0.35rem 0.85rem; }
+            .menu-gestion { position: relative; bottom: auto; right: auto; margin-left: auto; }
+        }
         .menu-item {
             display: block; width: 100%; padding: 0.75rem 1rem;
             border: none; background: white; text-align: left;
@@ -678,7 +694,7 @@
     <!-- Pantalla de Login -->
     <div id="login-screen" class="login-screen">
         <div class="login-box">
-            <h1>🔐 Sistema de Remisiones Skaoll</h1>
+            <h1>🔐 Sistema de Remisiones Skadii</h1>
             <p>Inicia sesión con Google Drive para comenzar</p>
             <div id="google-signin-button">
                 <div style="padding: 1rem; color: var(--gray-600); text-align: center;">
@@ -692,7 +708,7 @@
     </div>
 
     <div class="header">
-        <h1>📱 Sistema de Remisiones Skaoll</h1>
+        <h1>📱 Sistema de Remisiones Skadii</h1>
         <div class="subtitle">Gestión móvil con Google Drive + Sheets · v25</div>
         <div id="drive-status" class="drive-status">
             <span id="status-icon">⚪</span>
