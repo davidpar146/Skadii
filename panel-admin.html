@@ -20,6 +20,7 @@
             --gray-50: #f9fafb;
             --gray-100: #f3f4f6;
             --gray-200: #e5e7eb;
+            --gray-300: #d1d5db;   /* la zona de carga quedaba sin borde */
             --gray-600: #4b5563;
             --gray-700: #374151;
             --gray-800: #1f2937;
@@ -318,7 +319,7 @@
             <h2>🔐 Panel Administrativo</h2>
             <div class="form-group">
                 <label>Usuario</label>
-                <input type="text" id="admin-user" placeholder="Ingrese usuario">
+                <input type="text" id="admin-user" placeholder="Ingrese usuario" autocapitalize="none" autocorrect="off" spellcheck="false">
             </div>
             <div class="form-group">
                 <label>Contraseña</label>
@@ -437,10 +438,10 @@
         <div class="modal-content">
             <h2 style="margin-bottom: 1.5rem;">📤 Importar Datos de Asesor</h2>
             <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-input').click()">
-                <input type="file" id="file-input" accept=".json" style="display: none;" onchange="procesarArchivo(event)">
+                <input type="file" id="file-input" accept=".json,application/json" multiple style="display: none;" onchange="procesarArchivo(event)">
                 <p style="font-size: 2rem; margin-bottom: 1rem;">📁</p>
-                <p style="font-weight: 600; margin-bottom: 0.5rem;">Haga clic o arrastre el archivo JSON</p>
-                <p style="color: var(--gray-600); font-size: 0.875rem;">El asesor debe exportar sus datos desde Configuración → Exportar JSON</p>
+                <p style="font-weight: 600; margin-bottom: 0.5rem;">Haga clic o arrastre uno o varios archivos JSON</p>
+                <p style="color: var(--gray-600); font-size: 0.875rem;">Archivos Remision-XXXX.json descargados de la carpeta de Drive, o un respaldo exportado desde este panel</p>
             </div>
             <div class="action-buttons">
                 <button class="btn btn-secondary" onclick="cerrarImportacion()">Cancelar</button>
@@ -520,7 +521,8 @@
 
         // Login
         async function login() {
-            const user = document.getElementById('admin-user').value;
+            // En el celular el teclado pone "Admin": no distinguir mayúsculas ni espacios.
+            const user = document.getElementById('admin-user').value.trim().toLowerCase();
             const pass = document.getElementById('admin-pass').value;
             // En el primer ingreso (o sin cifrado disponible) adminVerificarPass ya explica el
             // motivo (clave corta, no coincide...); no taparlo con el mensaje genérico.
@@ -587,22 +589,34 @@
         uploadZone.addEventListener('drop', (e) => {
             e.preventDefault();
             uploadZone.classList.remove('dragover');
-            const file = e.dataTransfer.files[0];
-            if (file && file.type === 'application/json') {
-                leerArchivoJSON(file);
-            } else {
-                mostrarToast('❌ Por favor, seleccione un archivo JSON');
-            }
+            importarArchivos(e.dataTransfer.files);
         });
 
         // Procesar archivo
         function procesarArchivo(event) {
-            const file = event.target.files[0];
-            if (file && file.type === 'application/json') {
-                leerArchivoJSON(file);
-            } else {
-                mostrarToast('❌ Por favor, seleccione un archivo JSON');
-            }
+            importarArchivos(event.target.files);
+            event.target.value = '';   // permitir volver a elegir el mismo archivo
+        }
+
+        // Acepta uno o varios .json (en algunos equipos el tipo llega vacío: se mira la extensión).
+        function importarArchivos(lista) {
+            const archivos = [...(lista || [])].filter(f => f.type === 'application/json' || /\.json$/i.test(f.name));
+            if (!archivos.length) { mostrarToast('❌ Por favor, seleccione archivos JSON'); return; }
+            archivos.forEach(leerArchivoJSON);
+        }
+
+        // Normaliza lo importado: respaldo del panel ({documentos:[...]} o [...]) o un documento
+        // suelto como los Remision-XXXX.json de Drive. Calcula el saldo si no viene.
+        function documentosDeImportacion(data) {
+            const lista = Array.isArray(data) ? data
+                : Array.isArray(data?.documentos) ? data.documentos
+                : (data && Array.isArray(data.items)) ? [data] : null;
+            if (!lista) return null;
+            return lista.filter(d => d && Array.isArray(d.items)).map(d => ({
+                ...d,
+                tipo: d.tipo || 'remision',
+                balance: typeof d.balance === 'number' ? d.balance : (d.totalItems || 0) - (d.totalPaid || 0)
+            }));
         }
 
         // Leer archivo JSON
@@ -611,10 +625,11 @@
             reader.onload = (e) => {
                 try {
                     const data = JSON.parse(e.target.result);
-                    if (data.documentos && Array.isArray(data.documentos)) {
+                    const documentos = documentosDeImportacion(data);
+                    if (documentos) {
                         // Agregar documentos nuevos evitando duplicados
                         let agregados = 0;
-                        data.documentos.forEach(doc => {
+                        documentos.forEach(doc => {
                             const existe = allDocuments.find(d => 
                                 d.tipo === doc.tipo && 
                                 d.numero === doc.numero && 
@@ -630,15 +645,20 @@
                         actualizarEstadisticas();
                         aplicarFiltros();
                         cerrarImportacion();
-                        mostrarToast(`✅ Se importaron ${agregados} documentos nuevos`);
+                        mostrarToast(`✅ ${file.name}: ${agregados} documento(s) nuevo(s)`);
                     } else {
-                        mostrarToast('❌ Formato de archivo inválido');
+                        mostrarToast(`❌ ${file.name}: formato no reconocido`);
                     }
                 } catch (error) {
-                    mostrarToast('❌ Error al leer el archivo');
+                    mostrarToast(`❌ ${file.name}: no se pudo leer`);
                 }
             };
             reader.readAsText(file);
+        }
+
+        // Texto de documentos importados (vienen de otros equipos): nunca como HTML.
+        function esc(t) {
+            return String(t ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
         }
 
         // Actualizar estadísticas
@@ -658,7 +678,7 @@
             const asesores = [...new Set(allDocuments.map(d => d.asesor).filter(a => a))];
             const asesorSelect = document.getElementById('filter-asesor');
             asesorSelect.innerHTML = '<option value="">Todos los asesores</option>' + 
-                asesores.map(a => `<option value="${a}">${a}</option>`).join('');
+                asesores.map(a => `<option value="${esc(a)}">${esc(a)}</option>`).join('');
         }
 
         // Aplicar filtros
@@ -670,10 +690,10 @@
             const asesor = document.getElementById('filter-asesor').value;
 
             filteredDocuments = allDocuments.filter(doc => {
-                const matchSearch = !search || 
-                    doc.numero.toString().includes(search) ||
-                    doc.cliente.toLowerCase().includes(search) ||
-                    doc.nit.includes(search);
+                const matchSearch = !search ||
+                    String(doc.numero ?? '').includes(search) ||
+                    String(doc.cliente ?? '').toLowerCase().includes(search) ||
+                    String(doc.nit ?? '').includes(search);
                 
                 const matchTipo = !tipo || doc.tipo === tipo;
                 
@@ -704,19 +724,19 @@
                 const badgeClass = `badge-${doc.tipo}`;
                 return `
                     <tr>
-                        <td><span class="badge ${badgeClass}">${doc.tipo.toUpperCase()}</span></td>
-                        <td>#${doc.numero}</td>
+                        <td><span class="badge ${esc(badgeClass)}">${esc(String(doc.tipo ?? '').toUpperCase())}</span></td>
+                        <td>#${esc(doc.numero)}</td>
                         <td>${formatDate(doc.fecha)}</td>
-                        <td>${doc.cliente}</td>
-                        <td>${doc.nit}</td>
+                        <td>${esc(doc.cliente)}</td>
+                        <td>${esc(doc.nit)}</td>
                         <td>${formatMoney(doc.totalItems || 0)}</td>
                         <td>${formatMoney(doc.totalPaid || 0)}</td>
                         <td style="color: ${(doc.balance || 0) > 0 ? 'var(--danger)' : 'var(--success)'}">
                             ${formatMoney(doc.balance || 0)}
                         </td>
-                        <td>${doc.asesor || '-'}</td>
+                        <td>${esc(doc.asesor || '-')}</td>
                         <td>
-                            <button class="btn btn-secondary btn-small" onclick="verDetalle(${doc.id})">
+                            <button class="btn btn-secondary btn-small" onclick="verDetalle(${allDocuments.indexOf(doc)})">
                                 👁️ Ver
                             </button>
                         </td>
@@ -726,31 +746,33 @@
         }
 
         // Ver detalle
-        function verDetalle(id) {
-            const doc = allDocuments.find(d => d.id === id);
+        // Por posición en allDocuments: los documentos importados no traen id
+        // (antes todos los botones "Ver" abrían el primer documento).
+        function verDetalle(idx) {
+            const doc = allDocuments[idx];
             if (!doc) return;
 
             let itemsHtml = doc.items.map(item => `
                 <div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.5rem;">
-                    <strong>${item.descripcion}</strong><br>
-                    Cantidad: ${item.cantidad} × ${formatMoney(item.valor)} = ${formatMoney(item.total)}<br>
-                    ${item.imei ? `IMEI: ${item.imei}<br>` : ''}
+                    <strong>${esc(item.descripcion)}</strong><br>
+                    Cantidad: ${esc(item.cantidad)} × ${formatMoney(item.valor)} = ${formatMoney(item.total)}<br>
+                    ${item.imei ? `IMEI: ${esc(item.imei)}<br>` : ''}
                     Estado: ${item.estado === 'propio' ? '🏢 Propio' : '🤝 Prestado'}<br>
-                    ${item.notas ? `Notas: ${item.notas}` : ''}
+                    ${item.notas ? `Notas: ${esc(item.notas)}` : ''}
                 </div>
             `).join('');
 
             let paymentsHtml = doc.payments ? doc.payments.map(payment => {
-                let paymentDetail = `<strong>${payment.method.toUpperCase()}</strong>: ${formatMoney(payment.amount)}`;
-                if (payment.reference) paymentDetail += `<br>Ref: ${payment.reference}`;
+                let paymentDetail = `<strong>${esc(String(payment.method ?? '').toUpperCase())}</strong>: ${formatMoney(payment.amount)}`;
+                if (payment.reference) paymentDetail += `<br>Ref: ${esc(payment.reference)}`;
                 if (payment.retomaItem) {
                     const item = payment.retomaItem;
                     paymentDetail += `<br><div style="margin-top: 0.5rem; padding: 0.5rem; background: #fef3c7; border-radius: 4px;">
-                        <strong>📱 Equipo Recibido:</strong> ${item.descripcion}<br>
-                        Cantidad: ${item.cantidad} × ${formatMoney(item.valor)}<br>
-                        ${item.imei ? `IMEI: ${item.imei}<br>` : ''}
-                        Estado: ${item.estado}<br>
-                        ${item.observaciones ? `Obs: ${item.observaciones}` : ''}
+                        <strong>📱 Equipo Recibido:</strong> ${esc(item.descripcion)}<br>
+                        Cantidad: ${esc(item.cantidad)} × ${formatMoney(item.valor)}<br>
+                        ${item.imei ? `IMEI: ${esc(item.imei)}<br>` : ''}
+                        Estado: ${esc(item.estado)}<br>
+                        ${item.observaciones ? `Obs: ${esc(item.observaciones)}` : ''}
                     </div>`;
                 }
                 return `<div style="padding: 0.75rem; background: white; border-radius: 6px; margin-bottom: 0.5rem;">${paymentDetail}</div>`;
@@ -758,14 +780,14 @@
 
             const content = `
                 <div style="background: var(--gray-50); padding: 1rem; border-radius: 8px; margin-bottom: 1rem;">
-                    <h3>${doc.tipo.toUpperCase()} #${doc.numero}</h3>
+                    <h3>${esc(String(doc.tipo ?? '').toUpperCase())} #${esc(doc.numero)}</h3>
                     <p><strong>Fecha:</strong> ${formatDate(doc.fecha)}</p>
-                    <p><strong>Cliente:</strong> ${doc.cliente}</p>
-                    <p><strong>NIT:</strong> ${doc.nit}</p>
-                    ${doc.telefono ? `<p><strong>Teléfono:</strong> ${doc.telefono}</p>` : ''}
-                    ${doc.direccion ? `<p><strong>Dirección:</strong> ${doc.direccion}</p>` : ''}
-                    ${doc.email ? `<p><strong>Email:</strong> ${doc.email}</p>` : ''}
-                    ${doc.asesor ? `<p><strong>Asesor:</strong> ${doc.asesor}</p>` : ''}
+                    <p><strong>Cliente:</strong> ${esc(doc.cliente)}</p>
+                    <p><strong>NIT:</strong> ${esc(doc.nit)}</p>
+                    ${doc.telefono ? `<p><strong>Teléfono:</strong> ${esc(doc.telefono)}</p>` : ''}
+                    ${doc.direccion ? `<p><strong>Dirección:</strong> ${esc(doc.direccion)}</p>` : ''}
+                    ${doc.email ? `<p><strong>Email:</strong> ${esc(doc.email)}</p>` : ''}
+                    ${doc.asesor ? `<p><strong>Asesor:</strong> ${esc(doc.asesor)}</p>` : ''}
                 </div>
 
                 <h4 style="margin: 1rem 0 0.5rem;">📦 Ítems:</h4>
@@ -779,7 +801,7 @@
                     <p><strong>Saldo:</strong> <span style="color: ${(doc.balance || 0) > 0 ? 'var(--danger)' : 'var(--success)'}; font-weight: 700;">${formatMoney(doc.balance || 0)}</span></p>
                 </div>
 
-                ${doc.observaciones ? `<div style="margin-top: 1rem;"><strong>📝 Observaciones:</strong><br>${doc.observaciones}</div>` : ''}
+                ${doc.observaciones ? `<div style="margin-top: 1rem;"><strong>📝 Observaciones:</strong><br>${esc(doc.observaciones)}</div>` : ''}
             `;
 
             document.getElementById('detail-content').innerHTML = content;
@@ -798,18 +820,38 @@
                 return;
             }
 
-            let csv = 'Tipo,Número,Fecha,Cliente,NIT,Teléfono,Dirección,Email,Asesor,Empresa,Descripción Item,Cantidad,Valor Unit,IMEI,Estado,Notas Item,Total Item,Método Pago,Monto Pago,Ref Pago,Retoma Descripción,Retoma IMEI,Retoma Estado,Total Items,Total Pagado,Saldo,Observaciones\n';
+            // Excel en español (Colombia) separa columnas con ";" y necesita el BOM para las tildes.
+            // Cada celda va entre comillas (las comillas internas se duplican) y lo que empieza por
+            // = + - @ se antepone con ' para que Excel no lo ejecute como fórmula.
+            const celda = v => {
+                let t = v == null ? '' : String(v);
+                if (/^[=+\-@\t\r]/.test(t)) t = "'" + t;
+                return '"' + t.replace(/"/g, '""') + '"';
+            };
+            const columnas = ['Tipo','Número','Fecha','Cliente','NIT','Teléfono','Dirección','Email','Asesor','Empresa',
+                'Descripción Item','Cantidad','Valor Unit','IMEI','Estado','Notas Item','Total Item','Método Pago',
+                'Monto Pago','Ref Pago','Retoma Descripción','Retoma IMEI','Retoma Estado','Total Items','Total Pagado',
+                'Saldo','Observaciones'];
+            let csv = '\uFEFF' + columnas.map(celda).join(';') + '\r\n';
 
             allDocuments.forEach(doc => {
-                doc.items.forEach((item, idx) => {
-                    const payment = doc.payments && doc.payments[idx] ? doc.payments[idx] : {};
+                const items = doc.items || [];
+                const pagos = doc.payments || [];
+                // Una fila por ítem o por pago, lo que sea mayor (antes se perdían pagos de más).
+                const filas = Math.max(items.length, pagos.length, 1);
+                for (let idx = 0; idx < filas; idx++) {
+                    const item = items[idx] || {};
+                    const payment = pagos[idx] || {};
                     const retoma = payment.retomaItem || {};
-                    
-                    csv += `"${doc.tipo}",${doc.numero},"${formatDateFull(doc.fecha)}","${doc.cliente}","${doc.nit}","${doc.telefono || ''}","${doc.direccion || ''}","${doc.email || ''}","${doc.asesor || ''}","${doc.empresa || ''}","${item.descripcion}",${item.cantidad},${item.valor},"${item.imei || ''}","${item.estado}","${item.notas || ''}",${item.total},"${payment.method || ''}",${payment.amount || 0},"${payment.reference || ''}","${retoma.descripcion || ''}","${retoma.imei || ''}","${retoma.estado || ''}",${doc.totalItems || 0},${doc.totalPaid || 0},${doc.balance || 0},"${doc.observaciones || ''}"\n`;
-                });
+                    csv += [doc.tipo, doc.numero, formatDateFull(doc.fecha), doc.cliente, doc.nit, doc.telefono, doc.direccion,
+                        doc.email, doc.asesor, doc.empresa, item.descripcion, item.cantidad, item.valor, item.imei, item.estado,
+                        item.notas, item.total, payment.method, payment.amount, payment.reference, retoma.descripcion,
+                        retoma.imei, retoma.estado, doc.totalItems || 0, doc.totalPaid || 0, doc.balance || 0, doc.observaciones
+                    ].map(celda).join(';') + '\r\n';
+                }
             });
 
-            descargarArchivo(csv, `todos_documentos_${hoyLocal()}.csv`, 'text/csv');
+            descargarArchivo(csv, `todos_documentos_${hoyLocal()}.csv`, 'text/csv;charset=utf-8');
             mostrarToast('📊 Excel exportado exitosamente');
         }
 
