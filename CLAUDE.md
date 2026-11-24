@@ -76,9 +76,9 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
 
 ### Asesores
 - `ASESORES_FIJOS`: aparecen en todos los módulos.
-- `ASESORES_SOLO_REMISIONES` (hoy: Sandra): solo Asesor Principal y colaboradores de
+- `ASESORES_SOLO_REMISIONES` (hoy: ninguno): solo Asesor Principal y colaboradores de
   Remisiones; se filtran en Mantenimientos e Inventario aunque estén en Drive.
-- `ASESORES_INACTIVOS` (hoy: Male): se excluyen al cargar aunque sigan en Drive.
+- `ASESORES_INACTIVOS` (hoy: Male y Sandra): se excluyen al cargar aunque sigan en Drive.
 - Claves de 4 dígitos y permisos (`autorizar_garantias`, `registrar_gastos`, `administrador`,
   `ver_resumen`) viven en **`CLAVES-ASESORES-V2`** en Drive (`CONFIG_FILES.clavesAsesores`), no en
   el código. Garantías y Gastos listan a quien tenga el permiso en ese archivo.
