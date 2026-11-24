@@ -1179,10 +1179,10 @@
                     <span id="success-total" style="font-size: 1.25rem; font-weight: 700; color: var(--success); margin-left: 0.5rem;">$0</span>
                 </div>
             </div>
-            <div id="success-pendientes" style="display: none; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; text-align: left;">
-                <strong style="color: #92400e;">⚠️ La remisión quedó guardada, pero faltó subir:</strong>
-                <ul id="success-pendientes-lista" style="margin: 0.5rem 0 0.75rem 1.25rem; padding: 0; list-style: disc; color: #92400e;"></ul>
-                <button class="btn btn-primary" onclick="sinDobleToque(this, 'remision-pendientes', remReintentarPendientes)">🔄 Reintentar lo pendiente</button>
+            <div id="success-pendientes" style="display: none; background: #eff6ff; border: 1px solid #93c5fd; border-radius: 8px; padding: 0.75rem; margin-bottom: 1rem; text-align: left;">
+                <strong style="color: #1e3a8a;">⏳ La remisión quedó guardada. La app está terminando de subir esto sola; puede cerrar y seguir trabajando:</strong>
+                <ul id="success-pendientes-lista" style="margin: 0.5rem 0 0.75rem 1.25rem; padding: 0; list-style: disc; color: #1e3a8a;"></ul>
+                <button class="btn btn-secondary" onclick="sinDobleToque(this, 'remision-pendientes', remReintentarPendientes)">🔄 Intentar ahora</button>
             </div>
             <p id="success-drive-ok" style="font-size: 0.875rem; color: var(--gray-500);">
                 ✅ Datos guardados en Google Drive
@@ -2512,6 +2512,7 @@
                     tokenVenceEn = Date.now() + (Number(resp.expires_in) || 3600) * 1000;
                     sesGuardarPermiso();
                     updateDriveStatus(true);
+                    colaProgramar(1000, true);   // con la sesión renovada, subir lo pendiente
                     fin();
                 };
                 tokenClient.error_callback = (err) => fin(err || new Error('Error de Google'));
@@ -2721,6 +2722,7 @@
             await prestadoresCargarLista();  // CAMBIO #2: cargar lista de prestadores
             await accCargarPopularidad();     // Popularidad de accesorios (para el modo contraído)
             mostrarToast('✅ Conectado a Google Drive + Sheets');
+            colaAlEntrar();   // sube lo que haya quedado pendiente en este celular
         }
 
         // Al abrir la app: si hay un permiso guardado vigente, se comprueba con Google y se entra directo.
@@ -2825,17 +2827,7 @@
 
         // fallas (opcional): si se pasa, un error se agrega ahí para reintentarlo (ver guardarDocumento).
         async function agregarFilaExcel(documento, docName, fileId, fallas) {
-            if (!SPREADSHEET_ID) {
-                // Sin hoja disponible: dejarlo pendiente (antes se omitía sin avisar).
-                if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', detalle: 'este celular no tiene hoja de registro', fn: async () => {
-                    await verificarOCrearSpreadsheet();
-                    if (!SPREADSHEET_ID) throw new Error('Hoja de Sheets no disponible');
-                    const sub = [];
-                    await agregarFilaExcel(documento, docName, fileId, sub);
-                    if (sub.length) throw new Error('No se pudo agregar la fila');
-                } });
-                return;
-            }
+            // Si este celular no tiene hoja, remAppendSheets la crea antes de escribir.
             const linkDrive = `https://drive.google.com/file/d/${fileId}/view`;
             const colaboradores = documento.colaboradores.map(c => c.nombre).join(', ');
             const pagos = documento.payments.map(p => {
@@ -2880,7 +2872,7 @@
             } catch (error) {
                 console.error('Error agregando fila a Excel:', error);
                 if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', detalle: remMotivoSheets(error).texto,
-                    motivo: remMotivoSheets, fn: () => remAppendSheets(agregar) });
+                    dato: { tipo: 'sheets', docName, filas } });
             }
         }
 
@@ -4532,7 +4524,8 @@
                                     await subirImagenDrive(dataUrl, fileName, folder);
                                 } catch (e) {
                                     console.error(`Error subiendo foto ${fileName}:`, e);
-                                    fallas.push({ nombre: `Foto ${fileName}`, fn: () => subirImagenDrive(dataUrl, fileName, folder) });
+                                    fallas.push({ nombre: `Foto ${fileName}`, detalle: colaMotivo(e, { tipo: 'foto' }).texto,
+                                        dato: { tipo: 'foto', nombre: fileName, carpeta: folder, dataUrl } });
                                 }
                             }
                         }
@@ -4606,8 +4599,9 @@
 
                 const totalPagado = modalPayments.reduce((sum, p) => sum + p.amount, 0);
                 document.getElementById('success-total').textContent = formatMoney(totalPagado);
-                remMostrarPendientes(docName, fallas);
+                remMostrarPendientes(docName, await colaAgregar(docName, fallas));
                 document.getElementById('success-modal').classList.add('show');
+                if (fallas.length) colaProgramar(3000);
 
             } catch (error) {
                 console.error('Error guardando documento:', error);
@@ -5058,28 +5052,201 @@
             if (ok) ok.style.display = 'none';
         }
         async function remReintentarPendientes() {
-            const fallas = [];
-            for (const paso of remPendientes.pasos) {
-                try { await paso.fn(); }
-                catch (e) {
-                    console.error(`Reintento fallido (${paso.nombre}):`, e);
-                    if (paso.motivo) paso.detalle = paso.motivo(e).texto;
-                    fallas.push(paso);
-                }
-            }
-            remMostrarPendientes(remPendientes.docName, fallas);
-            mostrarToast(fallas.length
-                ? `⚠️ Aún faltan ${fallas.length} paso(s). Revise la conexión e intente de nuevo.`
+            if (colaEnCurso) await colaEnCurso;
+            await colaProcesar(true);
+            const quedan = await colaDeRemision(remPendientes.docName);
+            remMostrarPendientes(remPendientes.docName, quedan);
+            mostrarToast(quedan.length
+                ? `⏳ Aún faltan ${quedan.length} paso(s); la app los seguirá intentando sola.`
                 : '✅ Todo quedó subido');
         }
 
         function cerrarExito() {
             const n = remPendientes.pasos.length;
-            if (n && !confirm(`⚠️ Quedan ${n} paso(s) sin subir de la ${remPendientes.docName}:\n${remPendientes.pasos.map(p => '• ' + p.nombre).join('\n')}\n\nLa remisión ya está guardada en Drive. Si cierra, esto no se reintentará y habrá que avisar al administrador.\n\n¿Cerrar de todas formas?`)) return;
-            if (n) console.warn(`Pasos sin subir de ${remPendientes.docName}:`, remPendientes.pasos.map(p => p.nombre));
+            // Si la cola no se pudo guardar en el celular, lo pendiente solo vive mientras la app esté abierta.
+            if (n && colaSoloMemoria && !confirm(`⚠️ Quedan ${n} paso(s) sin subir de la ${remPendientes.docName}:\n${remPendientes.pasos.map(p => '• ' + p.nombre).join('\n')}\n\nLa remisión ya está guardada en Drive. La app los seguirá intentando mientras esté abierta; si la cierra antes, habrá que avisar al administrador.\n\n¿Cerrar este mensaje?`)) return;
+            if (n) mostrarToast('⏳ Lo que faltó se seguirá subiendo solo');
             remPendientes = { docName: null, pasos: [] };
             document.getElementById('success-modal').classList.remove('show');
         }
+
+        // ===== Cola automática de pasos pendientes (cola…) =====
+        // Lo que falla después de guardar una remisión (fotos, fila de Sheets, equipos prestados, cobros)
+        // queda guardado en este celular (IndexedDB) y la app lo sube sola: a los pocos segundos, cuando
+        // vuelve el internet, al volver a la app, al entrar con Google y cada 2 minutos. El asesor no tiene
+        // que hacer nada. Antes de subir se revisa que no esté ya en Drive o en la hoja (la primera vez pudo
+        // quedar arriba aunque la respuesta no llegó): así nunca se duplica un préstamo, un cobro ni una fila.
+        const COLA_DB = 'skadii-cola';
+        const COLA_STORE = 'pasos';
+        let colaDBPromesa = null;
+        let colaMemoria = [];          // respaldo si el navegador no deja usar IndexedDB
+        let colaSoloMemoria = false;
+        let colaEnCurso = null;
+        let colaTimer = null;
+        let colaAvisoViejos = false;
+
+        function colaAbrirDB() {
+            if (!colaDBPromesa) {
+                colaDBPromesa = new Promise((resolve, reject) => {
+                    const req = indexedDB.open(COLA_DB, 1);
+                    req.onupgradeneeded = () => req.result.createObjectStore(COLA_STORE, { keyPath: 'id', autoIncrement: true });
+                    req.onsuccess = () => resolve(req.result);
+                    req.onerror = () => reject(req.error);
+                });
+                colaDBPromesa.catch(() => { colaDBPromesa = null; });
+            }
+            return colaDBPromesa;
+        }
+        // modo: 'todos' | 'agregar' | 'guardar' | 'borrar' (valor = id). Si IndexedDB falla, usa la memoria.
+        async function colaOperar(modo, valor) {
+            if (!colaSoloMemoria) {
+                try {
+                    const db = await colaAbrirDB();
+                    return await new Promise((resolve, reject) => {
+                        const tx = db.transaction(COLA_STORE, modo === 'todos' ? 'readonly' : 'readwrite');
+                        const st = tx.objectStore(COLA_STORE);
+                        const req = modo === 'todos' ? st.getAll() : modo === 'agregar' ? st.add(valor)
+                            : modo === 'guardar' ? st.put(valor) : st.delete(valor);
+                        tx.oncomplete = () => resolve(req.result);
+                        tx.onerror = () => reject(tx.error);
+                        tx.onabort = () => reject(tx.error);
+                    });
+                } catch (e) {
+                    console.warn('Cola de pendientes sin IndexedDB; se usa la memoria:', e);
+                    colaSoloMemoria = true;
+                }
+            }
+            if (modo === 'todos') return colaMemoria.slice();
+            if (modo === 'agregar') { valor.id = Date.now() + Math.random(); colaMemoria.push(valor); return valor.id; }
+            if (modo === 'guardar') { colaMemoria = colaMemoria.map(x => x.id === valor.id ? valor : x); return valor.id; }
+            colaMemoria = colaMemoria.filter(x => x.id !== valor);
+        }
+
+        // Guarda en la cola lo que falló al guardar la remisión. Devuelve los pasos (para mostrarlos).
+        async function colaAgregar(docName, fallas) {
+            const pasos = [];
+            for (const f of fallas) {
+                const reg = { docName, nombre: f.nombre, detalle: f.detalle || '', dato: f.dato,
+                              creado: Date.now(), intentos: 0, proximo: Date.now() + 3000 };
+                if (f.dato) reg.id = await colaOperar('agregar', reg);
+                else console.warn('Paso pendiente sin datos para la cola:', f.nombre);
+                pasos.push(reg);
+            }
+            return pasos;
+        }
+        async function colaDeRemision(docName) {
+            return ((await colaOperar('todos')) || []).filter(p => p.docName === docName);
+        }
+
+        function colaQ(t) { return String(t).replace(/\\/g, '\\\\').replace(/'/g, "\\'"); }
+        async function colaArchivoYaEsta(nombre, carpeta) {
+            const r = await gapi.client.drive.files.list({
+                q: `name = '${colaQ(nombre)}' and '${carpeta}' in parents and trashed = false`,
+                fields: 'files(id)', pageSize: 1
+            });
+            return !!(r.result.files && r.result.files.length);
+        }
+        async function colaFilaYaEsta(docName) {
+            if (!SPREADSHEET_ID) return false;
+            try {
+                const r = await gapi.client.sheets.spreadsheets.values.get({ spreadsheetId: SPREADSHEET_ID, range: 'Remisiones!A:A' });
+                return (r.result.values || []).some(f => f[0] === docName);
+            } catch (e) { return false; }   // si la hoja está dañada, remAppendSheets la repara
+        }
+        async function colaEjecutar(dato) {
+            if (dato.tipo === 'sheets') {
+                if (await colaFilaYaEsta(dato.docName)) return;
+                await remAppendSheets(() => gapi.client.sheets.spreadsheets.values.append({
+                    spreadsheetId: SPREADSHEET_ID, range: 'Remisiones!A:R',
+                    valueInputOption: 'USER_ENTERED', resource: { values: dato.filas }
+                }));
+                return;
+            }
+            if (await colaArchivoYaEsta(dato.nombre, dato.carpeta)) return;
+            if (dato.tipo === 'foto') await subirImagenDrive(dato.dataUrl, dato.nombre, dato.carpeta);
+            else await subirArchivoDrive(dato.contenido, dato.nombre, dato.carpeta);
+        }
+        // Motivo en palabras para los errores de subida (fetch) y de gapi.
+        function colaMotivo(error, dato) {
+            const m = String((error && error.message) || '').match(/failed: (\d{3})/);
+            if (error instanceof TypeError) return { tipo: 'red', texto: 'sin conexión con Google' };
+            const info = remMotivoSheets(m ? { status: Number(m[1]), result: { error: { code: Number(m[1]), message: error.message } } } : error);
+            if (dato && dato.tipo !== 'sheets' && (info.tipo === 'hoja' || info.tipo === 'pestana' || info.tipo === 'otro')) {
+                const http = m ? m[1] : (error && error.status) || '';
+                return { tipo: 'otro', texto: http ? `error ${http} de Google Drive` : (info.texto || 'error de Google Drive') };
+            }
+            return info;
+        }
+        function colaSesionLista() {
+            return !!accessToken && Date.now() < tokenVenceEn - 60 * 1000;
+        }
+
+        // Sube lo que esté en la cola. forzar = no esperar el turno de cada paso.
+        function colaProcesar(forzar) {
+            if (colaEnCurso) return colaEnCurso;
+            colaEnCurso = (async () => {
+                const terminadas = new Set();
+                try {
+                    const pasos = (await colaOperar('todos')) || [];
+                    if (!pasos.length || !colaSesionLista() || navigator.onLine === false) return;
+                    for (const p of pasos) {
+                        if (!forzar && p.proximo > Date.now()) continue;
+                        if (!colaSesionLista()) break;   // la sesión venció: se sigue al renovarla
+                        try {
+                            await colaEjecutar(p.dato);
+                            await colaOperar('borrar', p.id);
+                            terminadas.add(p.docName);
+                        } catch (e) {
+                            const info = colaMotivo(e, p.dato);
+                            console.warn(`Cola: no se pudo subir "${p.nombre}" de ${p.docName} (${info.texto}):`, e);
+                            if (info.tipo === 'sesion') tokenVenceEn = 0;
+                            p.intentos = (p.intentos || 0) + 1;
+                            p.detalle = info.texto;
+                            p.proximo = Date.now() + Math.min(30000 * 2 ** (p.intentos - 1), 10 * 60 * 1000);
+                            await colaOperar('guardar', p);
+                        }
+                    }
+                } catch (e) {
+                    console.error('Cola de pendientes:', e);
+                } finally {
+                    colaEnCurso = null;
+                }
+                await colaRefrescarVista(terminadas);
+                const quedan = (await colaOperar('todos')) || [];
+                if (quedan.length) {
+                    const espera = Math.max(5000, Math.min(...quedan.map(p => p.proximo || 0)) - Date.now());
+                    colaProgramar(Math.min(espera, 10 * 60 * 1000));
+                }
+            })();
+            return colaEnCurso;
+        }
+        function colaProgramar(ms, forzar) {
+            clearTimeout(colaTimer);
+            colaTimer = setTimeout(() => colaProcesar(forzar), ms || 0);
+        }
+        // Actualiza el mensaje final si sigue abierto y avisa (sin interrumpir) lo que se terminó de subir.
+        async function colaRefrescarVista(terminadas) {
+            const modal = document.getElementById('success-modal');
+            if (remPendientes.docName && modal && modal.classList.contains('show')) {
+                remMostrarPendientes(remPendientes.docName, await colaDeRemision(remPendientes.docName));
+            }
+            for (const docName of terminadas) {
+                if (!(await colaDeRemision(docName)).length) mostrarToast(`✅ Se terminó de subir lo pendiente de la ${docName}`);
+            }
+        }
+        // Al entrar con Google: subir lo que quedó de otras veces y avisar si algo lleva más de un día.
+        async function colaAlEntrar() {
+            await colaProcesar(true);
+            const viejos = ((await colaOperar('todos')) || []).filter(p => Date.now() - (p.creado || 0) > 24 * 60 * 60 * 1000);
+            if (viejos.length && !colaAvisoViejos) {
+                colaAvisoViejos = true;
+                const docs = [...new Set(viejos.map(p => p.docName))].join(', ');
+                mostrarToast(`⚠️ Hay ${viejos.length} paso(s) sin subir desde hace más de un día (${docs}). Avise al administrador.`, 8000);
+            }
+        }
+        window.addEventListener('online', () => colaProgramar(1000, true));
+        document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') colaProgramar(1500); });
+        setInterval(() => colaProcesar(false), 2 * 60 * 1000);
 
         function limpiarTodo() {
             document.getElementById('cliente').value = '';
@@ -8436,7 +8603,8 @@
                 } catch(e) {
                     console.error(`Error registrando cobro ${nombreArch}:`, e);
                     if (fallas) fallas.push({ nombre: `Cobro pendiente ${empresa} (Ingresos)`,
-                        fn: () => subirArchivoDrive(contenido, nombreArch, FOLDER_IDS.ingresos) });
+                        detalle: colaMotivo(e, { tipo: 'archivo' }).texto,
+                        dato: { tipo: 'archivo', nombre: nombreArch, carpeta: FOLDER_IDS.ingresos, contenido } });
                 }
             }
         }
@@ -8471,7 +8639,8 @@
                 } catch (e) {
                     console.error(`Error registrando prestado ${nombreArchivo}:`, e);
                     if (fallas) fallas.push({ nombre: `Equipo prestado de ${prestador} (Pagar Prestadores)`,
-                        fn: () => subirArchivoDrive(contenido, nombreArchivo, FOLDER_IDS.prestamosPagos) });
+                        detalle: colaMotivo(e, { tipo: 'archivo' }).texto,
+                        dato: { tipo: 'archivo', nombre: nombreArchivo, carpeta: FOLDER_IDS.prestamosPagos, contenido } });
                 }
             }
         }

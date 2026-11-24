@@ -63,7 +63,8 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
 | Accesorios           | `acc…`           | Catálogo por código dentro de Remisiones, precio u obsequio, populares |
 | Recargos             | `rec…`           | Recargo por medio de pago (tarjeta, Gora, ADDI, crédito BdB, E-Credit); no afecta el cuadre |
 | Borrador             | `borrador…`      | Guarda la remisión en curso en el celular (IndexedDB) y ofrece recuperarla |
-| Pendientes de guardado | `rem…`, `success-pendientes` | Reintento solo de los pasos que fallaron tras guardar una remisión |
+| Pendientes de guardado | `rem…`, `success-pendientes` | Muestra, con su motivo, los pasos que fallaron tras guardar una remisión; "Intentar ahora" los fuerza |
+| Cola automática      | `cola…`          | Lo que falló tras guardar una remisión queda en el celular (IndexedDB `skadii-cola`) y la app lo sube sola, sin duplicar |
 | Mantenimientos       | `mant…`          | Diagrama de daños sobre SVG del iPhone, firma, estados |
 | Garantías / Cambios  | `gar…`           | Cambio de equipo, diferencia de precios, autorización por clave |
 | Pagar Prestadores    | `prest…`, `prestadores…` | Agrupa equipos prestados pendientes y registra pagos |
@@ -146,9 +147,19 @@ Respetar SIEMPRE el prefijo del módulo al añadir código:
    agrega a `fallas`: fotos, fila en Sheets, equipos prestados, cobros pendientes.
    `agregarFilaExcel`, `registrarPrestadosEnDrive` y `registrarCobrosPendientes` reciben el
    parámetro opcional `fallas` y agregan ahí el reintento del archivo exacto que falló.
-4. El modal de éxito lista lo pendiente y "Reintentar lo pendiente" (`remReintentarPendientes`)
-   repite solo eso. La frecuencia de prestadores y la popularidad de accesorios son informativas:
-   si fallan no tumban la remisión.
+4. Cada falla lleva `dato` (`{tipo: 'foto'|'archivo'|'sheets', ...}`: todo lo necesario para repetir
+   ese paso) y `colaAgregar` la guarda en la **cola automática** (`cola…`, IndexedDB `skadii-cola`).
+   La app la sube sola, sin que el asesor haga nada: 3 s después de guardar, al volver el internet,
+   al volver a la app, al entrar con Google (`colaAlEntrar`), al renovar la sesión y cada 2 minutos;
+   cada paso que sigue fallando espera su turno (30 s, 1 min, 2 min… hasta 10 min). **Antes de subir
+   se revisa que no esté ya** (`colaArchivoYaEsta` por nombre y carpeta, `colaFilaYaEsta` en la
+   columna A de la hoja): la primera vez pudo quedar arriba aunque no llegó la respuesta, y así nunca
+   se duplica un préstamo, un cobro ni una fila. Sin sesión vigente (`colaSesionLista`) o sin internet
+   no intenta. El modal de éxito muestra lo pendiente con su motivo en una caja azul informativa que
+   se actualiza sola; "Intentar ahora" (`remReintentarPendientes`) fuerza la cola; cerrar no pregunta
+   (salvo que la cola solo viva en memoria, `colaSoloMemoria`). Si algo lleva más de un día sin
+   subir, al entrar se avisa que hay que decirle al administrador. La frecuencia de prestadores y la
+   popularidad de accesorios son informativas: si fallan no tumban la remisión.
 5. `limpiarTodo()` limpia el formulario (también el de dispositivo y el de pago) y borra el borrador.
 6. El consecutivo se relee justo antes de guardar y la doble verificación también mira `.lock`
    rivales (gana el más antiguo); si la verificación falla se reintenta el mismo número.
@@ -184,13 +195,13 @@ fresco y se verifica que sea del tipo y estado esperados (nunca reescribir con u
 - **Registro en Sheets**: `agregarFilaExcel(...)`. El ID de la hoja se guarda **por equipo** en
   `localStorage` (`spreadsheet_id`); si un equipo no lo tiene, `verificarOCrearSpreadsheet`
   crea una hoja nueva (encabezado en `REM_ENCABEZADO_SHEETS`).
-  - La fila pasa por `remAppendSheets`: si la hoja de ese equipo quedó inservible (404 o 403 sin
-    permiso de edición) crea una nueva; si le falta la pestaña "Remisiones" (400 "parse range") la
-    agrega con encabezado; luego reintenta una vez. Red, límite de Google, API apagada o falta de
-    permiso de Sheets no se "reparan": quedan pendientes. Con 401 pone `tokenVenceEn = 0` para que el
-    "Reintentar" (vía `sinDobleToque`) renueve la sesión primero.
-  - `remMotivoSheets(error)` da el motivo en palabras; la lista amarilla de pendientes lo muestra al
-    lado del paso (`detalle`) y el aviso al cerrar con pendientes nombra lo que falta.
+  - La fila pasa por `remAppendSheets`: si el equipo no tiene hoja, la crea antes de escribir; si la
+    hoja quedó inservible (404 o 403 sin permiso de edición) crea una nueva; si le falta la pestaña
+    "Remisiones" (400 "parse range") la agrega con encabezado; luego reintenta una vez. Red, límite de
+    Google, API apagada o falta de permiso de Sheets no se "reparan": van a la cola automática. Con 401
+    pone `tokenVenceEn = 0`: la cola espera y la próxima acción con `sinDobleToque` renueva la sesión.
+  - `remMotivoSheets(error)` / `colaMotivo(error, dato)` dan el motivo en palabras; la lista de
+    pendientes lo muestra al lado del paso (`detalle`).
 - **Compatibilidad entre módulos**: el módulo "Pagar Prestadores" detecta archivos cuyo nombre
   empieza por `Prestado-` en la carpeta `prestamosPagos`, con `estado: 'pendiente'` y un array
   `equipos[]`. Cualquier registro nuevo de equipo prestado DEBE seguir ese mismo formato para que
