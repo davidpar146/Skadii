@@ -183,7 +183,14 @@ fresco y se verifica que sea del tipo y estado esperados (nunca reescribir con u
 - **Subida de archivos**: helpers `subirArchivoDrive(...)` y `subirImagenDrive(...)`.
 - **Registro en Sheets**: `agregarFilaExcel(...)`. El ID de la hoja se guarda **por equipo** en
   `localStorage` (`spreadsheet_id`); si un equipo no lo tiene, `verificarOCrearSpreadsheet`
-  crea una hoja nueva.
+  crea una hoja nueva (encabezado en `REM_ENCABEZADO_SHEETS`).
+  - La fila pasa por `remAppendSheets`: si la hoja de ese equipo quedó inservible (404 o 403 sin
+    permiso de edición) crea una nueva; si le falta la pestaña "Remisiones" (400 "parse range") la
+    agrega con encabezado; luego reintenta una vez. Red, límite de Google, API apagada o falta de
+    permiso de Sheets no se "reparan": quedan pendientes. Con 401 pone `tokenVenceEn = 0` para que el
+    "Reintentar" (vía `sinDobleToque`) renueve la sesión primero.
+  - `remMotivoSheets(error)` da el motivo en palabras; la lista amarilla de pendientes lo muestra al
+    lado del paso (`detalle`) y el aviso al cerrar con pendientes nombra lo que falta.
 - **Compatibilidad entre módulos**: el módulo "Pagar Prestadores" detecta archivos cuyo nombre
   empieza por `Prestado-` en la carpeta `prestamosPagos`, con `estado: 'pendiente'` y un array
   `equipos[]`. Cualquier registro nuevo de equipo prestado DEBE seguir ese mismo formato para que
