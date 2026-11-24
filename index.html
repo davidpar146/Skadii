@@ -2774,6 +2774,13 @@
 
         // ============= DRIVE + SHEETS HELPERS =============
 
+        const REM_ENCABEZADO_SHEETS = [
+            'Número', 'Fecha', 'Asesor', 'Colaboradores', 'Cliente', 'NIT/CC',
+            'Teléfono', 'Item', 'IMEI', 'Estado/Prestador', 'Precio Unit.',
+            'Costo Unit.', 'Total Item', 'Métodos Pago', 'Total Pagado',
+            'Saldo', 'Observaciones', 'Link Drive'
+        ];
+
         async function verificarOCrearSpreadsheet() {
             if (SPREADSHEET_ID) {
                 try {
@@ -2802,14 +2809,7 @@
                     spreadsheetId: SPREADSHEET_ID,
                     range: 'Remisiones!A1:R1',
                     valueInputOption: 'RAW',
-                    resource: {
-                        values: [[
-                            'Número', 'Fecha', 'Asesor', 'Colaboradores', 'Cliente', 'NIT/CC',
-                            'Teléfono', 'Item', 'IMEI', 'Estado/Prestador', 'Precio Unit.',
-                            'Costo Unit.', 'Total Item', 'Métodos Pago', 'Total Pagado',
-                            'Saldo', 'Observaciones', 'Link Drive'
-                        ]]
-                    }
+                    resource: { values: [REM_ENCABEZADO_SHEETS] }
                 });
                 mostrarToast('✅ Excel creado en Google Drive');
             } catch (error) { console.error('Error creando spreadsheet:', error); }
@@ -2827,7 +2827,7 @@
         async function agregarFilaExcel(documento, docName, fileId, fallas) {
             if (!SPREADSHEET_ID) {
                 // Sin hoja disponible: dejarlo pendiente (antes se omitía sin avisar).
-                if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', fn: async () => {
+                if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', detalle: 'este celular no tiene hoja de registro', fn: async () => {
                     await verificarOCrearSpreadsheet();
                     if (!SPREADSHEET_ID) throw new Error('Hoja de Sheets no disponible');
                     const sub = [];
@@ -2876,10 +2876,66 @@
                 resource: { values: filas }
             });
             try {
-                await agregar();
+                await remAppendSheets(agregar);
             } catch (error) {
                 console.error('Error agregando fila a Excel:', error);
-                if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', fn: agregar });
+                if (fallas) fallas.push({ nombre: 'Fila en Google Sheets', detalle: remMotivoSheets(error).texto,
+                    motivo: remMotivoSheets, fn: () => remAppendSheets(agregar) });
+            }
+        }
+
+        // ===== Fila en Sheets: motivo del error y reparación de la hoja (rem…) =====
+        // Antes el aviso amarillo no decía por qué falló, y si la hoja de este celular quedó inservible
+        // (borrada, sin permiso de edición o sin la pestaña "Remisiones"), "Reintentar" repetía lo mismo
+        // para siempre. Ahora se repara la hoja una vez y se vuelve a intentar.
+        function remMotivoSheets(error) {
+            const det = (error && error.result && error.result.error) || {};
+            const http = Number((error && error.status) || det.code) || 0;
+            const msg = String(det.message || (error && error.message) || '');
+            if (error instanceof Error && !http) return { tipo: 'otro', texto: msg || 'error inesperado' };
+            if (http <= 0) return { tipo: 'red', texto: 'sin conexión con Google' };
+            if (http === 401) return { tipo: 'sesion', texto: 'la sesión de Google venció' };
+            if (http === 429) return { tipo: 'limite', texto: 'Google pidió esperar un momento' };
+            if (/disabled|has not been used/i.test(msg)) return { tipo: 'otro', texto: 'Google Sheets no está habilitado' };
+            if (/insufficient.*scope/i.test(msg)) return { tipo: 'otro', texto: 'falta el permiso de Google Sheets: vuelva a entrar con Google' };
+            if (/rate|quota/i.test(msg)) return { tipo: 'limite', texto: 'Google pidió esperar un momento' };
+            if (http === 404) return { tipo: 'hoja', texto: 'la hoja de registro ya no existe' };
+            if (http === 403) return { tipo: 'hoja', texto: 'la hoja de registro no deja escribir' };
+            if (http === 400 && /parse range/i.test(msg)) return { tipo: 'pestana', texto: 'la hoja no tiene la pestaña "Remisiones"' };
+            return { tipo: 'otro', texto: `error ${http} de Google Sheets` };
+        }
+        async function remRepararHojaSheets(tipo) {
+            if (tipo === 'pestana') {
+                await gapi.client.sheets.spreadsheets.batchUpdate({
+                    spreadsheetId: SPREADSHEET_ID,
+                    resource: { requests: [{ addSheet: { properties: { title: 'Remisiones', gridProperties: { frozenRowCount: 1 } } } }] }
+                });
+                await gapi.client.sheets.spreadsheets.values.update({
+                    spreadsheetId: SPREADSHEET_ID, range: 'Remisiones!A1:R1',
+                    valueInputOption: 'RAW', resource: { values: [REM_ENCABEZADO_SHEETS] }
+                });
+                mostrarToast('✅ Se agregó la pestaña "Remisiones" a la hoja de registro');
+            } else if (tipo === 'hoja') {
+                // La hoja guardada no sirve: este celular empieza una nueva (queda en Drive).
+                SPREADSHEET_ID = null;
+                localStorage.removeItem('spreadsheet_id');
+                await verificarOCrearSpreadsheet();
+                if (!SPREADSHEET_ID) throw new Error('No se pudo crear una hoja de registro nueva');
+            }
+        }
+        // Agrega la fila; si la hoja está dañada, la repara y lo intenta una vez más.
+        async function remAppendSheets(agregar) {
+            // Si una reparación anterior no alcanzó a crear la hoja nueva, se crea antes de escribir.
+            if (!SPREADSHEET_ID) await remRepararHojaSheets('hoja');
+            try { return await agregar(); }
+            catch (error) {
+                const info = remMotivoSheets(error);
+                // Sesión vencida: el próximo "Reintentar" (sinDobleToque) la renueva antes de intentar.
+                if (info.tipo === 'sesion') tokenVenceEn = 0;
+                if (info.tipo !== 'hoja' && info.tipo !== 'pestana') throw error;
+                console.warn(`Hoja de Sheets: ${info.texto}. Se repara y se reintenta.`, error);
+                await remRepararHojaSheets(info.tipo);
+                return await agregar();
             }
         }
 
@@ -4997,7 +5053,7 @@
                 return;
             }
             document.getElementById('success-pendientes-lista').innerHTML =
-                pasos.map(p => `<li>${escHtml(p.nombre)}</li>`).join('');
+                pasos.map(p => `<li>${escHtml(p.nombre)}${p.detalle ? ` <small>(${escHtml(p.detalle)})</small>` : ''}</li>`).join('');
             box.style.display = 'block';
             if (ok) ok.style.display = 'none';
         }
@@ -5005,7 +5061,11 @@
             const fallas = [];
             for (const paso of remPendientes.pasos) {
                 try { await paso.fn(); }
-                catch (e) { console.error(`Reintento fallido (${paso.nombre}):`, e); fallas.push(paso); }
+                catch (e) {
+                    console.error(`Reintento fallido (${paso.nombre}):`, e);
+                    if (paso.motivo) paso.detalle = paso.motivo(e).texto;
+                    fallas.push(paso);
+                }
             }
             remMostrarPendientes(remPendientes.docName, fallas);
             mostrarToast(fallas.length
@@ -5015,7 +5075,7 @@
 
         function cerrarExito() {
             const n = remPendientes.pasos.length;
-            if (n && !confirm(`⚠️ Quedan ${n} paso(s) sin subir de la ${remPendientes.docName}.\n\nSi cierra, no se reintentarán y habrá que avisar al administrador.\n\n¿Cerrar de todas formas?`)) return;
+            if (n && !confirm(`⚠️ Quedan ${n} paso(s) sin subir de la ${remPendientes.docName}:\n${remPendientes.pasos.map(p => '• ' + p.nombre).join('\n')}\n\nLa remisión ya está guardada en Drive. Si cierra, esto no se reintentará y habrá que avisar al administrador.\n\n¿Cerrar de todas formas?`)) return;
             if (n) console.warn(`Pasos sin subir de ${remPendientes.docName}:`, remPendientes.pasos.map(p => p.nombre));
             remPendientes = { docName: null, pasos: [] };
             document.getElementById('success-modal').classList.remove('show');
