@@ -786,7 +786,6 @@
                     <option value="Sirley">Sirley</option>
                     <option value="Josue">Josue</option>
                     <option value="Nicolas">Nicolas</option>
-                    <option value="Sandra">Sandra</option>
                 </select>
             </div>
 
@@ -3367,9 +3366,9 @@
         const ASESORES_FIJOS = ['Camilo', 'Sirley', 'Josue', 'Nicolas'];
         // Asesores que solo aplican en Remisiones (asesor principal y colaboradores);
         // no se listan en Mantenimientos ni Inventario aunque estén en el archivo de Drive.
-        const ASESORES_SOLO_REMISIONES = ['Sandra'];
+        const ASESORES_SOLO_REMISIONES = [];
         // Asesores dados de baja: se excluyen al cargar, aunque sigan en el archivo de Drive.
-        const ASESORES_INACTIVOS = ['Male'];
+        const ASESORES_INACTIVOS = ['Male', 'Sandra'];
 
         // ============= REMISIONES: ACCESORIOS (módulo acc) =============
         // Los accesorios se agregan al mismo array `currentItems` con tipo 'accesorio',
